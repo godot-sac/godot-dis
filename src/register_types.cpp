@@ -6,6 +6,8 @@
 
 #include "dis_probe.h"
 #include "pdu/dis_entity_state_pdu.h"
+#include "geo/dis_geo.h"
+#include "geo/dis_geo_origin.h"
 #include "network/dis_network.h"
 #include "pdu/dis_pdu.h"
 
@@ -19,6 +21,8 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_ABSTRACT_CLASS(DisPdu);
 	GDREGISTER_CLASS(DisEntityStatePdu);
 	GDREGISTER_CLASS(DisNetwork);
+	GDREGISTER_ABSTRACT_CLASS(DisGeo);
+	GDREGISTER_CLASS(DisGeoOrigin);
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {

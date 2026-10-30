@@ -146,3 +146,39 @@ PDU sınıflarıyla çalışsın diye böyle.
 **Değişken sayıda makro argümanı (`__VA_ARGS__`) ve MSVC**: `##__VA_ARGS__` ile boş argümanda virgülü silme
 GCC/Clang uzantısıdır; MSVC'nin eski önişlemcisi bunu yapmaz ("syntax error: ')'"). Çözüm: iki ayrı makro
 (`DIS_PROPERTY` ve `DIS_PROPERTY_HINT`). Taşınabilir kod yazarken derleyici farklarını akılda tut.
+
+## Faz 3: Koordinatlar
+
+**Godot'tan bağımsız C++ çekirdeği**: `src/geo/geo_math.{h,cpp}` hiçbir Godot başlığı içermez; yalnızca standart
+kütüphane (`<cmath>`). Böylece aynı dosya hem eklentiye hem de ayrı bir test programına (`build/tests/test_geo.exe`)
+derlenir. Godot'a açılan sınıflar (`DisGeo`, `DisGeoOrigin`) bu çekirdeğin üstünde ince bir katman.
+
+**`namespace`**: `namespace dis::geo { ... }` isimleri gruplar; dışarıdan `dis::geo::geodetic_to_ecef(...)` diye
+çağrılır. Aynı isimde Godot metoduyla (`DisGeo::geodetic_to_ecef`) çakışmayı böyle önlüyoruz.
+`using namespace dis::geo;` bir dosyada ön eki yazmadan kullanmayı sağlar.
+
+**`struct` ve operatör aşırı yükleme**: `struct Vec3 { double x, y, z; Vec3 operator+(const Vec3 &o) const; }`
+→ `a + b` yazılabilir. `struct` ile `class` aynı şeydir; tek fark varsayılan erişimin `public` olması.
+`Vec3{1, 2, 3}` (süslü parantez) alanları sırayla doldurur.
+
+**`constexpr`**: `constexpr double WGS84_A = 6378137.0;` derleme zamanında bilinen sabit. `#define`'dan farkı:
+tipi var, namespace'e uyar.
+
+**`inline` başlık fonksiyonları**: Başlıkta gövdesiyle yazılan küçük fonksiyonlar (`enu_to_godot`) `inline` olmalı;
+yoksa başlığı içeren her `.cpp` kendi kopyasını üretir ve bağlayıcı (linker) "tanım iki kez var" hatası verir.
+
+**Üye ile metot aynı isimde olamaz**: `LocalFrame`'de hem `Mat3 enu_to_ecef;` hem `Vec3 enu_to_ecef(...)` vardı;
+C++ bunu reddeder. Üyenin adı `enu_axes` oldu. (GDScript'te de aynı kural.)
+
+**Statik metot bağlama**: `ClassDB::bind_static_method("DisGeo", D_METHOD(...), &DisGeo::geodetic_to_ecef)`
+→ GDScript'te nesne oluşturmadan `DisGeo.geodetic_to_ecef(...)`. Sınıf `GDREGISTER_ABSTRACT_CLASS` ile kayıtlı,
+çünkü örneği oluşturmanın anlamı yok.
+
+**doctest ile C++ birim testleri**: `thirdparty/doctest/doctest.h` tek başlıklık bir test kütüphanesi.
+`TEST_CASE("ad") { CHECK(a == b); }` yazılır; `DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN` `main()`'i kendisi üretir.
+`scons tests` ayrı bir SCons ortamıyla (exception'lar açık, Godot yok) derleyip çalıştırır. Godot'u açmadan
+saniyeler içinde binlerce kontrol yapılır.
+
+**`double` ve `float` farkı (neden önemli)**: `float` (32 bit) ~7 anlamlı basamak tutar. ECEF koordinatı ~6 378 137 m;
+32 bitte en küçük adım 0.5 m. `double` (64 bit) ~16 basamak → nanometre. Bu yüzden ECEF her yerde `double`; Godot'un
+`Vector3`'üne ancak orijinden çıkarıldıktan sonra (küçük yerel değer) dönüştürülüyor.

@@ -23,3 +23,20 @@ library = env.SharedLibrary(
     source=sources + opendis_sources,
 )
 Default(library)
+
+# C++ unit tests (doctest), without Godot: `scons tests` builds and runs build/tests/test_geo.
+# A separate environment, because godot-cpp's flags (no exceptions, DLL settings) don't suit a test program.
+test_env = Environment(ENV=os.environ)
+if env["platform"] == "windows" and not env.get("use_mingw"):
+    test_env.Append(CXXFLAGS=["/std:c++17", "/EHsc", "/O2", "/W3", "/utf-8"])
+else:
+    test_env.Append(CXXFLAGS=["-std=c++17", "-O2", "-Wall"])
+golden_dir = Dir("tests/golden").abspath.replace("\\", "/")
+test_env.Append(CPPPATH=["src/", "thirdparty/doctest/"], CPPDEFINES=[("GOLDEN_DIR", '\\"{}\\"'.format(golden_dir))])
+test_objects = [
+    test_env.Object("build/tests/" + os.path.splitext(os.path.basename(str(f)))[0], f)
+    for f in Glob("tests/cpp/*.cpp") + Glob("src/geo/*.cpp")
+]
+test_program = test_env.Program("build/tests/test_geo", test_objects)
+test_env.Alias("tests", test_program, test_program[0].abspath)
+AlwaysBuild("tests")

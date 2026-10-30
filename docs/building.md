@@ -33,6 +33,17 @@ $godot = "C:\path\to\godot.exe"   # your Godot path
 & $godot --headless --path . -s addons/gut/gut_cmdln.gd
 ```
 
+C++ unit tests (doctest, no Godot needed; coordinate math):
+```powershell
+.\tools\.venv\Scripts\scons.exe tests
+```
+
+Regenerate oracle data (only when the cases change):
+```powershell
+.\tools\.venv\Scripts\python.exe tools\golden.py       # Entity State PDUs (Open-DIS Python)
+.\tools\.venv\Scripts\python.exe tools\geo_golden.py   # coordinates (pymap3d, Open-DIS Python)
+```
+
 ## Check bytes with the oracle
 ```powershell
 & $godot --headless --path . -s res://tools/dump_probe.gd -- probe.bin
