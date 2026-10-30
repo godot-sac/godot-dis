@@ -5,6 +5,8 @@
 #include <godot_cpp/godot.hpp>
 
 #include "dis_probe.h"
+#include "pdu/dis_entity_state_pdu.h"
+#include "pdu/dis_pdu.h"
 
 using namespace godot;
 
@@ -13,6 +15,8 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 		return;
 	}
 	GDREGISTER_CLASS(DisProbe);
+	GDREGISTER_ABSTRACT_CLASS(DisPdu);
+	GDREGISTER_CLASS(DisEntityStatePdu);
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {

@@ -1,0 +1,96 @@
+{
+  "protocol_version": 7,
+  "exercise_id": 1,
+  "timestamp": 0,
+  "pdu_status": 0,
+  "length": 144,
+  "entity_id": [
+    0,
+    0,
+    0
+  ],
+  "force_id": 0,
+  "entity_type": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "alternative_entity_type": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "linear_velocity": [
+    17.0,
+    -5.0,
+    1.0
+  ],
+  "location_ecef": [
+    4076871.9288592828,
+    2627364.6692003533,
+    4129253.078182792
+  ],
+  "orientation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "appearance": 0,
+  "dr_algorithm": 7,
+  "dr_parameters": [
+    120,
+    133,
+    146,
+    159,
+    172,
+    185,
+    198,
+    211,
+    224,
+    237,
+    250,
+    7,
+    20,
+    33,
+    46
+  ],
+  "dr_linear_acceleration": [
+    3.75,
+    -1.5,
+    9.0
+  ],
+  "dr_angular_velocity": [
+    0.699999988079071,
+    -0.20000000298023224,
+    0.30000001192092896
+  ],
+  "marking_character_set": 1,
+  "marking": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "capabilities": 0,
+  "variable_parameters": [],
+  "location_ecef_bits": [
+    "414f1aa3f6e4dc69",
+    "41440b9255a85b70",
+    "414f80f28a01e4cb"
+  ]
+}

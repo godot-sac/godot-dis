@@ -81,3 +81,41 @@ aradığı için o fonksiyon `extern "C"` bloğunda.
 **Endianness (bayt sırası)**: DIS ağda *big-endian* (en anlamlı bayt önce) kullanır; x86 işlemciler
 *little-endian*'dır. open-dis-cpp'nin `DataStream(DIS::BIG)` sınıfı yazarken çevirir. Bu yüzden 144 sayısı
 pakette `00 90` olarak durur; GUT testinde `decode_u16` (little-endian okur) `0x9000` döndürür.
+
+## Faz 1: PDU sınıfları
+
+**Global değişkenler ve DLL yükleme sırası (yaşanmış hata).** `thread_local String last_error;` gibi bir global
+`godot::String`, DLL yüklenir yüklenmez, yani Godot godot-cpp'yi başlatmadan *önce* oluşturulur. `godot::String`
+oluşturulurken Godot'un API'sini çağırdığı için yükleme "DLL initialization routine failed" hatasıyla çöktü.
+Kural: global/static değişkenlerde Godot tipleri (`String`, `Array`, `Ref`...) kullanma; `std::string` gibi saf C++
+tipleri kullan ya da değeri ilk kullanımda oluştur. (`src/pdu/dis_pdu.cpp`)
+
+**`thread_local`**: Her thread'in kendi kopyası olan değişken. Ağ alma thread'i (Faz 2) ile ana thread birbirinin
+hata mesajını ezmesin diye.
+
+**İsimsiz namespace (`namespace { ... }`)**: İçindeki fonksiyonlar yalnızca o `.cpp` dosyasında görünür (C'deki
+`static` fonksiyon). Yardımcı fonksiyonlar (`read_u16_be`, `to_dis` ...) böyle saklanıyor.
+
+**Eksik tip hatası (`use of undefined type 'godot::Ref<...>'`)**: Bir başlık bir sınıfı yalnızca *ileri bildirmişse*
+(forward declaration: "böyle bir sınıf var" der ama içini göstermez), o sınıfın nesnesini oluşturamazsın.
+Çözüm: tam tanımı içeren başlığı eklemek (`#include <godot_cpp/classes/ref.hpp>`).
+
+**`Ref<T>`**: Godot'un referans sayan akıllı işaretçisi. `RefCounted`'dan türeyen nesneler `Ref` ile tutulur, son `Ref`
+yok olunca nesne silinir. `out.instantiate()` yeni nesne oluşturur, `Ref<T>()` boş (null) referanstır.
+
+**`constexpr`**: Derleme zamanında bilinen sabit (`static constexpr int BASE_SIZE = 144;`). `#define`'dan daha
+güvenlidir çünkü tipi vardır ve namespace kurallarına uyar.
+
+**Makro ile tekrar azaltma**: `DIS_PROPERTY(VECTOR3I, entity_id)` her özellik için aynı üç satırı (setter bağla,
+getter bağla, `ADD_PROPERTY`) üretir. `#name` makro parametresini metne, `set_##name` iki parçayı tek isme çevirir.
+Makrolar hata ayıklamayı zorlaştırır; yalnızca böyle mekanik tekrarlarda ve dosya içinde (`#undef` ile) kullanıyoruz.
+
+**`reinterpret_cast`**: Bir işaretçiyi bambaşka bir tip gibi görmek (`const uint8_t*` → `const char*`). Bitleri
+değiştirmez, yalnızca derleyiciye "bu belleği böyle oku" der. Sadece bayt tamponları gibi bilinçli yerlerde.
+
+**`ERR_FAIL_COND_MSG(koşul, mesaj)`**: godot-cpp makrosu: koşul doğruysa Godot'a hata yazar ve fonksiyondan çıkar.
+C++ exception yerine Godot tarzı hata yönetimi (godot-cpp exception'ları kapalı derler).
+
+**Güvenilmeyen girdi**: Ağdan gelen bayt dizisine asla güvenme. open-dis-cpp okurken `std::vector::at()` kullanıyor;
+exception'lar kapalı olduğu için sınır dışı okuma programı *sonlandırır*. Bu yüzden `DisPdu::validate()` uzunlukları
+open-dis-cpp'ye vermeden önce kontrol ediyor ve testler 2000 bozuk paketle bunu deniyor.

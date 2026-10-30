@@ -1,0 +1,98 @@
+{
+  "protocol_version": 7,
+  "exercise_id": 1,
+  "timestamp": 0,
+  "pdu_status": 0,
+  "length": 160,
+  "entity_id": [
+    5,
+    5,
+    5
+  ],
+  "force_id": 0,
+  "entity_type": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "alternative_entity_type": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "linear_velocity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "location_ecef": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "orientation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "appearance": 32,
+  "dr_algorithm": 0,
+  "dr_parameters": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "dr_linear_acceleration": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "dr_angular_velocity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "marking_character_set": 1,
+  "marking": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "capabilities": 0,
+  "variable_parameters": [
+    "003ff8000000000000deadbeefcafe7f"
+  ],
+  "location_ecef_bits": [
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000"
+  ]
+}

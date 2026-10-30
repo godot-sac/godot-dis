@@ -1,0 +1,96 @@
+{
+  "protocol_version": 7,
+  "exercise_id": 255,
+  "timestamp": 4294967295,
+  "pdu_status": 255,
+  "length": 144,
+  "entity_id": [
+    65535,
+    65535,
+    65535
+  ],
+  "force_id": 255,
+  "entity_type": [
+    255,
+    255,
+    65535,
+    255,
+    255,
+    255,
+    255
+  ],
+  "alternative_entity_type": [
+    255,
+    255,
+    65535,
+    255,
+    255,
+    255,
+    255
+  ],
+  "linear_velocity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "location_ecef": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "orientation": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "appearance": 4294967295,
+  "dr_algorithm": 255,
+  "dr_parameters": [
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255
+  ],
+  "dr_linear_acceleration": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "dr_angular_velocity": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "marking_character_set": 1,
+  "marking": [
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255,
+    255
+  ],
+  "capabilities": 4294967295,
+  "variable_parameters": [],
+  "location_ecef_bits": [
+    "0000000000000000",
+    "0000000000000000",
+    "0000000000000000"
+  ]
+}
