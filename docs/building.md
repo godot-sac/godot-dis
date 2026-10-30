@@ -1,0 +1,40 @@
+# Building
+
+## Requirements
+- Python 3.10+ (for SCons and the test oracle)
+- Windows: Visual Studio 2022 with the "Desktop development with C++" workload (MSVC 14.4x)
+- Linux: GCC 11+ or Clang 14+
+- Godot 4.3 or newer to run it (developed with 4.7.2)
+
+## First time
+PowerShell (Windows), from the repo root:
+```powershell
+git clone --recursive <repo>          # or: git submodule update --init
+py -3.13 -m venv tools\.venv
+.\tools\.venv\Scripts\python.exe -m pip install -r tools\requirements.txt
+```
+Linux/macOS: `python3 -m venv tools/.venv && tools/.venv/bin/pip install -r tools/requirements.txt`.
+
+## Build
+```powershell
+.\tools\.venv\Scripts\scons.exe -j16 target=template_debug     # editor and debug exports
+.\tools\.venv\Scripts\scons.exe -j16 target=template_release   # release exports
+```
+Linux/macOS: `tools/.venv/bin/scons -j16 target=template_debug`.
+
+Output: `addons/dis/bin/<platform>/libgodot_dis.<platform>.<target>.<arch>.<ext>`.
+The first build compiles godot-cpp (about a minute); later builds only recompile changed files.
+After rebuilding, restart the Godot editor if it had the old library loaded.
+
+## Test
+```powershell
+$godot = "C:\path\to\godot.exe"   # your Godot path
+& $godot --headless --path . --import
+& $godot --headless --path . -s addons/gut/gut_cmdln.gd
+```
+
+## Check bytes with the oracle
+```powershell
+& $godot --headless --path . -s res://tools/dump_probe.gd -- probe.bin
+.\tools\.venv\Scripts\python.exe tools\inspect_pdu.py probe.bin
+```

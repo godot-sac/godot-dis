@@ -1,0 +1,16 @@
+* text=auto eol=lf
+*.png binary
+*.pcap binary
+*.pcapng binary
+*.svg text eol=lf
+
+# Keep the Asset Library / GitHub source zip limited to the addon
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.gutconfig.json export-ignore
+/CLAUDE.md export-ignore
+/PLAN.md export-ignore
+/addons/gut export-ignore
+/docs export-ignore
+/tests export-ignore
+/tools export-ignore

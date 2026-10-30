@@ -1,0 +1,8 @@
+[submodule "thirdparty/godot-cpp"]
+	path = thirdparty/godot-cpp
+	url = https://github.com/godotengine/godot-cpp
+	ignore = untracked
+[submodule "thirdparty/open-dis-cpp"]
+	path = thirdparty/open-dis-cpp
+	url = https://github.com/open-dis/open-dis-cpp
+	ignore = untracked

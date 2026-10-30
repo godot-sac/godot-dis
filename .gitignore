@@ -1,0 +1,29 @@
+# Godot
+.godot/
+*.import
+export_presets.cfg
+/android/
+
+# Node (tools/export)
+node_modules/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Python (tools/oracle)
+.venv/
+__pycache__/
+*.pyc
+*.exp
+*.lib
+*.pdb
+*.obj
+*.os
+*.o
+.sconsign*.dblite
+
+# Built libraries (rebuild with scons)
+addons/dis/bin/
