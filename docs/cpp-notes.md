@@ -119,3 +119,30 @@ C++ exception yerine Godot tarzı hata yönetimi (godot-cpp exception'ları kapa
 **Güvenilmeyen girdi**: Ağdan gelen bayt dizisine asla güvenme. open-dis-cpp okurken `std::vector::at()` kullanıyor;
 exception'lar kapalı olduğu için sınır dışı okuma programı *sonlandırır*. Bu yüzden `DisPdu::validate()` uzunlukları
 open-dis-cpp'ye vermeden önce kontrol ediyor ve testler 2000 bozuk paketle bunu deniyor.
+
+## Faz 2: Ağ düğümü
+
+**`Node`'dan türeyen C++ sınıfı ve `_notification`**: GDScript'teki `_ready()` / `_process()` C++'ta tek bir
+`_notification(int p_what)` fonksiyonunda `switch` ile yakalanır (`NOTIFICATION_READY`, `NOTIFICATION_PROCESS`,
+`NOTIFICATION_EXIT_TREE`). `_process` bildirimlerinin gelmesi için `set_process(true)` gerekir.
+`Engine::get_singleton()->is_editor_hint()` editörde soket açmayı engeller. (`src/network/dis_network.cpp`)
+
+**Sinyaller**: `ADD_SIGNAL(MethodInfo("pdu_received", PropertyInfo(...), ...))` sinyali tanımlar,
+`emit_signal("pdu_received", pdu, ip, port)` yayar. GDScript'te `network.pdu_received.connect(...)` ile dinlenir.
+
+**C++'tan Godot sınıflarını kullanmak**: godot-cpp, Godot'un kendi sınıflarını da (`PacketPeerUDP`, `IP`) C++'a açar.
+Ağ kodunu sıfırdan yazmak yerine Godot'unkini kullandık: broadcast/multicast her platformda hazır.
+
+**`Ref` ile tip dönüşümü**: `const Ref<DisEntityStatePdu> entity_state = pdu;` → `pdu` gerçekten o tipteyse geçerli,
+değilse boş (null) olur. GDScript'teki `if pdu is DisEntityStatePdu` kontrolünün C++ karşılığı.
+
+**`Variant` ile dinamik çağrı**: `pdu->call("encode")` ve `pdu->get("exercise_id")` derleme zamanında tipi
+bilinmeyen bir Godot nesnesinin metodunu/özelliğini adıyla çağırır (GDScript gibi). `send_pdu` gelecekteki tüm
+PDU sınıflarıyla çalışsın diye böyle.
+
+**Aralık tabanlı `for`**: `for (const String &name : names)` dizinin her elemanını sırayla verir
+(GDScript'teki `for name in names`). `const &` kopyalamayı önler.
+
+**Değişken sayıda makro argümanı (`__VA_ARGS__`) ve MSVC**: `##__VA_ARGS__` ile boş argümanda virgülü silme
+GCC/Clang uzantısıdır; MSVC'nin eski önişlemcisi bunu yapmaz ("syntax error: ')'"). Çözüm: iki ayrı makro
+(`DIS_PROPERTY` ve `DIS_PROPERTY_HINT`). Taşınabilir kod yazarken derleyici farklarını akılda tut.
