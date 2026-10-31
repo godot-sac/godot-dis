@@ -59,8 +59,20 @@ public:
 // Shows the entities other simulations publish: listens to a DisNetwork, creates a DisRemoteEntity child for
 // each new entity, moves it every frame with dead reckoning (smoothing out the corrections), and removes it
 // when it is deactivated or not heard from for `timeout` seconds.
+// With a ground node (anything with `height_at(x, z) -> float`, global metres, NAN = no ground; e.g. godot-geo
+// GeoTerrain) land entities are put on the local terrain and optionally tilted to its slope, because the sender's
+// terrain is never exactly ours.
 class DisEntityManager : public godot::Node3D {
 	GDCLASS(DisEntityManager, godot::Node3D)
+
+public:
+	enum GroundClamp {
+		GROUND_CLAMP_DISABLED,
+		GROUND_CLAMP_LAND, // land platforms, life forms and cultural features
+		GROUND_CLAMP_ALL,
+	};
+
+private:
 
 	godot::NodePath network_path;
 	godot::NodePath origin_path;
@@ -70,6 +82,11 @@ class DisEntityManager : public godot::Node3D {
 	double smoothing_max_distance = 100.0;
 	bool dead_reckoning = true;
 	bool auto_update = true;
+	godot::NodePath ground_path;
+	int ground_clamp = GROUND_CLAMP_LAND;
+	bool ground_align = true;
+	double ground_align_distance = 4.0; // half the footprint used to measure the slope, metres
+	bool warned_no_height_at = false;
 
 	std::unordered_map<uint64_t, godot::ObjectID> entities;
 	godot::ObjectID connected_network;
@@ -83,6 +100,10 @@ class DisEntityManager : public godot::Node3D {
 	// Places the node for time `now`; returns false if there is no origin.
 	void place(DisRemoteEntity *entity, DisGeoOrigin *origin, double now, bool smooth);
 	void remove(uint64_t key, DisRemoteEntity *entity, const godot::String &reason);
+	godot::Object *get_ground();
+	bool clamps(const DisRemoteEntity *entity) const;
+	// Puts `position` on the ground and, with ground_align, tilts `rotation` to the slope keeping the heading.
+	void apply_ground(godot::Object *ground, godot::Vector3 &position, godot::Quaternion &rotation) const;
 
 protected:
 	static void _bind_methods();
@@ -117,4 +138,16 @@ public:
 	bool get_dead_reckoning() const { return dead_reckoning; }
 	void set_auto_update(bool value);
 	bool get_auto_update() const { return auto_update; }
+	void set_ground_path(const godot::NodePath &value) { ground_path = value; }
+	godot::NodePath get_ground_path() const { return ground_path; }
+	void set_ground_clamp(int value) { ground_clamp = value; }
+	int get_ground_clamp() const { return ground_clamp; }
+	void set_ground_align(bool value) { ground_align = value; }
+	bool get_ground_align() const { return ground_align; }
+	void set_ground_align_distance(double value) { ground_align_distance = value; }
+	double get_ground_align_distance() const { return ground_align_distance; }
+	// True if `entity` is of a kind the ground clamp applies to (whether or not a ground node is set).
+	bool is_ground_clamped(godot::Object *entity) const;
 };
+
+VARIANT_ENUM_CAST(DisEntityManager::GroundClamp);

@@ -8,6 +8,10 @@ var route: PackedVector3Array = []
 var speed := 10.0  # m/s
 var altitude := 0.0  # m above the origin's tangent plane
 var distance := 0.0  # along the route
+## Optional ground: any node with height_at(x, z) -> float (e.g. godot-geo GeoTerrain). Units with altitude 0
+## drive on it and tilt with the slope; others stay at least `clearance` above it.
+var ground: Node = null
+var clearance := 150.0
 
 var _lengths: PackedFloat64Array = []
 var _total := 0.0
@@ -38,12 +42,30 @@ func _place() -> void:
 			var to := route[(i + 1) % route.size()]
 			var t := clampf(remaining / maxf(_lengths[i], 0.001), 0.0, 1.0)
 			var point := from.lerp(to, t)
+			var direction := Vector3(to.x - from.x, 0, to.z - from.z).normalized()
+			var up := Vector3.UP
 			position = Vector3(point.x, altitude, point.z)
-			var direction := Vector3(to.x - from.x, 0, to.z - from.z)
+			var h: float = ground.height_at(point.x, point.z) if ground else NAN
+			if not is_nan(h):
+				if altitude <= 0.0:
+					position.y = h
+					up = _ground_normal(point.x, point.z)
+					direction = (direction - up * direction.dot(up)).normalized()
+				else:
+					position.y = maxf(altitude, h + clearance)
 			if direction.length() > 0.001:
-				basis = Basis.looking_at(direction.normalized(), Vector3.UP)
+				basis = Basis.looking_at(direction, up)
 			return
 		remaining -= _lengths[i]
+
+
+func _ground_normal(x: float, z: float) -> Vector3:
+	var d := 4.0
+	var dx: float = ground.height_at(x + d, z) - ground.height_at(x - d, z)
+	var dz: float = ground.height_at(x, z + d) - ground.height_at(x, z - d)
+	if is_nan(dx) or is_nan(dz):
+		return Vector3.UP
+	return Vector3(-dx, 2.0 * d, -dz).normalized()
 
 
 ## A closed polygon approximating a circle (for aircraft orbits).

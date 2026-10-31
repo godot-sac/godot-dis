@@ -243,6 +243,85 @@ func test_manager_uses_type_map() -> void:
 	assert_eq(manager.get_entity(Vector3i(1, 1, 2)).get_child_count(), 0, "no mapping, no default scene")
 
 
+## Ground for clamping tests: a plane rising 1 m per 10 m eastwards, 100 m at x = 0, no ground beyond |x| = 1000.
+func _ground() -> Node3D:
+	var script := GDScript.new()
+	script.source_code = ("extends Node3D\nfunc height_at(x: float, _z: float) -> float:\n"
+			+ "\treturn NAN if absf(x) > 1000.0 else 100.0 + 0.1 * x\n")
+	script.reload()
+	var ground := Node3D.new()
+	ground.set_script(script)
+	add_child_autofree(ground)
+	return ground
+
+
+func _typed_pdu(origin: DisGeoOrigin, id: int, position: Vector3, entity_type: Array,
+		basis := Basis.IDENTITY) -> DisEntityStatePdu:
+	var pdu := _pdu(origin, Vector3i(1, 1, id), position, basis)
+	pdu.entity_type = PackedInt32Array(entity_type)
+	return pdu
+
+
+func test_manager_clamps_land_entities_to_ground() -> void:
+	var origin := _origin()
+	var manager := _manager()
+	manager.ground_path = manager.get_path_to(_ground())
+	manager.ground_align = false
+	manager.handle_entity_state(_typed_pdu(origin, 1, Vector3(200, 5, 0), [1, 1, 225, 1, 1, 0, 0]), 0.0)  # tank
+	manager.handle_entity_state(_typed_pdu(origin, 2, Vector3(200, 500, 0), [1, 2, 225, 1, 1, 0, 0]), 0.0)  # aircraft
+	manager.handle_entity_state(_typed_pdu(origin, 3, Vector3(-300, 0, 50), [3, 1, 225, 1, 0, 0, 0]), 0.0)  # soldier
+	manager.handle_entity_state(_typed_pdu(origin, 4, Vector3(5000, 7, 0), [1, 1, 225, 1, 1, 0, 0]), 0.0)  # off map
+	var tank: DisRemoteEntity = manager.get_entity(Vector3i(1, 1, 1))
+	assert_almost_eq(tank.global_position, Vector3(200, 120, 0), Vector3.ONE * 1e-3)
+	assert_true(manager.is_ground_clamped(tank))
+	var aircraft: DisRemoteEntity = manager.get_entity(Vector3i(1, 1, 2))
+	assert_almost_eq(aircraft.global_position.y, 500.0, 1e-2, "air entities keep their height")
+	assert_false(manager.is_ground_clamped(aircraft))
+	assert_almost_eq(manager.get_entity(Vector3i(1, 1, 3)).global_position.y, 70.0, 1e-3, "life form")
+	assert_almost_eq(manager.get_entity(Vector3i(1, 1, 4)).global_position.y, 7.0, 0.1, "NAN: reported height kept")
+	# Dead reckoning moves the tank east and up the slope.
+	manager.smoothing_time = 0.0
+	var moving := _typed_pdu(origin, 1, Vector3(200, 5, 0), [1, 1, 225, 1, 1, 0, 0])
+	moving.linear_velocity = origin.local_vector_to_ecef(Vector3(10, 0, 0))
+	manager.handle_entity_state(moving, 1.0)
+	manager.process_entities(3.0)
+	assert_almost_eq(tank.global_position, Vector3(220, 122, 0), Vector3.ONE * 1e-2)
+	manager.ground_clamp = DisEntityManager.GROUND_CLAMP_ALL
+	manager.process_entities(3.0)
+	assert_almost_eq(aircraft.global_position.y, 120.0, 1e-3, "ALL clamps aircraft too")
+	manager.ground_clamp = DisEntityManager.GROUND_CLAMP_DISABLED
+	manager.process_entities(3.0)
+	assert_almost_eq(tank.global_position.y, 5.0, 0.01, "disabled")
+
+
+func test_manager_aligns_to_slope_keeping_heading() -> void:
+	var origin := _origin()
+	var manager := _manager()
+	manager.ground_path = manager.get_path_to(_ground())
+	# Facing east (up the slope) and facing north (across it).
+	var east := Basis.looking_at(Vector3.RIGHT, Vector3.UP)
+	manager.handle_entity_state(_typed_pdu(origin, 1, Vector3(0, 0, 0), [1, 1, 225, 1, 1, 0, 0], east), 0.0)
+	manager.handle_entity_state(_typed_pdu(origin, 2, Vector3(0, 0, 0), [1, 1, 225, 1, 1, 0, 0]), 0.0)
+	var slope_up := Vector3(-0.1, 1, 0).normalized()  # surface normal of y = 100 + 0.1 x
+	var climbing: DisRemoteEntity = manager.get_entity(Vector3i(1, 1, 1))
+	assert_almost_eq(climbing.global_basis.y, slope_up, Vector3.ONE * 1e-4, "up = ground normal")
+	assert_almost_eq(-climbing.global_basis.z, Vector3(1, 0.1, 0).normalized(), Vector3.ONE * 1e-4, "nose up")
+	var across: DisRemoteEntity = manager.get_entity(Vector3i(1, 1, 2))
+	assert_almost_eq(-across.global_basis.z, Vector3(0, 0, -1), Vector3.ONE * 1e-4, "heading north kept")
+	assert_almost_eq(across.global_basis.y, slope_up, Vector3.ONE * 1e-4, "rolled")
+
+
+func test_manager_warns_about_ground_without_height_at() -> void:
+	var origin := _origin()
+	var manager := _manager()
+	var wrong := Node3D.new()
+	add_child_autofree(wrong)
+	manager.ground_path = manager.get_path_to(wrong)
+	manager.handle_entity_state(_typed_pdu(origin, 1, Vector3(0, 3, 0), [1, 1, 225, 1, 1, 0, 0]), 0.0)
+	assert_push_warning("has no height_at")
+	assert_almost_eq(manager.get_entity(Vector3i(1, 1, 1)).global_position.y, 3.0, 1e-3)
+
+
 # --- Both over UDP ---------------------------------------------------------------------------------------
 
 func test_entity_to_manager_over_udp() -> void:

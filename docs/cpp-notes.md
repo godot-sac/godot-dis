@@ -223,6 +223,19 @@ gibi durumlar beklemeden ve her seferinde aynı sonuçla denenebiliyor.
 **Kayan nokta ve gönderilen durum**: Ağda hız `float` (32 bit) gider. `DisEntity`, alıcının ne gördüğünü taklit
 ettiği kopyayı da `float`'a yuvarlıyor (`as_float32`); yoksa iki taraf biraz farklı tahmin yapar.
 
+## godot-geo entegrasyonu: zemine oturtma
+
+**Duck typing (ördek tiplemesi) C++'tan**: `DisEntityManager` zemini bir sınıf olarak bilmiyor; yalnızca
+`ground->has_method("height_at")` ve `ground->call("height_at", x, z)` kullanıyor. `call` Variant üzerinden gider,
+yani düğüm GDScript, C# ya da C++ olabilir; godot-dis godot-geo'ya bağımlı olmaz. Bedeli: her çağrı birkaç yüz
+nanosaniye, derleme zamanı kontrolü yok (yanlış düğüme bir kez uyarı verilir).
+
+**Lambda**: `auto height = [ground](real_t x, real_t z) { return ...; };` yerinde tanımlanan küçük bir fonksiyon.
+Köşeli parantez içi "yakalanan" değişkenler: `ground` işaretçisi kopyalanır. Aynı çağrıyı beş kez yazmamak için.
+
+**`std::isfinite`** (`<cmath>`): NAN ve sonsuzu ayıklar. `NAN == NAN` yanlıştır, bu yüzden NAN'ı `==` ile değil böyle
+denetleriz.
+
 ## Faz 6: Kendi soket katmanımız, CI
 
 **İşletim sistemi API'si ve `#ifdef`**: `src/network/udp_socket.cpp` Godot'u kullanmadan doğrudan işletim sisteminin

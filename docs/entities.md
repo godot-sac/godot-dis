@@ -60,6 +60,23 @@ func _ready() -> void:
 	$DisEntityManager.entity_appeared.connect(func(e: DisRemoteEntity): print(e.marking, " joined at ", e.get_geodetic()))
 ```
 
+## Ground clamping
+Another simulation's terrain is never exactly ours, so its tanks float or sink on our ground. Give the manager a
+ground node and land entities are put on the local terrain instead:
+
+| Property | Default | |
+|---|---|---|
+| `ground_path` | | any node with `height_at(x: float, z: float) -> float` (global metres, `NAN` = no ground here), e.g. godot-geo `GeoTerrain`; empty = off |
+| `ground_clamp` | `GROUND_CLAMP_LAND` | which entities: land platforms, life forms and cultural features (kinds 1, 3, 5 with domain 1); `ALL`; `DISABLED` |
+| `ground_align` | true | tilt clamped entities to the slope, keeping their heading |
+| `ground_align_distance` | 4 m | half the footprint over which the slope is measured |
+
+Where `height_at` returns `NAN` (off the terrain) the reported height is kept. `is_ground_clamped(entity)` tells
+whether the clamp applies to an entity. godot-dis does not depend on godot-geo: the call goes through `Object.call`.
+
+For your own units, place the node on the ground yourself (e.g. `position.y = terrain.height_at(x, z)`); `DisEntity`
+publishes wherever the node is, so other simulations see the unit on our terrain.
+
 ## Type map
 `DisEntityTypeMap` is a resource with a list of `DisEntityTypeMapping` (pattern + scene) and a `default_scene`.
 Patterns are the 7 entity type fields `kind:domain:country:category:subcategory:specific:extra`; `*` matches

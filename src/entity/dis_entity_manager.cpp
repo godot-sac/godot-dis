@@ -1,6 +1,7 @@
 #include "dis_entity_manager.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 #include <godot_cpp/classes/engine.hpp>
@@ -102,8 +103,18 @@ void DisEntityManager::_bind_methods() {
 	DIS_PROPERTY_HINT(FLOAT, smoothing_time, PROPERTY_HINT_RANGE, "0,5,0.05,suffix:s");
 	DIS_PROPERTY_HINT(FLOAT, smoothing_max_distance, PROPERTY_HINT_RANGE, "0,10000,1,suffix:m");
 	DIS_PROPERTY(BOOL, auto_update);
+	ADD_GROUP("Ground", "ground_");
+	DIS_PROPERTY(NODE_PATH, ground_path);
+	DIS_PROPERTY_HINT(INT, ground_clamp, PROPERTY_HINT_ENUM, "Disabled,Land,All");
+	DIS_PROPERTY(BOOL, ground_align);
+	DIS_PROPERTY_HINT(FLOAT, ground_align_distance, PROPERTY_HINT_RANGE, "0.5,50,0.5,suffix:m");
 #undef DIS_PROPERTY
 #undef DIS_PROPERTY_HINT
+
+	ClassDB::bind_method(D_METHOD("is_ground_clamped", "entity"), &DisEntityManager::is_ground_clamped);
+	BIND_ENUM_CONSTANT(GROUND_CLAMP_DISABLED);
+	BIND_ENUM_CONSTANT(GROUND_CLAMP_LAND);
+	BIND_ENUM_CONSTANT(GROUND_CLAMP_ALL);
 
 	ADD_SIGNAL(MethodInfo("entity_appeared", PropertyInfo(Variant::OBJECT, "entity", PROPERTY_HINT_NODE_TYPE,
 														 "DisRemoteEntity")));
@@ -183,7 +194,75 @@ void DisEntityManager::place(DisRemoteEntity *entity, DisGeoOrigin *origin, doub
 			rotation = (Quaternion().slerp(entity->offset_rotation, k) * rotation).normalized();
 		}
 	}
+	if (clamps(entity)) {
+		if (Object *ground = get_ground()) {
+			apply_ground(ground, position, rotation);
+		}
+	}
 	entity->set_global_transform(Transform3D(Basis(rotation), position));
+}
+
+Object *DisEntityManager::get_ground() {
+	if (ground_path.is_empty() || !is_inside_tree()) {
+		return nullptr;
+	}
+	Node *ground = get_node_or_null(ground_path);
+	if (ground != nullptr && !ground->has_method("height_at")) {
+		if (!warned_no_height_at) {
+			warned_no_height_at = true;
+			UtilityFunctions::push_warning("DisEntityManager ", get_name(), ": ground node ", ground->get_name(),
+					" has no height_at(x, z); entities are not clamped");
+		}
+		return nullptr;
+	}
+	return ground;
+}
+
+bool DisEntityManager::clamps(const DisRemoteEntity *entity) const {
+	if (ground_clamp == GROUND_CLAMP_DISABLED || entity->last_pdu.is_null()) {
+		return false;
+	}
+	if (ground_clamp == GROUND_CLAMP_ALL) {
+		return true;
+	}
+	// Entity type: kind, domain, ... Kinds 1 platform, 3 life form, 5 cultural feature; domain 1 is land.
+	const PackedInt32Array type = entity->last_pdu->get_entity_type();
+	if (type.size() < 2 || type[1] != 1) {
+		return false;
+	}
+	return type[0] == 1 || type[0] == 3 || type[0] == 5;
+}
+
+bool DisEntityManager::is_ground_clamped(Object *entity) const {
+	const DisRemoteEntity *remote = Object::cast_to<DisRemoteEntity>(entity);
+	return remote != nullptr && clamps(remote);
+}
+
+void DisEntityManager::apply_ground(Object *ground, Vector3 &position, Quaternion &rotation) const {
+	// Object::call goes through Variant, so any node (GDScript, C#, C++) providing height_at works.
+	auto height = [ground](real_t x, real_t z) { return static_cast<double>(ground->call("height_at", x, z)); };
+	const double h = height(position.x, position.z);
+	if (!std::isfinite(h)) {
+		return; // off the terrain: keep the reported height
+	}
+	position.y = static_cast<real_t>(h);
+	if (!ground_align) {
+		return;
+	}
+	const real_t d = static_cast<real_t>(ground_align_distance);
+	const double dx = height(position.x + d, position.z) - height(position.x - d, position.z);
+	const double dz = height(position.x, position.z + d) - height(position.x, position.z - d);
+	if (!std::isfinite(dx) || !std::isfinite(dz)) {
+		return;
+	}
+	const Vector3 up = Vector3(static_cast<real_t>(-dx), 2.0f * d, static_cast<real_t>(-dz)).normalized();
+	// Keep the heading: project the reported forward (-Z) onto the ground plane.
+	const Vector3 forward = Basis(rotation).xform(Vector3(0, 0, -1));
+	Vector3 along = forward - up * forward.dot(up);
+	if (along.length_squared() < 1e-8f) {
+		return; // pointing straight up or down; leave it
+	}
+	rotation = Basis::looking_at(along.normalized(), up).get_rotation_quaternion();
 }
 
 void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, double now) {
