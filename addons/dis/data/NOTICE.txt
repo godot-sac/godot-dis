@@ -1,0 +1,14 @@
+enums.json and entity_types.json in this folder are derived from SISO-REF-010 v37
+(Enumerations for Simulation Interoperability, 2026-05-25) by tools/enums.py.
+They are NOT covered by the MIT license of godot-dis.
+
+Reprinted with permission from SISO Inc.
+
+Copyright (c) 2026 by the Simulation Interoperability Standards Organization, Inc.
+All rights reserved.
+
+Schema and API: SISO grants a general, royalty-free license to copy, distribute, display, and make
+derivative works from this material, for all purposes, provided that any use of the material contains
+the following attribution: "Reprinted with permission from SISO Inc."
+
+sidc_map.json (DIS entity category -> MIL-STD-2525D symbol) is part of godot-dis (MIT).

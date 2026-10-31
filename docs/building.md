@@ -45,6 +45,13 @@ Regenerate oracle data (only when the cases change):
 .\tools\.venv\Scripts\python.exe tools\dr_golden.py    # dead reckoning (Open-DIS Python)
 ```
 
+Addon data (SISO-REF-010 names and the 2525D symbol map; see docs/enumerations.md):
+```powershell
+.\tools\.venv\Scripts\python.exe tools\enums.py
+.\tools\.venv\Scripts\python.exe tools\sidc_map.py
+node tools\check_sidc_map.mjs
+```
+
 Performance (1000 entities at 5 Hz over loopback for 5 s):
 ```powershell
 & $godot --headless --path . -s res://tools/perf_entities.gd -- 1000 5 5

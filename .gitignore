@@ -28,3 +28,6 @@ __pycache__/
 # Built libraries (rebuild with scons)
 addons/dis/bin/
 build/
+
+# Downloaded source data (tools/enums.py)
+tools/.cache/
