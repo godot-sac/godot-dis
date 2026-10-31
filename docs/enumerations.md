@@ -2,7 +2,7 @@
 
 DIS sends numbers: force ID 2, entity type 1:1:218:1:2:0:0. `DisEnums` (GDScript, `addons/dis/dis_enums.gd`) turns
 them into names from SISO-REF-010 and into MIL-STD-2525D symbol codes (SIDC) for
-[godot-milsymbol](../../godot-milsymbol).
+godot-milsymbol.
 
 ```gdscript
 func _on_entity_appeared(entity: DisRemoteEntity) -> void:

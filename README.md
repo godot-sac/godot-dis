@@ -19,10 +19,13 @@ A C++ GDExtension built on [Open-DIS](https://github.com/open-dis/open-dis-cpp) 
   smoothing, timeouts, ground clamping on any terrain with `height_at`, warnings for shared entity IDs), entity type →
   scene mapping — [docs/entities.md](docs/entities.md)
 - `DisEnums`: SISO-REF-010 names and DIS entity type → MIL-STD-2525D symbol codes for
-  [godot-milsymbol](../godot-milsymbol) — [docs/enumerations.md](docs/enumerations.md)
-- Demo: a two-sided exercise around Ankara — [docs/demo.md](docs/demo.md); in 3D on real terrain with
-  [godot-geo](../godot-geo/docs/demo-3d.md)
+  godot-milsymbol — [docs/enumerations.md](docs/enumerations.md)
+- Demo: a two-sided exercise around Ankara — [docs/demo.md](docs/demo.md); in 3D on real terrain with godot-geo
 - Builds on Windows, Linux and macOS (GitHub Actions) — [docs/building.md](docs/building.md)
+
+## Contributing
+Bug reports, questions and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 MIT. Enumeration data derived from SISO-REF-010 is used under SISO's terms (reprinted with permission from
