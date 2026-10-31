@@ -308,6 +308,12 @@ void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, do
 		add_child(entity);
 		entities[key] = ObjectID(entity->get_instance_id());
 	} else {
+		// Where the entity is shown *now* (old report, dead reckoned and smoothed to this moment). The node still
+		// holds the pose of the last frame; fading from that one made every update stall for a frame and then
+		// catch up (a fast entity visibly jerked once per update).
+		if (smoothing_time > 0.0) {
+			place(entity, origin, now, true);
+		}
 		shown = entity->get_global_transform();
 	}
 
@@ -318,6 +324,25 @@ void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, do
 	entity->offset_rotation = Quaternion();
 	place(entity, origin, now, false);
 
+	if (!is_new) {
+		const Transform3D predicted = entity->get_global_transform();
+		const Vector3 jump = shown.origin - predicted.origin;
+		// Real teleports are rare; several big jumps in a row usually mean two simulations publish the same
+		// entity ID, and the entity flips between their positions.
+		if (jump.length() > smoothing_max_distance) {
+			entity->jumps_in_a_row += 1;
+			if (entity->jumps_in_a_row >= 3 && !entity->warned_jumps) {
+				entity->warned_jumps = true;
+				UtilityFunctions::push_warning(vformat(
+						"DisEntityManager: entity %d:%d:%d (%s) jumped %d m on %d updates in a row; two simulations "
+						"may be publishing the same entity ID",
+						id.x, id.y, id.z, pdu->get_marking(), static_cast<int64_t>(jump.length()),
+						entity->jumps_in_a_row));
+			}
+		} else {
+			entity->jumps_in_a_row = 0;
+		}
+	}
 	if (!is_new && smoothing_time > 0.0) {
 		// Fade from where the entity was shown to the new prediction instead of jumping.
 		const Transform3D predicted = entity->get_global_transform();

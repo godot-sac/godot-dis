@@ -46,6 +46,10 @@ Methods: `send_now()`, `create_pdu()`, `get_effective_entity_id()`, `process_ent
 | `smoothing_time` | 0.5 s | corrections fade in over this time instead of jumping |
 | `smoothing_max_distance` | 100 m | larger corrections (teleports) jump |
 
+Smoothing starts from where the entity is shown at the moment the update arrives (the old report dead-reckoned to
+that time), so a fast entity moves evenly through updates. Several jumps larger than `smoothing_max_distance` in a
+row raise a warning: usually two simulations publish the same entity ID and the entity flips between them.
+
 Signals: `entity_appeared(entity)`, `entity_updated(entity)` (every PDU), `entity_removed(entity, reason)` with
 reason `"timeout"`, `"deactivated"` or `"removed"`. Methods: `get_entity(Vector3i)`, `get_entities()`,
 `get_entity_count()`, `remove_entity(id)`, `clear()`, `handle_entity_state(pdu)` to feed PDUs from elsewhere and

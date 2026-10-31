@@ -16,10 +16,12 @@ A C++ GDExtension built on [Open-DIS](https://github.com/open-dis/open-dis-cpp) 
 - `DisGeoOrigin`, `DisGeo`: WGS84 geodetic ↔ ECEF ↔ local ENU ↔ Godot, DIS Euler angles ↔ `Basis`, in doubles
   — [docs/coordinates.md](docs/coordinates.md)
 - `DisEntity` (publish a node: thresholds, heartbeat), `DisEntityManager` (remote entities: dead reckoning DRM 1–5,
-  smoothing, timeouts), entity type → scene mapping — [docs/entities.md](docs/entities.md)
+  smoothing, timeouts, ground clamping on any terrain with `height_at`, warnings for shared entity IDs), entity type →
+  scene mapping — [docs/entities.md](docs/entities.md)
 - `DisEnums`: SISO-REF-010 names and DIS entity type → MIL-STD-2525D symbol codes for
   [godot-milsymbol](../godot-milsymbol) — [docs/enumerations.md](docs/enumerations.md)
-- Demo: a two-sided exercise around Ankara — [docs/demo.md](docs/demo.md)
+- Demo: a two-sided exercise around Ankara — [docs/demo.md](docs/demo.md); in 3D on real terrain with
+  [godot-geo](../godot-geo/docs/demo-3d.md)
 - Builds on Windows, Linux and macOS (GitHub Actions) — [docs/building.md](docs/building.md)
 
 ## License

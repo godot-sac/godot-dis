@@ -38,6 +38,10 @@ class DisRemoteEntity : public godot::Node3D {
 	godot::Vector3 offset_position;
 	godot::Quaternion offset_rotation;
 
+	// Updates in a row that jumped farther than smoothing_max_distance (see DisEntityManager).
+	int jumps_in_a_row = 0;
+	bool warned_jumps = false;
+
 protected:
 	static void _bind_methods();
 

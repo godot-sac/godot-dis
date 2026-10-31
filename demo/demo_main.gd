@@ -32,6 +32,11 @@ func _ready() -> void:
 		side = "blue"
 	var info: Dictionary = DemoScenario.SIDES[side]
 	network.site_id = info.site
+	var port := int(_argument("--port", str(network.port)))
+	if port != network.port:  # --port: a separate exercise, e.g. for tests next to a running demo
+		network.stop()
+		network.port = port
+		network.start()
 	get_window().title = "godot-dis demo — %s" % info.title
 	_build_ui(info.title)
 	_spawn_units(info)

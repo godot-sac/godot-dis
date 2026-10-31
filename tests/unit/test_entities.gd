@@ -201,6 +201,27 @@ func test_manager_smooths_corrections() -> void:
 	assert_almost_eq(remote.global_position.x, 5000.0, 1e-2)
 
 
+func test_manager_moves_evenly_through_updates() -> void:
+	# A fast entity reported once per second, shown every 0.1 s: an update must not make it stall or jump,
+	# even though the node still holds the previous frame's pose when the update arrives.
+	var origin := _origin()
+	var manager := _manager()
+	manager.smoothing_time = 1.0
+	var velocity := Vector3(190, 0, -130)
+	var start := Vector3(33000, 10000, -30000)
+	var previous := Vector3.ZERO
+	for step in 31:
+		var t := step * 0.1
+		if step % 10 == 0:
+			manager.handle_entity_state(_pdu(origin, Vector3i(3, 1, 1), start + velocity * t, Basis.IDENTITY,
+					velocity), t)
+		manager.process_entities(t)
+		var p: Vector3 = manager.get_entity(Vector3i(3, 1, 1)).global_position
+		if step > 0:
+			assert_almost_eq((p - previous).length() / 0.1, velocity.length(), 0.5, "speed at %.1f s" % t)
+		previous = p
+
+
 func test_manager_removes_timed_out_and_deactivated() -> void:
 	var origin := _origin()
 	var manager := _manager()
@@ -241,6 +262,21 @@ func test_manager_uses_type_map() -> void:
 	manager.handle_entity_state(aircraft, 0.0)
 	assert_not_null(manager.get_entity(Vector3i(1, 1, 1)).get_node_or_null("TankModel"))
 	assert_eq(manager.get_entity(Vector3i(1, 1, 2)).get_child_count(), 0, "no mapping, no default scene")
+
+
+func test_manager_warns_about_shared_entity_ids() -> void:
+	var origin := _origin()
+	var manager := _manager()
+	# Two senders with the same ID, 30 km apart, updating in turn.
+	for i in 4:
+		var x := 0.0 if i % 2 == 0 else 30000.0
+		manager.handle_entity_state(_pdu(origin, Vector3i(3, 1, 1), Vector3(x, 0, 0)), i * 0.5)
+	assert_push_warning("same entity ID")
+	# One real teleport is not reported.
+	manager.handle_entity_state(_pdu(origin, Vector3i(3, 1, 2), Vector3.ZERO), 0.0)
+	manager.handle_entity_state(_pdu(origin, Vector3i(3, 1, 2), Vector3(5000, 0, 0)), 1.0)
+	manager.handle_entity_state(_pdu(origin, Vector3i(3, 1, 2), Vector3(5000, 0, 0)), 2.0)
+	assert_push_warning_count(1)
 
 
 ## Ground for clamping tests: a plane rising 1 m per 10 m eastwards, 100 m at x = 0, no ground beyond |x| = 1000.
