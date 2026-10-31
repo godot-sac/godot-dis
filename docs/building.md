@@ -33,7 +33,7 @@ $godot = "C:\path\to\godot.exe"   # your Godot path
 & $godot --headless --path . -s addons/gut/gut_cmdln.gd
 ```
 
-C++ unit tests (doctest, no Godot needed; coordinate math):
+C++ unit tests (doctest, no Godot needed; coordinate math and dead reckoning):
 ```powershell
 .\tools\.venv\Scripts\scons.exe tests
 ```
@@ -42,6 +42,12 @@ Regenerate oracle data (only when the cases change):
 ```powershell
 .\tools\.venv\Scripts\python.exe tools\golden.py       # Entity State PDUs (Open-DIS Python)
 .\tools\.venv\Scripts\python.exe tools\geo_golden.py   # coordinates (pymap3d, Open-DIS Python)
+.\tools\.venv\Scripts\python.exe tools\dr_golden.py    # dead reckoning (Open-DIS Python)
+```
+
+Performance (1000 entities at 5 Hz over loopback for 5 s):
+```powershell
+& $godot --headless --path . -s res://tools/perf_entities.gd -- 1000 5 5
 ```
 
 ## Check bytes with the oracle

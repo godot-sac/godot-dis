@@ -52,4 +52,12 @@ public:
 	// ECEF direction (velocity, acceleration) <-> Godot direction.
 	godot::Vector3 ecef_vector_to_local(const godot::Vector3 &vector) const;
 	godot::Vector3 local_vector_to_ecef(const godot::Vector3 &vector) const;
+
+	// C++ only (used by DisEntity / DisEntityManager): the same conversions without Variant types.
+	const dis::geo::LocalFrame &get_frame() const { return frame; }
+	godot::Vector3 ecef_vec3_to_local(const dis::geo::Vec3 &ecef) const;
+	dis::geo::Vec3 local_to_ecef_vec3(const godot::Vector3 &position) const;
+	// Body -> ECEF rotation (columns forward, right, down) <-> Godot basis.
+	godot::Basis body_matrix_to_basis(const dis::geo::Mat3 &body) const;
+	dis::geo::Mat3 basis_to_body_matrix(const godot::Basis &basis) const;
 };

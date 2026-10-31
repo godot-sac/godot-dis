@@ -182,3 +182,43 @@ saniyeler içinde binlerce kontrol yapılır.
 **`double` ve `float` farkı (neden önemli)**: `float` (32 bit) ~7 anlamlı basamak tutar. ECEF koordinatı ~6 378 137 m;
 32 bitte en küçük adım 0.5 m. `double` (64 bit) ~16 basamak → nanometre. Bu yüzden ECEF her yerde `double`; Godot'un
 `Vector3`'üne ancak orijinden çıkarıldıktan sonra (küçük yerel değer) dönüştürülüyor.
+
+## Faz 4: Varlıklar
+
+**Şablon (template)**: `template <typename T> T *find_node(Node *self, ...)` tek bir fonksiyonu her tip için ayrı
+derletir: `find_node<DisNetwork>(...)` ve `find_node<DisGeoOrigin>(...)` aynı koddan iki fonksiyon olur. Şablonlar
+başlıkta yazılır, çünkü derleyici kullanıldıkları yerde gövdeyi görmek zorunda. (`src/entity/scene_lookup.h`)
+
+**`std::unordered_map`**: anahtar → değer tablosu (GDScript'teki `Dictionary`, ama tipli). Yönetici uzak varlıkları
+`entity_id`'den üretilen 64 bitlik bir anahtarla tutuyor: `(site << 32) | (application << 16) | entity`.
+
+**Yapısal bağlama (structured bindings)**: `for (const auto &[key, object_id] : entities)` her çifti iki isme açar.
+`auto` tipi derleyiciye bıraktırır.
+
+**`ObjectID` ve `ObjectDB::get_instance`**: Kullanıcı bir uzak varlık düğümünü kendisi silebilir; elimizde ham
+işaretçi (`DisRemoteEntity *`) kalırsa artık var olmayan belleği gösterir (dangling pointer → çökme). Bu yüzden
+haritada düğümün kimliği (`ObjectID`) saklanıyor; her kullanımda `ObjectDB::get_instance(id)` düğüm hâlâ yaşıyorsa onu,
+yoksa `nullptr` döndürür. GDScript'teki `is_instance_valid()` ile aynı fikir.
+
+**`memnew` ve `queue_free`**: Godot nesneleri C++'ta `new` ile değil `memnew(DisRemoteEntity)` ile oluşturulur
+(Godot'un bellek takibi için). Ağaca eklenen düğümü Godot sahiplenir; silmek için `queue_free()`.
+
+**`callable_mp`**: Bir C++ metodunu sinyale bağlar:
+`network->connect("entity_state_received", callable_mp(this, &DisEntityManager::on_entity_state))`.
+Metot `_bind_methods`'ta bağlanmak zorunda değil, GDScript'ten görünmez.
+
+**`friend class`**: `DisRemoteEntity` içindeki `friend class DisEntityManager;` yöneticinin varlığın private
+alanlarına (durum, yumuşatma ofsetleri) doğrudan erişmesine izin verir; GDScript'e açılmaz.
+
+**İsimsiz namespace**: `.cpp` içindeki `namespace { ... }` o dosyaya özel yardımcılar tanımlar (başka dosyalar
+göremez, isim çakışması olmaz). C'deki `static` fonksiyonun modern hali.
+
+**Varsayılan argüman (`DEFVAL`)**: `handle_entity_state(pdu, now = -1.0)`; GDScript'e de varsayılanı göstermek için
+`bind_method(..., DEFVAL(-1.0))`.
+
+**Test edilebilir zaman**: Düğümler zamanı kendileri okumak yerine `process_entity(now)` / `process_entities(now)`
+ile dışarıdan alabiliyor. Testler `auto_update = false` yapıp zamanı kendisi veriyor; böylece "5 saniye sonra heartbeat"
+gibi durumlar beklemeden ve her seferinde aynı sonuçla denenebiliyor.
+
+**Kayan nokta ve gönderilen durum**: Ağda hız `float` (32 bit) gider. `DisEntity`, alıcının ne gördüğünü taklit
+ettiği kopyayı da `float`'a yuvarlıyor (`as_float32`); yoksa iki taraf biraz farklı tahmin yapar.

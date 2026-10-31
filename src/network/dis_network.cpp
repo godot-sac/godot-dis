@@ -59,6 +59,10 @@ void DisNetwork::_bind_methods() {
 }
 
 void DisNetwork::_notification(int p_what) {
+	// Lets DisEntity / DisEntityManager find the network without a NodePath.
+	if (p_what == NOTIFICATION_ENTER_TREE) {
+		add_to_group("dis_network");
+	}
 	// Don't open sockets inside the editor.
 	if (Engine::get_singleton()->is_editor_hint()) {
 		return;

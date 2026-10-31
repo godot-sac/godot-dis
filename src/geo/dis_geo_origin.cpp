@@ -101,9 +101,24 @@ Vector3 DisGeoOrigin::local_vector_to_ecef(const Vector3 &vector) const {
 	return vector3_from_vec3(frame.rotation() * godot_to_enu(vec3_from_vector3(vector)));
 }
 
+Vector3 DisGeoOrigin::ecef_vec3_to_local(const Vec3 &ecef) const {
+	return vector3_from_vec3(enu_to_godot(frame.ecef_to_enu(ecef)));
+}
+
+Vec3 DisGeoOrigin::local_to_ecef_vec3(const Vector3 &position) const {
+	return frame.enu_to_ecef(godot_to_enu(vec3_from_vector3(position)));
+}
+
 Basis DisGeoOrigin::dis_euler_to_basis(const Vector3 &orientation) const {
+	return body_matrix_to_basis(euler_to_matrix(euler_from_vector3(orientation)));
+}
+
+Vector3 DisGeoOrigin::basis_to_dis_euler(const Basis &basis) const {
+	return vector3_from_euler(matrix_to_euler(basis_to_body_matrix(basis)));
+}
+
+Basis DisGeoOrigin::body_matrix_to_basis(const Mat3 &body) const {
 	// Body axes (forward, right, down) in ECEF, then in Godot space.
-	const Mat3 body = euler_to_matrix(euler_from_vector3(orientation));
 	const Mat3 ecef_to_enu = frame.rotation().transposed();
 	const Vec3 forward = enu_to_godot(ecef_to_enu * body.column(0));
 	const Vec3 right = enu_to_godot(ecef_to_enu * body.column(1));
@@ -112,12 +127,12 @@ Basis DisGeoOrigin::dis_euler_to_basis(const Vector3 &orientation) const {
 	return Basis(vector3_from_vec3(right), vector3_from_vec3(down * -1.0), vector3_from_vec3(forward * -1.0));
 }
 
-Vector3 DisGeoOrigin::basis_to_dis_euler(const Basis &basis) const {
+Mat3 DisGeoOrigin::basis_to_body_matrix(const Basis &basis) const {
 	const Basis b = basis.orthonormalized(); // drop scale
 	const Vec3 forward = frame.rotation() * godot_to_enu(vec3_from_vector3(-b.get_column(2)));
 	const Vec3 right = frame.rotation() * godot_to_enu(vec3_from_vector3(b.get_column(0)));
 	const Vec3 down = frame.rotation() * godot_to_enu(vec3_from_vector3(-b.get_column(1)));
-	return vector3_from_euler(matrix_to_euler(Mat3::from_columns(forward, right, down)));
+	return Mat3::from_columns(forward, right, down);
 }
 
 Transform3D DisGeoOrigin::dis_to_transform(const PackedFloat64Array &location_ecef, const Vector3 &orientation) const {

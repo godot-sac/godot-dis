@@ -1,6 +1,5 @@
 // C++ unit tests for src/geo/geo_math (no Godot needed). Build and run: scons tests (see docs/building.md).
 // Reference values: tests/golden/geo_cases.txt, written by tools/geo_golden.py (pymap3d, Open-DIS Python).
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest.h>
 
 #include <cmath>

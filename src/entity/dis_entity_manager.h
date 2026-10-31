@@ -1,0 +1,120 @@
+#pragma once
+
+#include <cstdint>
+#include <unordered_map>
+
+#include <godot_cpp/classes/node3d.hpp>
+#include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/core/object_id.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/node_path.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
+#include <godot_cpp/variant/quaternion.hpp>
+#include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/vector3i.hpp>
+
+#include "entity/dead_reckoning.h"
+#include "entity/dis_entity_type_map.h"
+#include "pdu/dis_entity_state_pdu.h"
+
+class DisGeoOrigin;
+class DisNetwork;
+
+// A remote entity, created and moved by DisEntityManager. The scene chosen by the type map (if any) is its child.
+class DisRemoteEntity : public godot::Node3D {
+	GDCLASS(DisRemoteEntity, godot::Node3D)
+
+	friend class DisEntityManager;
+
+	godot::Vector3i entity_id;
+	godot::Ref<DisEntityStatePdu> last_pdu;
+	double last_update_time = 0.0; // manager clock, seconds
+	dis::dr::State state; // last reported, in ECEF
+	dis::geo::Vec3 current_ecef; // dead-reckoned position at the last update of the node
+
+	// Smoothing: the jump between the old prediction and the new report fades out over smoothing_time.
+	godot::Vector3 offset_position;
+	godot::Quaternion offset_rotation;
+
+protected:
+	static void _bind_methods();
+
+public:
+	godot::Vector3i get_entity_id() const { return entity_id; }
+	godot::Ref<DisEntityStatePdu> get_last_pdu() const { return last_pdu; }
+	double get_last_update_time() const { return last_update_time; }
+	int get_force_id() const;
+	godot::PackedInt32Array get_entity_type() const;
+	godot::String get_marking() const;
+	int64_t get_appearance() const;
+	int get_dr_algorithm() const { return state.algorithm; }
+	// Dead-reckoned position (what the node shows, without smoothing).
+	godot::PackedFloat64Array get_location_ecef() const;
+	// [latitude, longitude, height] of get_location_ecef().
+	godot::PackedFloat64Array get_geodetic() const;
+};
+
+// Shows the entities other simulations publish: listens to a DisNetwork, creates a DisRemoteEntity child for
+// each new entity, moves it every frame with dead reckoning (smoothing out the corrections), and removes it
+// when it is deactivated or not heard from for `timeout` seconds.
+class DisEntityManager : public godot::Node3D {
+	GDCLASS(DisEntityManager, godot::Node3D)
+
+	godot::NodePath network_path;
+	godot::NodePath origin_path;
+	godot::Ref<DisEntityTypeMap> type_map;
+	double timeout = 12.0;
+	double smoothing_time = 0.5;
+	double smoothing_max_distance = 100.0;
+	bool dead_reckoning = true;
+	bool auto_update = true;
+
+	std::unordered_map<uint64_t, godot::ObjectID> entities;
+	godot::ObjectID connected_network;
+	bool warned_no_origin = false;
+
+	static uint64_t key_of(const godot::Vector3i &id);
+	DisGeoOrigin *get_origin();
+	void connect_network();
+	void disconnect_network();
+	void on_entity_state(const godot::Ref<DisEntityStatePdu> &pdu);
+	// Places the node for time `now`; returns false if there is no origin.
+	void place(DisRemoteEntity *entity, DisGeoOrigin *origin, double now, bool smooth);
+	void remove(uint64_t key, DisRemoteEntity *entity, const godot::String &reason);
+
+protected:
+	static void _bind_methods();
+	void _notification(int p_what);
+
+public:
+	// Applies one Entity State PDU (called for every PDU from the network). `now` < 0 means the current time.
+	void handle_entity_state(const godot::Ref<DisEntityStatePdu> &pdu, double now = -1.0);
+	// Dead reckons every entity to `now` and removes timed-out ones. Called every frame when auto_update is on.
+	void process_entities(double now);
+
+	DisRemoteEntity *find_entity(const godot::Vector3i &entity_id) const;
+	godot::Object *get_entity(const godot::Vector3i &entity_id) const;
+	godot::Array get_entities() const;
+	int get_entity_count() const { return static_cast<int>(entities.size()); }
+	void remove_entity(const godot::Vector3i &entity_id);
+	void clear();
+
+	void set_network_path(const godot::NodePath &value);
+	godot::NodePath get_network_path() const { return network_path; }
+	void set_origin_path(const godot::NodePath &value) { origin_path = value; }
+	godot::NodePath get_origin_path() const { return origin_path; }
+	void set_type_map(const godot::Ref<DisEntityTypeMap> &value);
+	godot::Ref<DisEntityTypeMap> get_type_map() const;
+	void set_timeout(double value) { timeout = value; }
+	double get_timeout() const { return timeout; }
+	void set_smoothing_time(double value) { smoothing_time = value; }
+	double get_smoothing_time() const { return smoothing_time; }
+	void set_smoothing_max_distance(double value) { smoothing_max_distance = value; }
+	double get_smoothing_max_distance() const { return smoothing_max_distance; }
+	void set_dead_reckoning(bool value) { dead_reckoning = value; }
+	bool get_dead_reckoning() const { return dead_reckoning; }
+	void set_auto_update(bool value);
+	bool get_auto_update() const { return auto_update; }
+};
