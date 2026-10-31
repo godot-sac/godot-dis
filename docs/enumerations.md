@@ -36,8 +36,7 @@ The mapping is approximate (the two standards classify differently) and is this 
 checked against milsymbol with `node tools/check_sidc_map.mjs`, which also prints the milsymbol icon name next to
 the DIS category for review.
 
-Note: godot-milsymbol currently exports icons for symbol sets 01, 10 and 30. Land equipment (15), subsurface (35)
-and space (05) symbols draw their frame with a "?" icon until those sets are exported there.
+All symbol sets used here (01, 05, 10, 15, 30, 35) are exported by godot-milsymbol (since its commit 6ac7523).
 
 ## Data source and license
 `tools/enums.py` reads SISO-REF-010 v37 `SISO-REF-010.xml` (the machine-readable "Schema and API" material, free for

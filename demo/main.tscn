@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://demo/demo_main.gd" id="1_main"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="DisNetwork" type="DisNetwork" parent="."]
+mode = 2
+port = 3000
+multicast_group = "239.1.2.3"
+exercise_id = 1
+application_id = 1
+
+[node name="DisGeoOrigin" type="DisGeoOrigin" parent="."]
+latitude = 39.9334
+longitude = 32.8597
+height = 938.0
+
+[node name="DisEntityManager" type="DisEntityManager" parent="."]
+smoothing_time = 0.5
+
+[node name="OwnForces" type="Node3D" parent="."]

@@ -18,6 +18,9 @@ opendis_sources = [
     for f in Glob("thirdparty/open-dis-cpp/src/dis7/*.cpp") + Glob("thirdparty/open-dis-cpp/src/dis7/utils/*.cpp")
 ]
 
+if env["platform"] == "windows":
+    env.Append(LIBS=["ws2_32"])  # Winsock, used by src/network/udp_socket.cpp
+
 library = env.SharedLibrary(
     "addons/dis/bin/{}/libgodot_dis{}{}".format(env["platform"], env["suffix"], env["SHLIBSUFFIX"]),
     source=sources + opendis_sources,
@@ -33,6 +36,9 @@ else:
     test_env.Append(CXXFLAGS=["-std=c++17", "-O2", "-Wall"])
 golden_dir = Dir("tests/golden").abspath.replace("\\", "/")
 test_env.Append(CPPPATH=["src/", "thirdparty/doctest/"], CPPDEFINES=[("GOLDEN_DIR", '\\"{}\\"'.format(golden_dir))])
+# Keep Godot from importing the object files in build/ (as it would try with .obj meshes).
+os.makedirs("build", exist_ok=True)
+open(os.path.join("build", ".gdignore"), "a").close()
 test_objects = [
     test_env.Object("build/tests/" + os.path.splitext(os.path.basename(str(f)))[0], f)
     # Only the Godot-free parts of src/.

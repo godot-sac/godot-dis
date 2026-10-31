@@ -1,10 +1,17 @@
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <godot_cpp/classes/node.hpp>
-#include <godot_cpp/classes/packet_peer_udp.hpp>
 #include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+
+#include "network/udp_socket.h"
 
 // Sends and receives DIS PDUs over UDP. Add one to the scene, set the mode and port, and connect to
 // `pdu_received` / `entity_state_received`. Receiving is non-blocking: every frame (_process) all
@@ -12,6 +19,8 @@
 //
 // Own packets are recognised by the simulation address (site, application) of the sending entity,
 // so broadcasts that loop back to this machine are ignored when `ignore_own_packets` is on.
+// With `share_port` (default) several DIS applications on one computer can listen on the same port, as DIS
+// tools usually do; they all receive broadcast and multicast traffic.
 class DisNetwork : public godot::Node {
 	GDCLASS(DisNetwork, godot::Node)
 
@@ -36,10 +45,14 @@ private:
 	int application_id = 1;
 	bool ignore_own_packets = true;
 	bool autostart = true;
+	bool share_port = true;
 	int max_packets_per_frame = 1000;
 
-	godot::Ref<godot::PacketPeerUDP> socket;
-	godot::PackedStringArray joined_interfaces;
+	std::unique_ptr<dis::net::UdpSocket> socket; // null when stopped
+	std::string send_address; // where send_bytes() goes
+	godot::PackedStringArray joined_interfaces; // names, for get_statistics()
+	std::vector<std::string> joined_addresses; // their IPv4 addresses, for leaving the group
+	std::vector<uint8_t> receive_buffer;
 	int64_t packets_received = 0;
 	int64_t packets_sent = 0;
 	int64_t packets_rejected = 0;
@@ -96,6 +109,8 @@ public:
 	bool get_ignore_own_packets() const { return ignore_own_packets; }
 	void set_autostart(bool value) { autostart = value; }
 	bool get_autostart() const { return autostart; }
+	void set_share_port(bool value) { share_port = value; }
+	bool get_share_port() const { return share_port; }
 	void set_max_packets_per_frame(int value) { max_packets_per_frame = value; }
 	int get_max_packets_per_frame() const { return max_packets_per_frame; }
 };

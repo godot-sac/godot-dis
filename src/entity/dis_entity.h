@@ -65,6 +65,9 @@ private:
 	int64_t published_count = 0;
 	int assigned_number = 0;
 	bool warned_no_origin = false;
+	// Seconds of physics time this node has run. Motion is measured on it (not the wall clock): Godot may run
+	// several physics steps back to back in one frame, microseconds apart in real time.
+	double physics_time = 0.0;
 
 	godot::ObjectID network_id;
 
@@ -83,7 +86,7 @@ public:
 	DisEntity();
 
 	// Samples the motion and sends a PDU if needed. Called every physics frame when auto_update is on;
-	// `now` is in seconds (Time.get_ticks_usec() / 1e6).
+	// `now` is in seconds (the node's accumulated physics time when called automatically).
 	void process_entity(double now);
 	// Sends a PDU now, regardless of thresholds.
 	godot::Error send_now();

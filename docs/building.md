@@ -25,6 +25,16 @@ Linux/macOS: `tools/.venv/bin/scons -j16 target=template_debug`.
 Output: `addons/dis/bin/<platform>/libgodot_dis.<platform>.<target>.<arch>.<ext>`.
 The first build compiles godot-cpp (about a minute); later builds only recompile changed files.
 After rebuilding, restart the Godot editor if it had the old library loaded.
+macOS: add `arch=universal` (one library for Intel and Apple Silicon, the path `dis.gdextension` expects).
+
+## Continuous integration
+`.github/workflows/ci.yml` runs on every push and pull request (once the repository is on GitHub):
+- Windows (MSVC), Linux (Ubuntu 22.04, GCC) and macOS (universal): debug and release builds, C++ unit tests.
+- Windows and Linux: downloads Godot 4.7.2 and runs the GUT tests, including the Open-DIS Python interop tests.
+  Broadcast / multicast tests become "pending" if the runner's network does not loop them back.
+- A final job packs `addons/dis` with the libraries of all three platforms (artifact `godot-dis-addon`).
+
+The Linux job's steps were checked locally in WSL (Ubuntu 24.04, GCC 13): build, 16 C++ tests, 71 GUT tests.
 
 ## Test
 ```powershell

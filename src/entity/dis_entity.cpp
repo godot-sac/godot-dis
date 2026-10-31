@@ -1,5 +1,6 @@
 #include "dis_entity.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <godot_cpp/classes/engine.hpp>
@@ -26,10 +27,6 @@ constexpr double ACCELERATION_SMOOTHING = 0.25;
 
 // Entity numbers given to entities that leave entity_id.z at 0, unique within this process.
 int next_entity_number = 1;
-
-double now_seconds() {
-	return Time::get_singleton()->get_ticks_usec() / 1.0e6;
-}
 
 Mat3 mat3_from_basis(const Basis &b) {
 	return Mat3::from_columns(dis::geo::vec3_from_vector3(b.get_column(0)), dis::geo::vec3_from_vector3(b.get_column(1)),
@@ -111,14 +108,15 @@ void DisEntity::_notification(int p_what) {
 			set_physics_process(auto_update);
 			break;
 		case NOTIFICATION_PHYSICS_PROCESS:
-			process_entity(now_seconds());
+			physics_time += get_physics_process_delta_time();
+			process_entity(physics_time);
 			break;
 		case NOTIFICATION_EXIT_TREE:
 			// Tell receivers we are gone (they remove the entity instead of waiting for the timeout).
 			if (has_sent && publishing) {
 				DisNetwork *network = get_network();
 				if (network != nullptr && network->is_running()) {
-					send(sent_state, now_seconds(), appearance | APPEARANCE_DEACTIVATED);
+					send(sent_state, physics_time, appearance | APPEARANCE_DEACTIVATED);
 				}
 			}
 			has_sample = false;
@@ -264,7 +262,7 @@ void DisEntity::process_entity(double now) {
 Error DisEntity::send_now() {
 	DisGeoOrigin *origin = get_origin();
 	ERR_FAIL_NULL_V_MSG(origin, ERR_UNCONFIGURED, "DisEntity needs a DisGeoOrigin in the scene");
-	return send(current_state(origin), now_seconds(), appearance);
+	return send(current_state(origin), has_sent ? std::max(physics_time, sent_time) : physics_time, appearance);
 }
 
 Ref<DisEntityStatePdu> DisEntity::create_pdu() {

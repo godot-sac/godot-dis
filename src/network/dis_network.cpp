@@ -1,5 +1,8 @@
 #include "dis_network.h"
 
+#include <cstring>
+#include <utility>
+
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/ip.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -37,6 +40,7 @@ void DisNetwork::_bind_methods() {
 	DIS_PROPERTY(STRING, multicast_group);
 	DIS_PROPERTY(STRING, multicast_interface);
 	DIS_PROPERTY(BOOL, autostart);
+	DIS_PROPERTY(BOOL, share_port);
 	ADD_GROUP("Simulation", "");
 	DIS_PROPERTY_HINT(INT, exercise_id, PROPERTY_HINT_RANGE, "0,255");
 	DIS_PROPERTY(BOOL, filter_exercise);
@@ -87,53 +91,73 @@ int DisNetwork::effective_destination_port() const {
 	return destination_port > 0 ? destination_port : port;
 }
 
+static std::string to_std(const String &text) {
+	return std::string(text.utf8().get_data());
+}
+
+// (name, IPv4 address) of interfaces with a routable IPv4 address. Adapters that only have a link-local
+// 169.254.x.x address (disconnected, Bluetooth, VPN placeholders) refuse to join multicast groups.
+static std::vector<std::pair<String, String>> ipv4_interfaces() {
+	std::vector<std::pair<String, String>> result;
+	const TypedArray<Dictionary> interfaces = IP::get_singleton()->get_local_interfaces();
+	for (int64_t i = 0; i < interfaces.size(); i++) {
+		const Dictionary info = interfaces[i];
+		const PackedStringArray addresses = info["addresses"];
+		for (const String &address : addresses) {
+			if (address.is_valid_ip_address() && address.contains(".") && !address.begins_with("169.254.")) {
+				result.emplace_back(info["name"], address);
+				break;
+			}
+		}
+	}
+	return result;
+}
+
 Error DisNetwork::start() {
 	stop();
-	socket.instantiate();
-	Error err = socket->bind(port, bind_address);
-	if (err != OK) {
-		UtilityFunctions::push_error(vformat("DisNetwork: cannot bind UDP port %d on %s (error %d)", port, bind_address, err));
-		socket.unref();
-		return err;
+	socket = std::make_unique<dis::net::UdpSocket>();
+	if (!socket->open(static_cast<uint16_t>(port), to_std(bind_address), share_port)) {
+		UtilityFunctions::push_error(vformat("DisNetwork: cannot bind UDP port %d on %s: %s", port, bind_address,
+				socket->last_error().c_str()));
+		socket.reset();
+		return ERR_CANT_OPEN;
 	}
 	switch (mode) {
 		case MODE_BROADCAST:
-			socket->set_broadcast_enabled(true);
-			socket->set_dest_address(destination_address, effective_destination_port());
+			socket->set_broadcast(true);
+			send_address = to_std(destination_address);
 			break;
 		case MODE_UNICAST:
-			socket->set_dest_address(destination_address, effective_destination_port());
+			send_address = to_std(destination_address);
 			break;
 		case MODE_MULTICAST: {
-			PackedStringArray names;
-			if (multicast_interface.is_empty()) {
-				// Every interface with a routable IPv4 address. Adapters that only have a link-local
-				// 169.254.x.x address (disconnected, Bluetooth, VPN placeholders) refuse to join.
-				const TypedArray<Dictionary> interfaces = IP::get_singleton()->get_local_interfaces();
-				for (int64_t i = 0; i < interfaces.size(); i++) {
-					const Dictionary info = interfaces[i];
-					const PackedStringArray addresses = info["addresses"];
-					for (const String &address : addresses) {
-						if (address.contains(".") && !address.begins_with("169.254.")) {
-							names.push_back(info["name"]);
-							break;
-						}
-					}
+			// Every routable IPv4 interface, or the one named (or addressed) by multicast_interface.
+			std::vector<std::pair<String, String>> targets;
+			for (const auto &[name, address] : ipv4_interfaces()) {
+				if (multicast_interface.is_empty() || multicast_interface == name || multicast_interface == address) {
+					targets.emplace_back(name, address);
 				}
-			} else {
-				names.push_back(multicast_interface);
 			}
-			for (const String &name : names) {
-				if (socket->join_multicast_group(multicast_group, name) == OK) {
+			if (targets.empty() && multicast_interface.is_valid_ip_address()) {
+				targets.emplace_back(multicast_interface, multicast_interface);
+			}
+			for (const auto &[name, address] : targets) {
+				if (socket->join_multicast(to_std(multicast_group), to_std(address))) {
 					joined_interfaces.push_back(name);
+					joined_addresses.push_back(to_std(address));
 				}
 			}
-			if (joined_interfaces.is_empty()) {
-				UtilityFunctions::push_error(vformat("DisNetwork: could not join multicast group %s", multicast_group));
+			if (joined_addresses.empty()) {
+				UtilityFunctions::push_error(vformat("DisNetwork: could not join multicast group %s: %s", multicast_group,
+						socket->last_error().c_str()));
 				stop();
 				return ERR_CANT_CONNECT;
 			}
-			socket->set_dest_address(multicast_group, effective_destination_port());
+			if (!multicast_interface.is_empty()) {
+				socket->set_multicast_interface(joined_addresses.front());
+			}
+			socket->set_multicast_loop(true); // other applications on this computer receive our PDUs too
+			send_address = to_std(multicast_group);
 			break;
 		}
 	}
@@ -141,18 +165,18 @@ Error DisNetwork::start() {
 }
 
 void DisNetwork::stop() {
-	if (socket.is_valid()) {
-		for (const String &name : joined_interfaces) {
-			socket->leave_multicast_group(multicast_group, name);
+	if (socket) {
+		for (const std::string &address : joined_addresses) {
+			socket->leave_multicast(to_std(multicast_group), address);
 		}
-		socket->close();
-		socket.unref();
+		socket.reset(); // closes the socket
 	}
 	joined_interfaces.clear();
+	joined_addresses.clear();
 }
 
 bool DisNetwork::is_running() const {
-	return socket.is_valid() && socket->is_bound();
+	return socket && socket->is_open();
 }
 
 Error DisNetwork::send_pdu(const Ref<RefCounted> &pdu) {
@@ -167,11 +191,12 @@ Error DisNetwork::send_pdu(const Ref<RefCounted> &pdu) {
 
 Error DisNetwork::send_bytes(const PackedByteArray &bytes) {
 	ERR_FAIL_COND_V_MSG(!is_running(), ERR_UNCONFIGURED, "DisNetwork is not running; call start() first");
-	const Error err = socket->put_packet(bytes);
-	if (err == OK) {
-		packets_sent++;
+	if (!socket->send_to(bytes.ptr(), static_cast<size_t>(bytes.size()), send_address,
+				static_cast<uint16_t>(effective_destination_port()))) {
+		return ERR_CANT_CONNECT;
 	}
-	return err;
+	packets_sent++;
+	return OK;
 }
 
 void DisNetwork::reject(const String &reason, const String &ip) {
@@ -184,11 +209,16 @@ void DisNetwork::poll() {
 		return;
 	}
 	int handled = 0;
-	while (socket->get_available_packet_count() > 0 && handled < max_packets_per_frame) {
+	std::string sender_address;
+	uint16_t sender_port = 0;
+	while (handled < max_packets_per_frame && socket->receive(receive_buffer, sender_address, sender_port)) {
 		handled++;
-		const PackedByteArray bytes = socket->get_packet();
-		const String ip = socket->get_packet_ip();
-		const int sender_port = socket->get_packet_port();
+		PackedByteArray bytes;
+		bytes.resize(static_cast<int64_t>(receive_buffer.size()));
+		if (!receive_buffer.empty()) {
+			memcpy(bytes.ptrw(), receive_buffer.data(), receive_buffer.size());
+		}
+		const String ip = String(sender_address.c_str());
 		packets_received++;
 
 		if (bytes.size() < DisPdu::HEADER_SIZE) {
@@ -213,7 +243,7 @@ void DisNetwork::poll() {
 			reject(DisPdu::get_last_error(), ip);
 			continue;
 		}
-		emit_signal("pdu_received", pdu, ip, sender_port);
+		emit_signal("pdu_received", pdu, ip, static_cast<int>(sender_port));
 		const Ref<DisEntityStatePdu> entity_state = pdu;
 		if (entity_state.is_valid()) {
 			emit_signal("entity_state_received", entity_state);

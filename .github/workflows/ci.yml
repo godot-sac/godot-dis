@@ -1,0 +1,110 @@
+# Builds the GDExtension for Windows, Linux and macOS, runs the C++ unit tests everywhere and the Godot (GUT)
+# tests on Windows and Linux, then packs addons/dis with all libraries as one artifact.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            platform: windows
+            scons_args: ""
+            godot_zip: Godot_v4.7.2-stable_win64.exe.zip
+            godot_exe: Godot_v4.7.2-stable_win64_console.exe
+          - name: Linux
+            # The oldest supported runner, so the library runs on older glibc versions too.
+            os: ubuntu-22.04
+            platform: linux
+            scons_args: ""
+            godot_zip: Godot_v4.7.2-stable_linux.x86_64.zip
+            godot_exe: Godot_v4.7.2-stable_linux.x86_64
+          - name: macOS
+            os: macos-latest
+            platform: macos
+            scons_args: arch=universal
+            godot_zip: ""
+            godot_exe: ""
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Python tools (SCons, Open-DIS oracle)
+        run: |
+          python -m venv tools/.venv
+          if [ "${{ matrix.platform }}" = "windows" ]; then PY=tools/.venv/Scripts/python.exe; else PY=tools/.venv/bin/python; fi
+          echo "PY=$PY" >> "$GITHUB_ENV"
+          "$PY" -m pip install --quiet -r tools/requirements.txt
+
+      - name: Build (debug and release)
+        run: |
+          "$PY" -m SCons -j4 target=template_debug ${{ matrix.scons_args }}
+          "$PY" -m SCons -j4 target=template_release ${{ matrix.scons_args }}
+          ls -la addons/dis/bin/${{ matrix.platform }}
+
+      - name: C++ unit tests (doctest)
+        run: '"$PY" -m SCons tests'
+
+      - name: Download Godot
+        if: matrix.godot_zip != ''
+        run: |
+          curl -sSfL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${{ matrix.godot_zip }}"
+          "$PY" -m zipfile -e godot.zip godot_bin
+          chmod +x "godot_bin/${{ matrix.godot_exe }}"
+          echo "GODOT=$PWD/godot_bin/${{ matrix.godot_exe }}" >> "$GITHUB_ENV"
+
+      - name: Godot tests (GUT)
+        if: matrix.godot_zip != ''
+        run: |
+          "$GODOT" --headless --path . --import || true
+          "$GODOT" --headless --path . -s addons/gut/gut_cmdln.gd
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bin-${{ matrix.platform }}
+          path: addons/dis/bin/${{ matrix.platform }}
+          if-no-files-found: error
+
+  package:
+    name: Addon package
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: bin-*
+          path: artifacts
+      - name: Assemble addons/dis
+        run: |
+          for platform in windows linux macos; do
+            mkdir -p "addons/dis/bin/$platform"
+            cp -r "artifacts/bin-$platform/." "addons/dis/bin/$platform/"
+          done
+          cp LICENSE THIRD_PARTY_NOTICES.md addons/dis/
+          find addons/dis -type f | sort
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-dis-addon
+          path: addons/dis

@@ -2,7 +2,8 @@ extends GutTest
 ## DisNetwork over real UDP sockets on this machine, including Open-DIS Python as the other side.
 ## Ports 31xx are used so a DIS application on 3000 doesn't interfere.
 
-const PYTHON := "res://tools/.venv/Scripts/python.exe"
+## venv Python: Windows layout first, then Linux / macOS.
+const PYTHON_PATHS: PackedStringArray = ["res://tools/.venv/Scripts/python.exe", "res://tools/.venv/bin/python"]
 
 var _received: Array = []
 var _rejected: Array = []
@@ -43,8 +44,11 @@ func _wait_for(condition: Callable, seconds: float) -> bool:
 
 
 func _python() -> String:
-	var path := ProjectSettings.globalize_path(PYTHON)
-	return path if FileAccess.file_exists(path) else ""
+	for candidate in PYTHON_PATHS:
+		var path := ProjectSettings.globalize_path(candidate)
+		if FileAccess.file_exists(path):
+			return path
+	return ""
 
 
 func test_unicast_loopback_between_two_networks() -> void:
@@ -142,6 +146,48 @@ func test_multicast() -> void:
 		pending("multicast did not loop back (joined: %s)" % receiver.get_statistics().multicast_interfaces)
 		return
 	assert_eq((_received[0] as DisEntityStatePdu).entity_id.z, 3)
+
+
+func test_two_applications_share_a_port() -> void:
+	# Like two DIS applications on one computer: both listen on 3114 (multicast) and both get a third one's PDU.
+	var got := {"a": 0, "b": 0}
+	var networks: Array[DisNetwork] = []
+	for site in [11, 12]:
+		var network := DisNetwork.new()
+		network.mode = DisNetwork.MODE_MULTICAST
+		network.port = 3114
+		network.site_id = site
+		add_child_autofree(network)
+		networks.append(network)
+	assert_true(networks[0].is_running() and networks[1].is_running(), "both bound port 3114")
+	if not (networks[0].is_running() and networks[1].is_running()):
+		return
+	networks[0].entity_state_received.connect(func(_pdu): got.a += 1)
+	networks[1].entity_state_received.connect(func(_pdu): got.b += 1)
+	var sender := _network(3115, DisNetwork.MODE_UNICAST, networks[0].multicast_group, 3114)
+	sender.site_id = 13
+	sender.send_pdu(_entity(1, 13, 1))
+	assert_true(await _wait_for(func(): return got.a >= 1 and got.b >= 1, 2.0), "both received: %s" % got)
+	# And they see each other: site 11 sends, site 12 receives (site 11 ignores its own echo).
+	networks[0].send_pdu(_entity(2, 11, 1))
+	assert_true(await _wait_for(func(): return got.b >= 2, 2.0), "site 12 got site 11's PDU: %s" % got)
+	assert_eq(got.a, 1, "own PDU ignored")
+
+
+func test_exclusive_port_when_not_shared() -> void:
+	var first := DisNetwork.new()
+	first.port = 3116
+	first.share_port = false
+	add_child_autofree(first)
+	var second := DisNetwork.new()
+	second.port = 3116
+	second.share_port = false
+	second.autostart = false
+	add_child_autofree(second)
+	assert_true(first.is_running())
+	assert_ne(second.start(), OK, "port already taken")
+	assert_false(second.is_running())
+	assert_push_error_count(1, "the bind failure is reported")
 
 
 func test_receives_from_open_dis_python() -> void:

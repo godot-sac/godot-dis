@@ -34,12 +34,24 @@ func publish(pdu: DisEntityStatePdu) -> void:
 
 `get_statistics()` returns received / sent / rejected / ignored counters and the joined multicast interfaces.
 
+## Several applications on one computer
+DIS tools usually all listen on port 3000. With `share_port` (default on) the socket is opened with
+`SO_REUSEADDR` (and `SO_REUSEPORT` on Linux / macOS), so any number of DIS applications — Godot or not — can bind
+the same port on one computer. Every one of them receives **broadcast and multicast** PDUs; a **unicast** PDU
+reaches only one of them, so use broadcast or multicast when sharing a port. Turn `share_port` off to get an
+error instead when the port is taken.
+
+`DisNetwork` uses its own small socket layer (`src/network/udp_socket.cpp`, Winsock / BSD sockets) rather than
+Godot's `PacketPeerUDP`, because Godot never enables address reuse on Windows. Tested by
+`test_two_applications_share_a_port` on Windows and Linux.
+
 ## Windows notes (found while testing)
 - **Limited broadcast (255.255.255.255) may leave through the wrong adapter** when VPN (NordVPN, Tailscale),
   WSL or other virtual adapters exist, so other machines on the LAN never see it. Use the subnet-directed
   broadcast address instead, e.g. `192.168.1.255` for a 192.168.1.x/24 network.
 - **Multicast** joins fail on adapters that only have a link-local `169.254.x.x` address; `DisNetwork` skips
-  them. Set `multicast_interface` to one adapter name (`IP.get_local_interfaces()`) to be explicit.
+  them. Set `multicast_interface` to one adapter name (`IP.get_local_interfaces()`) or its IPv4 address to be
+  explicit; it is then also the interface multicast PDUs are sent from.
 - The first time Godot opens a UDP port, Windows Defender Firewall may ask for permission. Allow it on
   private networks, or broadcast/multicast from other machines will not arrive.
 

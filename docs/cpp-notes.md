@@ -222,3 +222,34 @@ gibi durumlar beklemeden ve her seferinde aynı sonuçla denenebiliyor.
 
 **Kayan nokta ve gönderilen durum**: Ağda hız `float` (32 bit) gider. `DisEntity`, alıcının ne gördüğünü taklit
 ettiği kopyayı da `float`'a yuvarlıyor (`as_float32`); yoksa iki taraf biraz farklı tahmin yapar.
+
+## Faz 6: Kendi soket katmanımız, CI
+
+**İşletim sistemi API'si ve `#ifdef`**: `src/network/udp_socket.cpp` Godot'u kullanmadan doğrudan işletim sisteminin
+soket API'sini çağırır: Windows'ta Winsock (`winsock2.h`, `closesocket`, `WSAStartup`), Linux/macOS'ta BSD soketleri
+(`sys/socket.h`, `close`). Farklı kısımlar `#ifdef _WIN32 ... #else ... #endif` ile ayrılır; derleyici yalnızca
+hedef platformun kodunu görür. Windows'ta ayrıca `ws2_32` kütüphanesine bağlanmak gerekir (`SConstruct`).
+
+**Neden Godot'un `PacketPeerUDP`'si değil**: Godot, Windows'ta `SO_REUSEADDR`'ı hiç açmıyor. Bu yüzden aynı
+bilgisayarda iki DIS uygulaması 3000 portunu birlikte dinleyemiyordu (demo için şart). Bir kütüphanenin neyi
+desteklemediğini test ederek bulduk ve gerekeni kendimiz yazdık.
+
+**RAII ve `std::unique_ptr`**: `UdpSocket`'in yıkıcısı (`~UdpSocket()`) soketi kapatır. `DisNetwork` onu
+`std::unique_ptr<UdpSocket>` ile tutar: `socket.reset()` nesneyi siler, yıkıcı soketi kapatır. Kaynağın ömrü
+nesnenin ömrüne bağlı olduğu için "kapatmayı unutmak" mümkün değil (Resource Acquisition Is Initialization).
+
+**Kopyalamayı yasaklamak**: `UdpSocket(const UdpSocket &) = delete;` İki kopya aynı işletim sistemi soketini
+kapatmaya çalışırdı. `= delete` ile derleyici kopyalamaya izin vermez.
+
+**Ağ bayt sırası**: `htons(port)` / `ntohs` portu "host" bayt sırasından ağ sırasına (big-endian) çevirir; DIS
+paketlerinin kendisinin big-endian olması da aynı gelenekten.
+
+**Zaman kaynağı hatası (headless demo ile bulundu)**: `DisEntity` hızı gerçek saatle (wall clock) ölçüyordu, ama
+düğümler fizik zamanında hareket ediyor. Headless çalışırken Godot bazen iki fizik adımını aynı karede arka arkaya
+yapıyor: gerçek zamanda mikrosaniyeler, konumda 1/60 s'lik hareket. Hız tahmini patlıyor, her karede PDU gidiyordu
+(20 s'de 404 PDU). Artık yayıncı fizik zamanını biriktirip kullanıyor (20 s'de 80 PDU). Ders: ölçtüğün şeyle aynı
+saati kullan.
+
+**CI (GitHub Actions)**: `.github/workflows/ci.yml` her push'ta Windows, Linux ve macOS'ta derler, C++ testlerini
+çalıştırır, Windows ve Linux'ta Godot'u indirip GUT testlerini koşar ve üç platformun kütüphaneleriyle tek bir
+`addons/dis` paketi üretir. Linux kısmı yerelde WSL (Ubuntu 24.04, GCC 13) ile denendi.

@@ -31,3 +31,6 @@ build/
 
 # Downloaded source data (tools/enums.py)
 tools/.cache/
+
+# Demo: godot-milsymbol linked from the sibling repo (tools/link_milsymbol.ps1)
+addons/milsymbol
