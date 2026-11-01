@@ -7,7 +7,8 @@ extends Node
 ## Each copy publishes its own units with DisEntity and shows every unit on the network (its own and the others')
 ## on a tactical map. Everyone uses multicast 239.1.2.3:3000, so copies on one computer share the port.
 ## Keys: F fire at the nearest enemy, X remove the remote unit under the mouse (Remove Entity request),
-## S stop / freeze the exercise, R start / resume it. See docs/demo.md.
+## S stop / freeze the exercise, R start / resume it. --record <file.pcapng|.pdulog> records the session for
+## demo/replay.tscn. See docs/demo.md.
 
 ## Damage bits of the DIS general appearance (bits 3-4): 3 = destroyed.
 const APPEARANCE_DESTROYED := 3 << 3
@@ -39,6 +40,7 @@ var _rng := RandomNumberGenerator.new()
 var _shots: Array = []  # own rounds in flight: {fire, shooter, target, aim, arrive, hit}
 var _next_shooter := 0
 var _received_types := {}  # PDU type -> count
+var _recorder: DisRecorder
 var _sent_types := {}
 # Optional: --screenshot <file.png> saves the window after --seconds; --seconds alone quits after that time.
 var _screenshot := ""
@@ -72,6 +74,13 @@ func _ready() -> void:
 	_spawn_units(info)
 	_connect_signals()
 	_screenshot = _argument("--screenshot", "")
+	var record := _argument("--record", "")
+	if record != "":  # everything this simulation sends and receives, for demo/replay.tscn or Wireshark
+		_recorder = DisRecorder.new()
+		add_child(_recorder)
+		_recorder.network_path = _recorder.get_path_to(network)
+		if _recorder.start(record) == OK:
+			_event("Recording to %s" % ProjectSettings.globalize_path(record))
 	_quit_after = float(_argument("--seconds", "0"))
 	_auto_fire = float(_argument("--auto-fire", "0"))
 	_stop_at = float(_argument("--stop-at", "-1"))
@@ -416,6 +425,9 @@ func _quit() -> void:
 			own_forces.get_child_count(), manager.get_entity_count(),
 			"running" if exercise.is_running() else "stopped"])
 	print("  received by type: ", _type_counts(_received_types))
+	if _recorder != null:
+		print("  recorded %d packets to %s" % [_recorder.get_packet_count(), _recorder.get_recording_path()])
+		_recorder.stop()
 	print("  sent by type (besides Entity State): ", _type_counts(_sent_types))
 	for mover in own_forces.get_children():
 		var entity := _own_entity(mover)

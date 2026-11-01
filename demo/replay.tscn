@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://demo/replay_main.gd" id="1_replay"]
+
+[node name="Replay" type="Node"]
+script = ExtResource("1_replay")
+
+[node name="DisNetwork" type="DisNetwork" parent="."]
+mode = 2
+port = 3000
+multicast_group = "239.1.2.3"
+autostart = false
+
+[node name="DisGeoOrigin" type="DisGeoOrigin" parent="."]
+latitude = 39.9334
+longitude = 32.8597
+height = 938.0
+
+[node name="DisEntityManager" type="DisEntityManager" parent="."]
+smoothing_time = 0.3
+
+[node name="DisPlayer" type="DisPlayer" parent="."]
