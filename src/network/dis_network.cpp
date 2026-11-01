@@ -233,9 +233,11 @@ Error DisNetwork::send_bytes(const PackedByteArray &bytes) {
 	return OK;
 }
 
-// Entity Information (1), Warfare (2), Simulation Management (5) and its reliable variant (10).
+// Entity Information (1), Warfare (2), Radio Communications (4: the radio's entity), Simulation Management (5)
+// and its reliable variant (10).
 bool DisNetwork::starts_with_sender_id(int protocol_family) {
-	return protocol_family == 1 || protocol_family == 2 || protocol_family == 5 || protocol_family == 10;
+	return protocol_family == 1 || protocol_family == 2 || protocol_family == 4 || protocol_family == 5 ||
+			protocol_family == 10;
 }
 
 const char *DisNetwork::typed_signal_of(int pdu_type) {

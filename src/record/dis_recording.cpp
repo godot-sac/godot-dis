@@ -168,7 +168,7 @@ Dictionary DisRecording::get_summary() const {
 		types[type] = static_cast<int>(types.get(type, 0)) + 1;
 		exercises.insert(packet.data[1]);
 		const int family = packet.data[3];
-		if (packet.data.size() >= 18 && (family == 1 || family == 2 || family == 5 || family == 10)) {
+		if (packet.data.size() >= 18 && (family == 1 || family == 2 || family == 4 || family == 5 || family == 10)) {
 			const uint32_t site = (packet.data[12] << 8) | packet.data[13];
 			const uint32_t application = (packet.data[14] << 8) | packet.data[15];
 			sites.insert((site << 16) | application);

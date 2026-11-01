@@ -7,7 +7,7 @@ extends Node
 ## Each copy publishes its own units with DisEntity and shows every unit on the network (its own and the others')
 ## on a tactical map. Everyone uses multicast 239.1.2.3:3000, so copies on one computer share the port.
 ## Keys: F fire at the nearest enemy, X remove the remote unit under the mouse (Remove Entity request),
-## S stop / freeze the exercise, R start / resume it. --record <file.pcapng|.pdulog> records the session for
+## S stop / freeze the exercise, R start / resume it, T a radio call from the helicopter (Transmitter + Signal). --record <file.pcapng|.pdulog> records the session for
 ## demo/replay.tscn. See docs/demo.md.
 
 ## Damage bits of the DIS general appearance (bits 3-4): 3 = destroyed.
@@ -20,11 +20,16 @@ const MAX_FLIGHT := 4.0  # seconds; shortened from the real time of flight so th
 const TANK_ROUND := [2, 2, 0, 2, 0, 0, 0]
 const AIR_MISSILE := [2, 1, 0, 1, 0, 0, 0]
 const EVENT_LINES := 12
+const RADIO_FREQUENCY := 243000000  # Hz
+const RADIO_TYPE := [7, 2, 0, 1, 1, 0]  # radio, air, generic, voice transmission / reception
+const CALL_SECONDS := 2.0
+const COMMENT_TEXT_ID := 1
 
 @onready var network: DisNetwork = $DisNetwork
 @onready var origin: DisGeoOrigin = $DisGeoOrigin
 @onready var manager: DisEntityManager = $DisEntityManager
 @onready var exercise: DisExerciseControl = $DisExerciseControl
+@onready var radios: DisRadioMonitor = $DisRadioMonitor
 @onready var own_forces: Node3D = $OwnForces
 
 var side := "blue"
@@ -41,19 +46,23 @@ var _shots: Array = []  # own rounds in flight: {fire, shooter, target, aim, arr
 var _next_shooter := 0
 var _received_types := {}  # PDU type -> count
 var _recorder: DisRecorder
+var _call_left := 0.0  # seconds left of our radio call
+var _call_clock := 0.0
+var _call_unit: DemoUnitMover
 var _sent_types := {}
 # Optional: --screenshot <file.png> saves the window after --seconds; --seconds alone quits after that time.
 var _screenshot := ""
 var _quit_after := 0.0
 var _started := 0.0
 # Optional scripted actions for unattended runs: --auto-fire <interval s>, --stop-at <s>, --resume-at <s>,
-# --remove <site:application:entity>@<s>.
+# --remove <site:application:entity>@<s>, --radio-at <s>.
 var _auto_fire := 0.0
 var _auto_fire_clock := 0.0
 var _stop_at := -1.0
 var _resume_at := -1.0
 var _remove_id := Vector3i()
 var _remove_at := -1.0
+var _radio_at := -1.0
 
 
 func _ready() -> void:
@@ -85,6 +94,7 @@ func _ready() -> void:
 	_auto_fire = float(_argument("--auto-fire", "0"))
 	_stop_at = float(_argument("--stop-at", "-1"))
 	_resume_at = float(_argument("--resume-at", "-1"))
+	_radio_at = float(_argument("--radio-at", "-1"))
 	var remove := _argument("--remove", "").split("@")
 	if remove.size() == 2:
 		var parts := remove[0].split(":")
@@ -131,6 +141,12 @@ func _connect_signals() -> void:
 	exercise.acknowledged.connect(_on_acknowledged)
 	exercise.request_failed.connect(func(id): _event("[color=#f99]No answer to request #%d[/color]" % id))
 	exercise.remove_entity_requested.connect(_on_remove_requested)
+	network.comment_received.connect(func(pdu: DisCommentPdu): _event("[color=#cce]COMMENT[/color] %s: %s" % [
+			_id_text(pdu.originating_id), pdu.get_text(COMMENT_TEXT_ID)]))
+	radios.transmission_started.connect(func(id, radio, frequency): _event("[color=#adf]RADIO[/color] %s on %.3f MHz" % [
+			_unit_name(id), frequency / 1.0e6]))
+	network.collision_received.connect(func(pdu: DisCollisionPdu): _event("COLLISION %s with %s" % [
+			_unit_name(pdu.issuing_entity_id), _unit_name(pdu.colliding_entity_id)]))
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -169,7 +185,8 @@ func _collect_units() -> Array:
 				"sidc": info.sidc, "force": entity.force_id, "position": mover.global_position,
 				"heading": _heading(mover.global_basis), "speed": mover.speed,
 				"source": "own " + _id_text(entity.get_effective_entity_id()),
-				"published": entity.get_published_count(), "destroyed": status == 4})
+				"published": entity.get_published_count(), "destroyed": status == 4,
+				"transmitting": _call_left > 0.0 and mover == _call_unit})
 	for remote: DisRemoteEntity in manager.get_entities():
 		var pdu := remote.get_last_pdu()
 		var status := DisEnums.appearance_to_status(remote.get_appearance())
@@ -178,7 +195,8 @@ func _collect_units() -> Array:
 		result.append({"key": "remote/%s" % remote.entity_id, "marking": remote.marking, "name": info.name,
 				"sidc": info.sidc, "force": remote.force_id, "position": remote.global_position,
 				"heading": _heading(remote.global_basis), "speed": Vector2(velocity.x, velocity.z).length(),
-				"source": _id_text(remote.entity_id), "published": -1, "destroyed": status == 4})
+				"source": _id_text(remote.entity_id), "published": -1, "destroyed": status == 4,
+				"transmitting": radios.is_transmitting(remote.entity_id)})
 	return result
 
 
@@ -300,12 +318,80 @@ func _stop_exercise() -> void:
 	exercise.send_stop_freeze()  # to everyone; we stop ourselves below (our own PDUs don't come back to us)
 	_count_sent_type(DisPdu.PDU_TYPE_STOP_FREEZE)
 	exercise.stop()
+	_send_comment("Exercise stopped by %s" % side)
 
 
 func _resume_exercise() -> void:
 	exercise.send_start_resume()
 	_count_sent_type(DisPdu.PDU_TYPE_START_RESUME)
 	exercise.start()
+	_send_comment("Exercise resumed by %s" % side)
+
+
+## A Comment PDU to everyone: free text that every DIS logger shows.
+func _send_comment(text: String) -> void:
+	var comment := DisCommentPdu.new()
+	comment.originating_id = Vector3i(network.site_id, network.application_id, 0)
+	comment.receiving_id = Vector3i(0xFFFF, 0xFFFF, 0xFFFF)
+	comment.add_text(COMMENT_TEXT_ID, text)
+	network.send_pdu(comment)
+	_count_sent(comment)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Radio
+
+## Starts a radio call from the helicopter (or the first unit left): a Transmitter PDU "on and transmitting", then
+## Signal PDUs with (silent) audio every 0.05 s (800 bytes: one Ethernet frame), then a Transmitter PDU
+## "on, not transmitting".
+func _start_call() -> void:
+	if _call_left > 0.0 or own_forces.get_child_count() == 0:
+		return
+	_call_unit = own_forces.get_node_or_null("HEL-1") as DemoUnitMover
+	if _call_unit == null:
+		_call_unit = own_forces.get_child(0)
+	_call_left = CALL_SECONDS
+	_call_clock = 0.0
+	_send_transmitter(DisTransmitterPdu.TRANSMIT_ON_AND_TRANSMITTING)
+	_event("[color=#adf]RADIO[/color] %s calling on %.3f MHz" % [_call_unit.name, RADIO_FREQUENCY / 1.0e6])
+
+
+func _process_call(delta: float) -> void:
+	if _call_left <= 0.0 or not is_instance_valid(_call_unit):
+		return
+	_call_left -= delta
+	_call_clock += delta
+	if _call_clock >= 0.05:
+		_call_clock = 0.0
+		var block := DisSignalPdu.new()
+		block.radio_reference_id = _own_entity(_call_unit).get_effective_entity_id()
+		block.radio_number = 1
+		block.encoding_scheme = 4  # encoded audio, 16-bit linear PCM
+		block.sample_rate = 8000
+		block.samples = 400
+		var silence := PackedByteArray()
+		silence.resize(800)
+		block.set_data_bytes(silence)
+		network.send_pdu(block)
+		_count_sent(block)
+	if _call_left <= 0.0:
+		_send_transmitter(DisTransmitterPdu.TRANSMIT_ON_NOT_TRANSMITTING)
+
+
+func _send_transmitter(state: int) -> void:
+	var entity := _own_entity(_call_unit)
+	var transmitter := DisTransmitterPdu.new()
+	transmitter.radio_reference_id = entity.get_effective_entity_id()
+	transmitter.radio_number = 1
+	transmitter.radio_type = PackedInt32Array(RADIO_TYPE)
+	transmitter.transmit_state = state
+	transmitter.antenna_location_ecef = origin.local_to_ecef(_call_unit.global_position)
+	transmitter.frequency = RADIO_FREQUENCY
+	transmitter.bandwidth = 25000.0
+	transmitter.power = 40.0
+	transmitter.modulation_type = PackedInt32Array([0, 2, 2, 1])  # amplitude modulation, AM, generic radio
+	network.send_pdu(transmitter)
+	_count_sent(transmitter)
 
 
 func _count_sent_type(type: int) -> void:
@@ -374,6 +460,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			_stop_exercise()
 		KEY_R:
 			_resume_exercise()
+		KEY_T:
+			if exercise.is_running():
+				_start_call()
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -385,6 +474,7 @@ func _process(delta: float) -> void:
 	var elapsed := Time.get_ticks_msec() / 1000.0 - _started
 	if exercise.is_running():
 		_process_shots()
+		_process_call(delta)
 		if _auto_fire > 0.0:
 			_auto_fire_clock += delta
 			if _auto_fire_clock >= _auto_fire:
@@ -396,6 +486,9 @@ func _process(delta: float) -> void:
 	if _resume_at >= 0.0 and elapsed >= _resume_at:
 		_resume_at = -1.0
 		_resume_exercise()
+	if _radio_at >= 0.0 and elapsed >= _radio_at:
+		_radio_at = -1.0
+		_start_call()
 	if _remove_at >= 0.0 and elapsed >= _remove_at:
 		_remove_at = -1.0
 		_request_remove(_remove_id)
@@ -514,7 +607,7 @@ func _build_ui(title: String) -> void:
 	_log.add_theme_font_size_override("bold_font_size", 11)
 	box.add_child(_log)
 	var help := Label.new()
-	help.text = ("F: fire at nearest enemy   X: remove unit under mouse\nS: stop exercise   R: resume   "
+	help.text = ("F: fire at nearest enemy   X: remove unit under mouse   T: radio call\nS: stop exercise   R: resume   "
 			+ "Wheel: zoom   Drag: pan\nSymbols: MIL-STD-2525D (approx.)\n"
 			+ "Enumerations: SISO-REF-010, reprinted with permission from SISO Inc.")
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -26,5 +26,7 @@ smoothing_time = 0.5
 pause_tree = true
 remove_entities = false
 
+[node name="DisRadioMonitor" type="DisRadioMonitor" parent="."]
+
 [node name="OwnForces" type="Node3D" parent="."]
 process_mode = 1

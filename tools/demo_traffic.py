@@ -11,7 +11,8 @@ its first turn after ~400 s); --rate sends that many updates per second.
 
 It is also a managed application: Stop/Freeze and Start/Resume addressed to site 3 (or everyone) freeze and resume
 the traffic, a Remove Entity request removes that vehicle, and every request is answered with an Acknowledge PDU,
-all built with Open-DIS Python.
+all built with Open-DIS Python. The airliner's radio (Transmitter PDU every 5 s) talks for 3 s every 20 s
+(Signal PDUs with silent audio), so the demo map shows it on the air.
 """
 import argparse
 import io
@@ -23,7 +24,7 @@ import time
 import pymap3d
 from opendis.PduFactory import createPdu
 from opendis.RangeCoordinates import GPS
-from opendis.dis7 import AcknowledgePdu, EntityStatePdu
+from opendis.dis7 import AcknowledgePdu, EntityStatePdu, EntityType, SignalPdu, TransmitterPdu, WorldCoordinates
 from opendis.stream import DataOutputStream
 
 ORIGIN = (39.9334, 32.8597, 938.0)  # same as demo/main.tscn
@@ -33,6 +34,9 @@ DEACTIVATED = 1 << 23  # general appearance "State" bit
 # Request PDU class -> acknowledge flag (SISO-REF-010 UID 69)
 ACKNOWLEDGE_FLAGS = {"RemoveEntityPdu": 2, "StartResumePdu": 3, "StopFreezePdu": 4}
 ABLE_TO_COMPLY, UNABLE_TO_COMPLY = 1, 2
+RADIO_ENTITY = 1  # THY-1
+RADIO_FREQUENCY = 118_100_000  # Hz, an approach frequency
+TALK_EVERY, TALK_FOR = 20.0, 3.0  # seconds
 
 
 def racetrack(a, b, radius, points_per_turn=24):
@@ -124,6 +128,31 @@ def build_pdu(number, elapsed, appearance=0):
     return serialize(pdu, 144)
 
 
+def transmitter(scenario, transmitting):
+    """Transmitter PDU of the airliner's radio, at the airliner's position."""
+    _, _, route, speed, height = UNITS[RADIO_ENTITY - 1]
+    (x, z), _ = route_point(route, speed * scenario)
+    pdu = TransmitterPdu(radioNumber=1, radioEntityType=EntityType(7, 2, 0, 1, 1, 0, 0),
+                         transmitState=2 if transmitting else 1, inputSource=1,
+                         antennaLocation=WorldCoordinates(*(float(v) for v in to_ecef(x, z, height))),
+                         frequency=RADIO_FREQUENCY, transmitFrequencyBandwidth=25000.0, power=40.0)
+    pdu.exerciseID = 1
+    pdu.radioReferenceID.simulationAddress.site = SITE
+    pdu.radioReferenceID.simulationAddress.application = APPLICATION
+    pdu.radioReferenceID.entityNumber = RADIO_ENTITY
+    return serialize(pdu, 104)
+
+
+def signal_block():
+    """50 ms of silence as 16-bit linear PCM at 8 kHz (800 bytes)."""
+    pdu = SignalPdu(radioID=1, encodingScheme=4, sampleRate=8000, samples=400, data=[0] * 800)
+    pdu.exerciseID = 1
+    pdu.entityID.simulationAddress.site = SITE
+    pdu.entityID.simulationAddress.application = APPLICATION
+    pdu.entityID.entityNumber = RADIO_ENTITY
+    return serialize(pdu, 32 + 800)
+
+
 def acknowledge(request, response):
     ack = AcknowledgePdu(acknowledgeFlag=ACKNOWLEDGE_FLAGS[type(request).__name__], responseFlag=response,
                          requestID=request.requestID)
@@ -205,7 +234,8 @@ def main():
     control = Control()
     destination = (args.group, args.port)
     scenario = args.start  # scenario seconds; they stand still while frozen
-    started = last = next_send = time.monotonic()
+    started = last = next_send = next_radio = time.monotonic()
+    talking = False
     sent = 0
     print(f"sending {len(UNITS)} neutral entities (site {SITE}) to {args.group}:{args.port}, Ctrl+C to stop")
     try:
@@ -231,6 +261,15 @@ def main():
                         if number not in control.removed:
                             sock.sendto(build_pdu(number, scenario), destination)
                             sent += 1
+            # The airliner's radio: talks for TALK_FOR seconds every TALK_EVERY seconds of scenario time.
+            if RADIO_ENTITY not in control.removed and not control.frozen:
+                talk = scenario % TALK_EVERY < TALK_FOR and scenario > 5.0
+                if talk != talking or now >= next_radio:
+                    talking = talk
+                    next_radio = now + 5.0
+                    sock.sendto(transmitter(scenario, talking), destination)
+                if talking:
+                    sock.sendto(signal_block(), destination)
             time.sleep(0.05)
     except KeyboardInterrupt:
         pass

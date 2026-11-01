@@ -1,6 +1,7 @@
 class_name DemoMapEffects
 extends Control
-## Overlay for DemoTacticalMap: weapon fire lines, detonation bursts, destroyed units and the exercise state banner.
+## Overlay for DemoTacticalMap: weapon fire lines, detonation bursts, destroyed units, radio transmissions and the
+## exercise state banner.
 ## Add it as a child of the map (it uses the map's to_screen()); it draws nothing else, so the map works without it.
 
 const FIRE_LIFE := 2.5  # seconds a fire line stays after the round arrives
@@ -65,6 +66,8 @@ func _draw() -> void:
 			draw_circle(p, radius * 0.6, Color(1, 0.7, 0.2, 0.5 * (1.0 - k)))
 			draw_arc(p, radius, 0, TAU, 32, Color(e.color, 1.0 - k), 2.0)
 	for unit in map.units:
+		if unit.get("transmitting", false):
+			_draw_radio_waves(_point(unit.position), now)
 		if unit.get("destroyed", false) and not map.has_milsymbol():
 			var p := _point(unit.position)
 			draw_line(p + Vector2(-10, -10), p + Vector2(10, 10), Color(1, 1, 1, 0.9), 2.5)
@@ -75,3 +78,12 @@ func _draw() -> void:
 		var rect := Rect2(Vector2((size.x - width) / 2, 36), Vector2(width, 32))
 		draw_rect(rect, Color(0.6, 0.1, 0.1, 0.85))
 		draw_string(font, rect.position + Vector2(16, 23), banner, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
+
+
+## Three arcs to the upper right of a unit that is on the air, pulsing outwards.
+func _draw_radio_waves(p: Vector2, now: float) -> void:
+	var center := p + Vector2(14, -14)
+	for i in 3:
+		var phase := fmod(now * 1.5 + i / 3.0, 1.0)
+		var radius := 4.0 + 12.0 * phase
+		draw_arc(center, radius, -PI * 0.75, -PI * 0.25, 10, Color(0.75, 0.9, 1.0, 1.0 - phase), 2.0)
