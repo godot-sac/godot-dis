@@ -82,6 +82,11 @@ private:
 	godot::NodePath origin_path;
 	godot::Ref<DisEntityTypeMap> type_map;
 	double timeout = 12.0;
+	// The clock entities are dead reckoned on: real seconds, scaled by time_scale (DisPlayer sets it to the
+	// playback speed, 0 while paused). clock = clock_base + (ticks - clock_ticks_base) * time_scale.
+	double time_scale = 1.0;
+	double clock_base = 0.0;
+	double clock_ticks_base = 0.0;
 	double smoothing_time = 0.5;
 	double smoothing_max_distance = 100.0;
 	bool dead_reckoning = true;
@@ -118,6 +123,10 @@ public:
 	void handle_entity_state(const godot::Ref<DisEntityStatePdu> &pdu, double now = -1.0);
 	// Dead reckons every entity to `now` and removes timed-out ones. Called every frame when auto_update is on.
 	void process_entities(double now);
+	// Seconds on the manager's clock (what `now` defaults to above).
+	double get_clock() const;
+	void set_time_scale(double value);
+	double get_time_scale() const { return time_scale; }
 
 	DisRemoteEntity *find_entity(const godot::Vector3i &entity_id) const;
 	godot::Object *get_entity(const godot::Vector3i &entity_id) const;

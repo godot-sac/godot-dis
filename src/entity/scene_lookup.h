@@ -20,4 +20,21 @@ T *find_node(godot::Node *self, const godot::NodePath &path, const godot::String
 	return godot::Object::cast_to<T>(self->get_tree()->get_first_node_in_group(group));
 }
 
+// The first node of type T in the subtree under `root` (depth first), or null.
+template <typename T>
+T *find_first_of_class(godot::Node *root) {
+	if (root == nullptr) {
+		return nullptr;
+	}
+	if (T *found = godot::Object::cast_to<T>(root)) {
+		return found;
+	}
+	for (int i = 0; i < root->get_child_count(); i++) {
+		if (T *found = find_first_of_class<T>(root->get_child(i))) {
+			return found;
+		}
+	}
+	return nullptr;
+}
+
 } // namespace dis

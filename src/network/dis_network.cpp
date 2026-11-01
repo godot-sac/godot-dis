@@ -1,5 +1,6 @@
 #include "dis_network.h"
 
+#include <algorithm>
 #include <cstring>
 #include <utility>
 
@@ -22,6 +23,10 @@ void DisNetwork::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("send_pdu", "pdu"), &DisNetwork::send_pdu);
 	ClassDB::bind_method(D_METHOD("send_bytes", "bytes"), &DisNetwork::send_bytes);
 	ClassDB::bind_method(D_METHOD("poll"), &DisNetwork::poll);
+	ClassDB::bind_method(D_METHOD("inject_packet", "bytes", "sender_ip", "sender_port", "filtered"),
+			&DisNetwork::inject_packet, DEFVAL("127.0.0.1"), DEFVAL(0), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("get_send_address"), &DisNetwork::get_send_address);
+	ClassDB::bind_method(D_METHOD("get_effective_destination_port"), &DisNetwork::effective_destination_port);
 	ClassDB::bind_method(D_METHOD("get_statistics"), &DisNetwork::get_statistics);
 	ClassDB::bind_method(D_METHOD("reset_statistics"), &DisNetwork::reset_statistics);
 
@@ -209,6 +214,9 @@ Error DisNetwork::send_bytes(const PackedByteArray &bytes) {
 		return ERR_CANT_CONNECT;
 	}
 	packets_sent++;
+	if (!taps.empty()) {
+		call_taps(bytes, get_send_address(), effective_destination_port(), true, false);
+	}
 	return OK;
 }
 
@@ -259,35 +267,76 @@ void DisNetwork::poll() {
 		}
 		const String ip = String(sender_address.c_str());
 		packets_received++;
-
-		if (bytes.size() < DisPdu::HEADER_SIZE) {
-			reject(vformat("packet too short: %d bytes", bytes.size()), ip);
-			continue;
+		if (!taps.empty()) {
+			call_taps(bytes, ip, sender_port, false, is_own(bytes));
 		}
-		if (filter_exercise && bytes[1] != exercise_id) {
-			packets_ignored++;
-			continue;
-		}
-		// PDUs of these families start their body with the sender's ID: site (12-13), application (14-15).
-		if (ignore_own_packets && bytes.size() >= 16 && starts_with_sender_id(bytes[3])) {
-			const int site = (bytes[12] << 8) | bytes[13];
-			const int application = (bytes[14] << 8) | bytes[15];
-			if (site == site_id && application == application_id) {
-				packets_ignored++;
-				continue;
-			}
-		}
-		const Ref<DisPduBase> pdu = DisPdu::decode(bytes);
-		if (pdu.is_null()) {
-			reject(DisPdu::get_last_error(), ip);
-			continue;
-		}
-		emit_signal("pdu_received", pdu, ip, static_cast<int>(sender_port));
-		const char *typed_signal = typed_signal_of(pdu->get_pdu_type());
-		if (typed_signal != nullptr) {
-			emit_signal(typed_signal, pdu);
-		}
+		process_packet(bytes, ip, sender_port, true);
 	}
+}
+
+bool DisNetwork::is_own(const PackedByteArray &bytes) const {
+	// PDUs of these families start their body with the sender's ID: site (12-13), application (14-15).
+	if (bytes.size() < 16 || !starts_with_sender_id(bytes[3])) {
+		return false;
+	}
+	const int site = (bytes[12] << 8) | bytes[13];
+	const int application = (bytes[14] << 8) | bytes[15];
+	return site == site_id && application == application_id;
+}
+
+void DisNetwork::process_packet(const PackedByteArray &bytes, const String &ip, int port, bool filtered) {
+	if (bytes.size() < DisPdu::HEADER_SIZE) {
+		reject(vformat("packet too short: %d bytes", bytes.size()), ip);
+		return;
+	}
+	if (filtered && filter_exercise && bytes[1] != exercise_id) {
+		packets_ignored++;
+		return;
+	}
+	if (filtered && ignore_own_packets && is_own(bytes)) {
+		packets_ignored++;
+		return;
+	}
+	const Ref<DisPduBase> pdu = DisPdu::decode(bytes);
+	if (pdu.is_null()) {
+		reject(DisPdu::get_last_error(), ip);
+		return;
+	}
+	emit_signal("pdu_received", pdu, ip, port);
+	const char *typed_signal = typed_signal_of(pdu->get_pdu_type());
+	if (typed_signal != nullptr) {
+		emit_signal(typed_signal, pdu);
+	}
+}
+
+void DisNetwork::inject_packet(const PackedByteArray &bytes, const String &ip, int port, bool filtered) {
+	packets_injected++;
+	process_packet(bytes, ip, port, filtered);
+}
+
+void DisNetwork::add_tap(godot::Object *owner, DisPacketTap *tap) {
+	remove_tap(owner);
+	taps.emplace_back(ObjectID(owner->get_instance_id()), tap);
+}
+
+void DisNetwork::remove_tap(godot::Object *owner) {
+	const ObjectID id(owner->get_instance_id());
+	taps.erase(std::remove_if(taps.begin(), taps.end(), [&](const auto &entry) { return entry.first == id; }), taps.end());
+}
+
+void DisNetwork::call_taps(const PackedByteArray &bytes, const String &ip, int port, bool outgoing, bool own) {
+	for (size_t i = 0; i < taps.size();) {
+		if (ObjectDB::get_instance(taps[i].first) == nullptr) {
+			taps.erase(taps.begin() + static_cast<std::ptrdiff_t>(i)); // the recorder was freed without unregistering
+			continue;
+		}
+		taps[i].second->tap_packet(bytes, ip, port, outgoing, own);
+		i++;
+	}
+}
+
+String DisNetwork::get_send_address() const {
+	return String(send_address.c_str());
 }
 
 Dictionary DisNetwork::get_statistics() const {
@@ -296,6 +345,7 @@ Dictionary DisNetwork::get_statistics() const {
 	stats["sent"] = packets_sent;
 	stats["rejected"] = packets_rejected;
 	stats["ignored"] = packets_ignored;
+	stats["injected"] = packets_injected;
 	stats["multicast_interfaces"] = joined_interfaces;
 	return stats;
 }
@@ -305,4 +355,5 @@ void DisNetwork::reset_statistics() {
 	packets_sent = 0;
 	packets_rejected = 0;
 	packets_ignored = 0;
+	packets_injected = 0;
 }

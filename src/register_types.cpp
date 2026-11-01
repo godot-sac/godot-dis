@@ -18,6 +18,9 @@
 #include "pdu/dis_pdu_base.h"
 #include "pdu/dis_simulation_management_pdus.h"
 #include "pdu/dis_warfare_pdus.h"
+#include "record/dis_player.h"
+#include "record/dis_recorder.h"
+#include "record/dis_recording.h"
 
 using namespace godot;
 
@@ -50,6 +53,9 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(DisRemoteEntity);
 	GDREGISTER_CLASS(DisEntityManager);
 	GDREGISTER_CLASS(DisExerciseControl);
+	GDREGISTER_CLASS(DisRecording);
+	GDREGISTER_CLASS(DisRecorder);
+	GDREGISTER_CLASS(DisPlayer);
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {

@@ -83,6 +83,11 @@ void DisEntityManager::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("handle_entity_state", "pdu", "now"), &DisEntityManager::handle_entity_state,
 			DEFVAL(-1.0));
 	ClassDB::bind_method(D_METHOD("process_entities", "now"), &DisEntityManager::process_entities);
+	ClassDB::bind_method(D_METHOD("get_clock"), &DisEntityManager::get_clock);
+	ClassDB::bind_method(D_METHOD("set_time_scale", "value"), &DisEntityManager::set_time_scale);
+	ClassDB::bind_method(D_METHOD("get_time_scale"), &DisEntityManager::get_time_scale);
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "time_scale", PROPERTY_HINT_RANGE, "0,100,0.01,or_greater"), "set_time_scale",
+			"get_time_scale");
 	ClassDB::bind_method(D_METHOD("get_entity", "entity_id"), &DisEntityManager::get_entity);
 	ClassDB::bind_method(D_METHOD("get_entities"), &DisEntityManager::get_entities);
 	ClassDB::bind_method(D_METHOD("get_entity_count"), &DisEntityManager::get_entity_count);
@@ -135,7 +140,7 @@ void DisEntityManager::_notification(int p_what) {
 			set_process(auto_update);
 			break;
 		case NOTIFICATION_PROCESS:
-			process_entities(now_seconds());
+			process_entities(get_clock());
 			break;
 		case NOTIFICATION_EXIT_TREE:
 			disconnect_network();
@@ -178,7 +183,7 @@ void DisEntityManager::disconnect_network() {
 }
 
 void DisEntityManager::on_entity_state(const Ref<DisEntityStatePdu> &pdu) {
-	handle_entity_state(pdu, now_seconds());
+	handle_entity_state(pdu, get_clock());
 }
 
 void DisEntityManager::place(DisRemoteEntity *entity, DisGeoOrigin *origin, double now, bool smooth) {
@@ -268,7 +273,7 @@ void DisEntityManager::apply_ground(Object *ground, Vector3 &position, Quaternio
 void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, double now) {
 	ERR_FAIL_COND(pdu.is_null());
 	if (now < 0.0) {
-		now = now_seconds();
+		now = get_clock();
 	}
 	DisGeoOrigin *origin = get_origin();
 	if (origin == nullptr || !is_inside_tree()) {
@@ -356,6 +361,16 @@ void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, do
 		}
 	}
 	emit_signal(is_new ? "entity_appeared" : "entity_updated", entity);
+}
+
+double DisEntityManager::get_clock() const {
+	return clock_base + (now_seconds() - clock_ticks_base) * time_scale;
+}
+
+void DisEntityManager::set_time_scale(double value) {
+	clock_base = get_clock();
+	clock_ticks_base = now_seconds();
+	time_scale = value < 0.0 ? 0.0 : value;
 }
 
 void DisEntityManager::process_entities(double now) {

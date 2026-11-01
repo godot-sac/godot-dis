@@ -11,6 +11,9 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <godot_cpp/core/object_id.hpp>
+
+#include "network/packet_tap.h"
 #include "network/udp_socket.h"
 
 // Sends and receives DIS PDUs over UDP. Add one to the scene, set the mode and port, and connect to
@@ -57,12 +60,17 @@ private:
 	int64_t packets_sent = 0;
 	int64_t packets_rejected = 0;
 	int64_t packets_ignored = 0;
+	int64_t packets_injected = 0;
+	std::vector<std::pair<godot::ObjectID, DisPacketTap *>> taps;
 
 	void receive_waiting_packets();
 	void reject(const godot::String &reason, const godot::String &ip);
+	bool is_own(const godot::PackedByteArray &bytes) const;
+	// Filters (when `filtered`), decodes and emits the signals for one datagram.
+	void process_packet(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool filtered);
+	void call_taps(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool outgoing, bool own);
 	static bool starts_with_sender_id(int protocol_family);
 	static const char *typed_signal_of(int pdu_type);
-	int effective_destination_port() const;
 
 protected:
 	static void _bind_methods();
@@ -81,6 +89,16 @@ public:
 	godot::Error send_bytes(const godot::PackedByteArray &bytes);
 	// Reads and dispatches waiting packets now (normally done every frame).
 	void poll();
+	// Handles `bytes` as if they had just been received (DisPlayer uses it to replay recordings into the scene).
+	// Works while stopped too. With `filtered` the exercise and own-packet filters apply, otherwise everything
+	// is decoded. Not passed to taps (recorders).
+	void inject_packet(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool filtered);
+	// Datagram observers (DisRecorder); `owner` identifies the tap and must outlive it or call remove_tap().
+	void add_tap(godot::Object *owner, DisPacketTap *tap);
+	void remove_tap(godot::Object *owner);
+	// Where send_bytes() goes: address and port.
+	godot::String get_send_address() const;
+	int effective_destination_port() const;
 
 	godot::Dictionary get_statistics() const;
 	void reset_statistics();

@@ -42,7 +42,7 @@ open(os.path.join("build", ".gdignore"), "a").close()
 test_objects = [
     test_env.Object("build/tests/" + os.path.splitext(os.path.basename(str(f)))[0], f)
     # Only the Godot-free parts of src/.
-    for f in Glob("tests/cpp/*.cpp") + ["src/geo/geo_math.cpp", "src/entity/dead_reckoning.cpp"]
+    for f in Glob("tests/cpp/*.cpp") + ["src/geo/geo_math.cpp", "src/entity/dead_reckoning.cpp", "src/record/capture_format.cpp"]
 ]
 test_program = test_env.Program("build/tests/unit_tests", test_objects)
 test_env.Alias("tests", test_program, test_program[0].abspath)
