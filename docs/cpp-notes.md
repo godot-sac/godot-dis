@@ -285,3 +285,34 @@ sınıfla çökmediğini görmek nedeni kesinleştirdi.
 - **`is_valid()` dersi**: hedef nesnesi olmayan callable varsayılan olarak "geçersiz" sayılıyor, `connect()` onu
   reddedip hemen siliyor. İlk denemede bu yüzden sahte bir başarı gördük; günlükte kancanın ne zaman çalıştığına bakmak
   ortaya çıkardı. Ders: düzeltmenin *neden* çalıştığını doğrula.
+
+## v0.1 PDU'ları, kayıt ve oynatma (Faz 7–10)
+
+- **Sanal fonksiyon ve `override`** (`src/pdu/dis_pdu_base.h`): `DisPduBase::encode()` `virtual`; her PDU sınıfı
+  kendi `encode() const override`'unu yazar. `DisNetwork` elinde `Ref<DisPduBase>` tutup `pdu->get_pdu_type()`
+  çağırdığında, nesnenin gerçek sınıfının fonksiyonu çalışır (dinamik dağıtım). `override` yazmak zorunlu değil ama
+  imza tutmazsa derleyici hata verir; yazım hatasıyla yeni bir fonksiyon açmanın önüne geçer. Godot'a
+  `bind_method(&DisPduBase::encode)` bir kez bağlanır; sanal olduğu için GDScript'ten çağrı da doğru alt sınıfa gider.
+- **Şablon (template)** (`checked<Pdu>()`, `dis::find_first_of_class<T>()`): aynı kodu farklı tipler için bir kez
+  yazmak. Derleyici her kullanılan tip için ayrı bir kopya üretir; tip denetimi derleme anında yapılır.
+- **Çoklu kalıtım ve arayüz** (`DisRecorder : public godot::Node, public DisPacketTap`): `DisPacketTap` yalnızca saf
+  sanal bir fonksiyonu (`= 0`) olan bir "arayüz". `DisNetwork` kayıt düğümünü tanımak zorunda kalmaz, sadece
+  `DisPacketTap*` görür; bu da `network/` klasörünün `record/`'a bağımlı olmasını önler.
+- **Ham işaretçi + `ObjectID`**: `DisNetwork` dinleyicileri `(ObjectID, DisPacketTap*)` çifti olarak tutar ve her
+  çağrıdan önce `ObjectDB::get_instance(id)` ile nesnenin hâlâ yaşadığını denetler. Godot nesneleri bizim
+  bilmediğimiz bir anda silinebilir; ham işaretçi tek başına "sarkan işaretçi" (dangling pointer) riski taşır.
+- **Lambda ve STL algoritmaları** (`std::stable_sort`, `std::lower_bound`, `std::remove_if`): `[](const Packet &a,
+  const Packet &b) { return a.time < b.time; }` yerinde yazılmış küçük bir fonksiyon. `stable_sort` eşit zamanlı
+  paketlerin sırasını korur; `lower_bound` sıralı dizide ikili arama yapar (`seek()` binlerce paket arasında anında).
+- **Yapılandırılmış bağlama** (`for (const auto &[key, index] : latest)`): bir `std::pair`'i iki isme açar (C++17).
+- **Bayt sırası, elle**: pcapng dosyası yazıldığı makinenin bayt sırasını taşır (bölüm başlığındaki 0x1A2B3C4D
+  "sihirli sayı" ters okunursa dosya big-endian'dır). `Reader` yapısı her okumayı gerekirse ters çevirir; DIS ve
+  IP/UDP başlıkları ise her zaman big-endian (ağ sırası).
+- **İnternet sağlama toplamı** (`internet_checksum`): 16 bitlik kelimelerin taşmalı toplamı, sonra tersi. Doğru bir
+  IPv4 başlığının toplamı 0 çıkar; test bunu kullanır. UDP toplamı başına adresleri içeren bir "sözde başlık" ekler.
+- **Godot'tan bağımsız çekirdek**: `capture_format.cpp` yalnızca `std::vector<uint8_t>` ve `std::string` kullanır,
+  bu yüzden doctest programına doğrudan girer; Godot'ya özgü dosya erişimi (`FileAccess`, `user://`) üstteki ince
+  sınıflarda (`DisRecording`, `DisRecorder`). Aynı ayrım `geo_math` ve `dead_reckoning`'de de var.
+- **MSVC ile GCC farkı**: `std::all_of` için `<algorithm>` eklemeyi unutmuştuk; MSVC başka bir başlık üzerinden
+  dolaylı olarak buluyordu, GCC bulmadı. Ders: kullandığın her şeyin başlığını kendin ekle; Linux derlemesi bu tür
+  hataları yakalar.

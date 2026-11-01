@@ -2,6 +2,7 @@
 // Build and run: scons tests (see docs/building.md).
 #include <doctest.h>
 
+#include <algorithm>
 #include <cstring>
 #include <random>
 #include <string>

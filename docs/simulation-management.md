@@ -1,0 +1,106 @@
+# Simulation management: starting, stopping and removing
+
+DIS exercises are started, frozen and resumed by a *simulation manager* (SIMAN) with Simulation Management PDUs
+(protocol family 5); every application answers each request with an Acknowledge PDU. godot-dis implements the four
+PDUs exercise control needs and a node that plays both sides.
+
+| PDU | Type | Size | Classes |
+|---|---:|---:|---|
+| Remove Entity | 12 | 28 | `DisRemoveEntityPdu` |
+| Start/Resume | 13 | 44 | `DisStartResumePdu` |
+| Stop/Freeze | 14 | 40 | `DisStopFreezePdu` |
+| Acknowledge | 15 | 32 | `DisAcknowledgePdu` |
+
+All four derive from `DisSimulationManagementPdu` (and that from `DisPduBase`, like every PDU class):
+`originating_id`, `receiving_id`, `request_id`, and `is_addressed_to(site, application)`.
+
+## DisExerciseControl
+
+```gdscript
+# Scene: DisNetwork, DisExerciseControl (and your DisEntity nodes, DisEntityManager, ...)
+@onready var exercise: DisExerciseControl = $DisExerciseControl
+
+func _ready():
+    exercise.stopped.connect(func(pdu): print("frozen by ", pdu.originating_id if pdu else "us"))
+    exercise.started.connect(func(pdu): print("running, simulation time ", exercise.get_simulation_time()))
+```
+
+**As a managed application** (every simulation): a Start/Resume or Stop/Freeze whose receiving ID names this
+application (site and application of the `DisNetwork`, or 0xFFFF for "all") changes `state`
+(`STATE_RUNNING` / `STATE_STOPPED`) and emits `started(pdu)` / `stopped(pdu)` and `state_changed(state)`.
+
+- The request is acknowledged at once ("able to comply") when `auto_acknowledge` is on (default).
+- If the request names a real world time in the future, the change waits for it (`get_scheduled_time()`); a time
+  more than a day ahead is taken as a clock mismatch and applied at once. A time of 0 means "now".
+- A request sent again (same originator and request ID, because our answer got lost) is acknowledged again but
+  carried out only once.
+- `get_simulation_time()`: set by Start/Resume, runs while running, or while stopped if the Stop/Freeze set
+  `FROZEN_RUN_SIMULATION_CLOCK`. `get_frozen_behavior()` gives the other bits (`FROZEN_TRANSMIT_UPDATES`,
+  `FROZEN_PROCESS_UPDATES`).
+- `pause_tree`: stopping pauses the scene tree (`get_tree().paused`). The control node and its network are switched
+  to `PROCESS_MODE_ALWAYS`, so a Start/Resume can still arrive; nodes that should keep running while frozen (UI)
+  need `PROCESS_MODE_ALWAYS` too. Paused `DisEntity` nodes don't publish, a paused `DisEntityManager` doesn't
+  dead-reckon (both match "frozen" with no behavior bits).
+- `start_stopped`: begin in `STATE_STOPPED` and wait for a Start/Resume.
+- A Remove Entity request for one of this application's `DisEntity` nodes (or 0xFFFF = all of them) emits
+  `remove_entity_requested(entity_id, pdu)`; with `remove_entities` (default) the `DisEntity` node is freed, which
+  sends its final "deactivated" Entity State PDU. The answer is "able to comply", or "unable to comply" if there
+  is no such entity.
+- `start()` / `stop(frozen_behavior)` change the state by hand; `handle_pdu(pdu)` applies a PDU without the network.
+
+**As a simulation manager:**
+
+```gdscript
+var id := exercise.send_stop_freeze()                       # everyone, reason Recess, now
+exercise.send_start_resume(Vector3i(2, 1, 0), Time.get_unix_time_from_system() + 5.0)  # site 2 app 1, in 5 s
+exercise.send_remove_entity(Vector3i(2, 1, 7))              # ask the owner of 2:1:7 to remove it
+exercise.acknowledged.connect(func(request_id, response, pdu): print(request_id, " answered by ", pdu.originating_id))
+exercise.request_failed.connect(func(request_id): print(request_id, " got no answer"))
+```
+
+A request to one application is sent again every `retry_interval` (1 s) until it is acknowledged or `max_retries`
+(3) resends went unanswered (`request_failed`). A request to everyone is sent once; each answer arrives as
+`acknowledged`, and `request_failed` fires only if nobody answered within `retry_interval × (max_retries + 1)`.
+`get_pending_requests()` lists what is still open. Our own PDUs don't loop back to us (`ignore_own_packets`), so a
+manager that wants to stop itself too calls `stop()` as well — the demo does.
+
+## Byte layouts (DIS 7, big-endian)
+
+Taken from open-dis-cpp's DIS 7 classes and checked byte for byte against Open-DIS Python (`tools/golden_pdus.py`)
+and opendis7-java (its AllPduSender capture, `tests/unit/test_captures.gd`). The IEEE text is not reproduced.
+
+Every PDU starts with the 12-byte header (see [entity-state-pdu.md](entity-state-pdu.md)) and then:
+
+| Offset | Size | Field |
+|---:|---:|---|
+| 12 | 6 | Originating entity ID: site, application, entity (3 × uint16) |
+| 18 | 6 | Receiving entity ID: site, application, entity |
+
+| PDU | Offset | Size | Field |
+|---|---:|---:|---|
+| Remove Entity | 24 | 4 | Request ID (uint32) |
+| Start/Resume | 24 | 8 | Real world time: hour (int32), time past the hour (uint32, timestamp units) |
+| | 32 | 8 | Simulation time: same layout |
+| | 40 | 4 | Request ID |
+| Stop/Freeze | 24 | 8 | Real world time |
+| | 32 | 1 | Reason (SISO-REF-010 UID 67: 0 other, 1 recess, 2 termination, ...) |
+| | 33 | 1 | Frozen behavior (UID 68 bits: run simulation clock, transmit updates, process updates) |
+| | 34 | 2 | Padding |
+| | 36 | 4 | Request ID |
+| Acknowledge | 24 | 2 | Acknowledge flag (UID 69: 1 create, 2 remove, 3 start/resume, 4 stop/freeze, 5 transfer) |
+| | 26 | 2 | Response flag (UID 70: 0 other, 1 able, 2 unable, 3 pending operator action, 4 more info) |
+| | 28 | 4 | Request ID |
+
+Clock time: the hour counts hours since 1970-01-01 UTC for real world time (`set_real_world_time(unix_seconds)`)
+and hours since the start for simulation time (`set_simulation_time(seconds)`); the second field counts
+3600 s / 2^31 units past the hour, shifted left by one, with the low bit 1 for absolute time — the same encoding as
+the header timestamp. The raw fields (`real_world_time_hour`, `real_world_time_past_hour`, ...) round-trip exactly.
+
+Names for all enumeration values: `DisEnums.get_enum_name("stop_freeze_reason" | "acknowledge_flag" |
+"acknowledge_response", value)`.
+
+## Interoperability
+
+The demo's civilian traffic (`tools/demo_traffic.py`) is an Open-DIS Python application that obeys Stop/Freeze,
+Start/Resume and Remove Entity and answers with Open-DIS Acknowledge PDUs, so the exercise demo shows a Godot
+manager controlling a non-Godot application. Details and the other checks: [interoperability.md](interoperability.md).

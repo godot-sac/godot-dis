@@ -28,6 +28,20 @@ version-tagged byte-exact mirror (https://github.com/ngjunsiang/siso-ref-010-xml
 `addons/dis/data/sidc_map.json` (DIS category → MIL-STD-2525D symbol) is this project's own table (MIT); it uses
 SISO-REF-010 category names as labels.
 
+## Test inputs downloaded, not included
+
+`tools/fetch_captures.py` downloads these to `tools/.cache/captures/` for the tests; they are not committed or
+distributed.
+
+- **Wireshark SampleCaptures** `DIS_EntityState_1.pcapng`, `DIS_EntityState_2.pcapng`,
+  `DIS_EnvironmentalProcess.pcapng`, `DIS_Signal.pcapng`, `DIS_signal_and_transmitter.pcapng` from
+  https://wiki.wireshark.org/SampleCaptures. No license is stated for these files.
+- **NPS MOVES MV3500** `AllPduSenderWiresharkCapture.pcapng` from https://gitlab.nps.edu/Savage/NetworkedGraphicsMV3500
+  (`examples/src/OpenDis7Examples/`), under the repository's "Open-Source Software License for NPS MOVES Savage
+  Research Group" (BSD-style), Copyright (c) 1995-2024 held by the author(s).
+
+Wireshark / tshark (GPL-2.0) is run as a separate program by the tests; none of its code is used or read.
+
 ## Planned
 
 - **open-dis-cpp** (BSD-2-Clause, https://github.com/open-dis/open-dis-cpp) — compiled into the extension.

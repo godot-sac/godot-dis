@@ -16,6 +16,29 @@ All notable changes to this project are documented here. Versions follow [semver
 - Demo: two-sided exercise around Ankara plus civilian traffic from Open-DIS Python (`--port`; traffic `--start`,
   `--rate`, dead reckoning algorithm 4 with turn rate, racetrack routes); `tools/link_milsymbol.py`.
 - CI for Windows, Linux and macOS.
+- Fire, Detonation, Remove Entity, Start/Resume, Stop/Freeze and Acknowledge PDUs (`DisFirePdu`,
+  `DisDetonationPdu`, `DisRemoveEntityPdu`, `DisStartResumePdu`, `DisStopFreezePdu`, `DisAcknowledgePdu`) on a
+  common `DisPduBase`; `DisPdu.decode()` returns any of them; byte-for-byte golden tests against Open-DIS Python.
+- `DisNetwork` signals per PDU type (`fire_received`, `detonation_received`, `start_resume_received`, ...);
+  `inject_packet()`; the own-packet filter covers every PDU family that starts with the sender's ID.
+- `DisExerciseControl`: obeys Start/Resume, Stop/Freeze (also at a requested time) and Remove Entity with automatic
+  Acknowledge and optional tree pause; sends them as a simulation manager with retries.
+- `DisEntity.fire()`, `detonate()`, `create_fire_pdu()`, `create_detonation_pdu()`.
+- Recording and playback: `DisRecorder` (pcapng or `.pdulog`), `DisRecording` (load / save / summary; also reads
+  pcap and other tools' captures), `DisPlayer` (into the scene or onto the network, speed, pause, seek, loop),
+  `DisEntityManager.time_scale`; command line tool `addons/dis/tools/dis_cli.gd` (record, play, info, dump,
+  convert).
+- Interoperability tests: Wireshark's DIS dissector (tshark) on our pcapng, public Wireshark and NPS
+  (opendis7-java) captures (`tools/fetch_captures.py`); results in `docs/interoperability.md`, PDU support table in
+  the README.
+- `DisEnums`: PDU type, protocol family, warhead, fuse, detonation result, stop/freeze reason and acknowledge
+  tables; `appearance_to_status()`; `entity_type_to_sidc()` accepts 2525D status digits 0–5.
+- Demo: fire (F), Remove Entity request (X), stop / resume the exercise (S / R), event log, destroyed units,
+  `--record`; replay viewer `demo/replay.tscn`; the Open-DIS Python traffic obeys and acknowledges exercise control.
+
+### Changed
+- `DisEntityStatePdu` derives from `DisPduBase` (same properties and methods).
+- A PDU length field of 0 is read as the datagram size (some senders never fill it in).
 
 ### Fixed
 - The first headless import of a new project (`--import`, `--editor --quit`) no longer crashes on exit: works

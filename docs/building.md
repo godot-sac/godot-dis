@@ -30,11 +30,13 @@ macOS: add `arch=universal` (one library for Intel and Apple Silicon, the path `
 ## Continuous integration
 `.github/workflows/ci.yml` runs on every push and pull request (once the repository is on GitHub):
 - Windows (MSVC), Linux (Ubuntu 22.04, GCC) and macOS (universal): debug and release builds, C++ unit tests.
-- Windows and Linux: downloads Godot 4.7.2 and runs the GUT tests, including the Open-DIS Python interop tests.
+- Windows and Linux: downloads Godot 4.7.2 and the public sample captures, and runs the GUT tests, including the
+  Open-DIS Python interop tests; Linux also installs tshark for the Wireshark test.
   Broadcast / multicast tests become "pending" if the runner's network does not loop them back.
 - A final job packs `addons/dis` with the libraries of all three platforms (artifact `godot-dis-addon`).
 
-The Linux job's steps were checked locally in WSL (Ubuntu 24.04, GCC 13): build, 16 C++ tests, 71 GUT tests.
+The Linux job's steps were checked locally in WSL (Ubuntu 24.04, GCC 13): build, 24 C++ tests, 108 GUT tests
+(the 2 Wireshark tests pending without tshark).
 
 ## Test
 ```powershell
@@ -42,8 +44,12 @@ $godot = "C:\path\to\godot.exe"   # your Godot path
 & $godot --headless --path . --import
 & $godot --headless --path . -s addons/gut/gut_cmdln.gd
 ```
+Optional parts of the suite, "pending" when missing: the UDP interop tests need `tools/.venv` with Open-DIS Python;
+the sample-capture tests need `.\tools\.venv\Scripts\python.exe tools\fetch_captures.py` (downloads public DIS
+captures to `tools/.cache/captures`); the Wireshark test needs tshark (Wireshark installed in its default place,
+or `apt install tshark`). See docs/interoperability.md.
 
-C++ unit tests (doctest, no Godot needed; coordinate math and dead reckoning):
+C++ unit tests (doctest, no Godot needed; coordinate math, dead reckoning, capture file formats):
 ```powershell
 .\tools\.venv\Scripts\scons.exe tests
 ```
@@ -51,6 +57,7 @@ C++ unit tests (doctest, no Godot needed; coordinate math and dead reckoning):
 Regenerate oracle data (only when the cases change):
 ```powershell
 .\tools\.venv\Scripts\python.exe tools\golden.py       # Entity State PDUs (Open-DIS Python)
+.\tools\.venv\Scripts\python.exe tools\golden_pdus.py  # Fire, Detonation, simulation management PDUs
 .\tools\.venv\Scripts\python.exe tools\geo_golden.py   # coordinates (pymap3d, Open-DIS Python)
 .\tools\.venv\Scripts\python.exe tools\dr_golden.py    # dead reckoning (Open-DIS Python)
 ```
