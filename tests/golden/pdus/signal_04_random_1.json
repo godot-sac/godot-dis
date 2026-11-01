@@ -1,0 +1,24 @@
+{
+  "class": "DisSignalPdu",
+  "length": 104,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 12,
+    "timestamp": 980126688,
+    "pdu_status": 151,
+    "radio_reference_id": [
+      23429,
+      16772,
+      43476
+    ],
+    "radio_number": 46110,
+    "encoding_scheme": 44562,
+    "tdl_type": 14626,
+    "sample_rate": 2348225530,
+    "data_length": 576,
+    "samples": 26670,
+    "data": {
+      "bytes_hex": "5eeca87d16b4ded248bde24c6e301a8e9dbd0bedc9267e50cee4fe8cecc07628946df138a59178644f9cf07bceaabf607101da7ea470c3a32c56f4766ace0063b6a2b3e8e42cd0f4"
+    }
+  }
+}

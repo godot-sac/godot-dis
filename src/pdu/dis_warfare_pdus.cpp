@@ -114,6 +114,7 @@ Ref<DisFirePdu> DisFirePdu::decode(const PackedByteArray &bytes) {
 	DIS_READ_DESCRIPTOR(out, pdu.getDescriptor());
 	out->velocity = from_dis_vector(pdu.getVelocity());
 	out->range = pdu.getRange();
+	out->keep_trailing(bytes);
 	return out;
 }
 
@@ -141,7 +142,7 @@ void DisDetonationPdu::_bind_methods() {
 	BIND_ENUM_CONSTANT(RESULT_AIR_BURST);
 }
 
-int DisDetonationPdu::get_length() const {
+int DisDetonationPdu::get_body_length() const {
 	return BASE_SIZE + VARIABLE_PARAMETER_SIZE * static_cast<int>(variable_parameters.size());
 }
 
@@ -204,5 +205,6 @@ Ref<DisDetonationPdu> DisDetonationPdu::decode(const PackedByteArray &bytes) {
 		const int64_t start = BASE_SIZE + VARIABLE_PARAMETER_SIZE * i;
 		out->variable_parameters.push_back(bytes.slice(start, start + VARIABLE_PARAMETER_SIZE));
 	}
+	out->keep_trailing(bytes);
 	return out;
 }

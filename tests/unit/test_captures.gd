@@ -74,7 +74,7 @@ func test_opendis7_java_all_pdu_sender() -> void:
 	var summary := recording.get_summary()
 	assert_eq(summary.pdu_types.size(), 72, "one PDU of each of the 72 DIS 7 types")
 	var result := _check_round_trips("AllPduSender", recording)
-	assert_eq(result.decoded, {1: 1, 2: 1, 3: 1, 12: 1, 13: 1, 14: 1, 15: 1},
+	assert_eq(result.decoded, {1: 1, 2: 1, 3: 1, 4: 1, 11: 1, 12: 1, 13: 1, 14: 1, 15: 1, 19: 1, 20: 1, 22: 1, 25: 1, 26: 1},
 			"every type we support was found and decoded")
 	assert_eq(result.problems, PackedStringArray(), "and re-encodes to the same bytes")
 	var entity := DisPdu.decode(recording.get_bytes(0)) as DisEntityStatePdu

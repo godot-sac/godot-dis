@@ -111,7 +111,7 @@ String DisEntityStatePdu::get_marking() const {
 	return marking_bytes.get_string_from_ascii();
 }
 
-int DisEntityStatePdu::get_length() const {
+int DisEntityStatePdu::get_body_length() const {
 	return BASE_SIZE + VARIABLE_PARAMETER_SIZE * static_cast<int>(variable_parameters.size());
 }
 
@@ -221,5 +221,6 @@ Ref<DisEntityStatePdu> DisEntityStatePdu::decode(const PackedByteArray &bytes) {
 		const int64_t start = BASE_SIZE + VARIABLE_PARAMETER_SIZE * i;
 		out->variable_parameters.push_back(bytes.slice(start, start + VARIABLE_PARAMETER_SIZE));
 	}
+	out->keep_trailing(bytes);
 	return out;
 }

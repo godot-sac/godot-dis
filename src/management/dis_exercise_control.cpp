@@ -39,6 +39,7 @@ void DisExerciseControl::_bind_methods() {
 			&DisExerciseControl::send_stop_freeze, DEFVAL(Vector3i(ALL, ALL, ALL)),
 			DEFVAL(DisStopFreezePdu::REASON_RECESS), DEFVAL(0), DEFVAL(0.0));
 	ClassDB::bind_method(D_METHOD("send_remove_entity", "entity_id"), &DisExerciseControl::send_remove_entity);
+	ClassDB::bind_method(D_METHOD("send_create_entity", "receiving_id"), &DisExerciseControl::send_create_entity);
 	ClassDB::bind_method(D_METHOD("get_pending_requests"), &DisExerciseControl::get_pending_requests);
 	ClassDB::bind_method(D_METHOD("start"), &DisExerciseControl::start);
 	ClassDB::bind_method(D_METHOD("stop", "frozen_behavior"), &DisExerciseControl::stop, DEFVAL(0));
@@ -60,6 +61,8 @@ void DisExerciseControl::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("state_changed", PropertyInfo(Variant::INT, "state")));
 	ADD_SIGNAL(MethodInfo("started", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisStartResumePdu")));
 	ADD_SIGNAL(MethodInfo("stopped", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisStopFreezePdu")));
+	ADD_SIGNAL(MethodInfo("create_entity_requested", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+															  "DisCreateEntityPdu")));
 	ADD_SIGNAL(MethodInfo("remove_entity_requested", PropertyInfo(Variant::VECTOR3I, "entity_id"),
 			PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisRemoveEntityPdu")));
 	ADD_SIGNAL(MethodInfo("acknowledged", PropertyInfo(Variant::INT, "request_id"), PropertyInfo(Variant::INT, "response_flag"),
@@ -135,6 +138,7 @@ void DisExerciseControl::connect_network() {
 	network->connect("start_resume_received", callable_mp(this, &DisExerciseControl::on_start_resume));
 	network->connect("stop_freeze_received", callable_mp(this, &DisExerciseControl::on_stop_freeze));
 	network->connect("remove_entity_received", callable_mp(this, &DisExerciseControl::on_remove_entity));
+	network->connect("create_entity_received", callable_mp(this, &DisExerciseControl::on_create_entity));
 	network->connect("acknowledge_received", callable_mp(this, &DisExerciseControl::on_acknowledge));
 	connected_network = ObjectID(network->get_instance_id());
 }
@@ -149,11 +153,12 @@ void DisExerciseControl::disconnect_network() {
 		callable_mp(this, &DisExerciseControl::on_start_resume),
 		callable_mp(this, &DisExerciseControl::on_stop_freeze),
 		callable_mp(this, &DisExerciseControl::on_remove_entity),
+		callable_mp(this, &DisExerciseControl::on_create_entity),
 		callable_mp(this, &DisExerciseControl::on_acknowledge),
 	};
 	const char *signals[] = { "start_resume_received", "stop_freeze_received", "remove_entity_received",
-		"acknowledge_received" };
-	for (int i = 0; i < 4; i++) {
+		"create_entity_received", "acknowledge_received" };
+	for (int i = 0; i < 5; i++) {
 		if (network->is_connected(signals[i], callables[i])) {
 			network->disconnect(signals[i], callables[i]);
 		}
@@ -264,6 +269,9 @@ void DisExerciseControl::handle_pdu(const Ref<DisPduBase> &pdu) {
 			break;
 		case DisPdu::PDU_TYPE_REMOVE_ENTITY:
 			on_remove_entity(pdu);
+			break;
+		case DisPdu::PDU_TYPE_CREATE_ENTITY:
+			on_create_entity(pdu);
 			break;
 		case DisPdu::PDU_TYPE_ACKNOWLEDGE:
 			on_acknowledge(pdu);
@@ -377,6 +385,26 @@ int64_t DisExerciseControl::send_stop_freeze(const Vector3i &receiving_id, int r
 	pdu->set_reason(reason);
 	pdu->set_frozen_behavior(behavior);
 	return send_request(pdu, DisAcknowledgePdu::ACKNOWLEDGE_STOP_FREEZE);
+}
+
+void DisExerciseControl::on_create_entity(const Ref<DisCreateEntityPdu> &pdu) {
+	DisNetwork *network = get_network();
+	if (pdu.is_null() || network == nullptr || !pdu->is_addressed_to(network->get_site_id(), network->get_application_id())) {
+		return;
+	}
+	const bool handled_by_game = !get_signal_connection_list("create_entity_requested").is_empty();
+	if (!already_handled(pdu) && handled_by_game) {
+		emit_signal("create_entity_requested", pdu);
+	}
+	acknowledge(network, pdu, DisAcknowledgePdu::ACKNOWLEDGE_CREATE_ENTITY,
+			handled_by_game ? DisAcknowledgePdu::RESPONSE_ABLE_TO_COMPLY : DisAcknowledgePdu::RESPONSE_UNABLE_TO_COMPLY);
+}
+
+int64_t DisExerciseControl::send_create_entity(const Vector3i &receiving_id) {
+	Ref<DisCreateEntityPdu> pdu;
+	pdu.instantiate();
+	pdu->set_receiving_id(receiving_id);
+	return send_request(pdu, DisAcknowledgePdu::ACKNOWLEDGE_CREATE_ENTITY);
 }
 
 int64_t DisExerciseControl::send_remove_entity(const Vector3i &entity_id) {

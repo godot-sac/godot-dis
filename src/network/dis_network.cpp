@@ -73,6 +73,19 @@ void DisNetwork::_bind_methods() {
 														   "DisStopFreezePdu")));
 	ADD_SIGNAL(MethodInfo("acknowledge_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
 														   "DisAcknowledgePdu")));
+	ADD_SIGNAL(MethodInfo("collision_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														 "DisCollisionPdu")));
+	ADD_SIGNAL(MethodInfo("create_entity_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+															 "DisCreateEntityPdu")));
+	ADD_SIGNAL(MethodInfo("comment_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+													   "DisCommentPdu")));
+	ADD_SIGNAL(MethodInfo("set_data_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														"DisSetDataPdu")));
+	ADD_SIGNAL(MethodInfo("data_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisDataPdu")));
+	ADD_SIGNAL(MethodInfo("transmitter_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														   "DisTransmitterPdu")));
+	ADD_SIGNAL(MethodInfo("signal_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+													  "DisSignalPdu")));
 	ADD_SIGNAL(MethodInfo("packet_rejected", PropertyInfo(Variant::STRING, "reason"), PropertyInfo(Variant::STRING, "sender_ip")));
 
 	BIND_ENUM_CONSTANT(MODE_BROADCAST);
@@ -241,6 +254,20 @@ const char *DisNetwork::typed_signal_of(int pdu_type) {
 			return "stop_freeze_received";
 		case DisPdu::PDU_TYPE_ACKNOWLEDGE:
 			return "acknowledge_received";
+		case DisPdu::PDU_TYPE_COLLISION:
+			return "collision_received";
+		case DisPdu::PDU_TYPE_CREATE_ENTITY:
+			return "create_entity_received";
+		case DisPdu::PDU_TYPE_COMMENT:
+			return "comment_received";
+		case DisPdu::PDU_TYPE_SET_DATA:
+			return "set_data_received";
+		case DisPdu::PDU_TYPE_DATA:
+			return "data_received";
+		case DisPdu::PDU_TYPE_TRANSMITTER:
+			return "transmitter_received";
+		case DisPdu::PDU_TYPE_SIGNAL:
+			return "signal_received";
 		default:
 			return nullptr;
 	}

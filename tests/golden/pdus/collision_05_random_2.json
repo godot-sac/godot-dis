@@ -1,0 +1,40 @@
+{
+  "class": "DisCollisionPdu",
+  "length": 60,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 38,
+    "timestamp": 343710154,
+    "pdu_status": 84,
+    "issuing_entity_id": [
+      40790,
+      28405,
+      18334
+    ],
+    "colliding_entity_id": [
+      27498,
+      53713,
+      24100
+    ],
+    "event_id": [
+      9847,
+      62012,
+      48952
+    ],
+    "collision_type": 218,
+    "padding": 0,
+    "velocity": [
+      255.08627319335938,
+      156.47467041015625,
+      -249.8096466064453
+    ],
+    "mass": {
+      "f64": "40f3255320000000"
+    },
+    "location": [
+      -18.76547622680664,
+      -6.022688388824463,
+      -18.195375442504883
+    ]
+  }
+}

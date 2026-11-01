@@ -25,6 +25,12 @@ func _golden_pdus() -> Array:
 	return out
 
 
+## Wireshark 4.6 raises an exception on a Signal PDU without data (data length 0), although the PDU is complete
+## (Open-DIS Python writes the same bytes). See docs/interoperability.md.
+static func _known_wireshark_limit(pdu: DisPduBase) -> bool:
+	return pdu is DisSignalPdu and pdu.data_length == 0
+
+
 ## Runs tshark on `file` and returns one Dictionary per frame with the requested fields.
 func _tshark_fields(tshark: String, file: String, fields: PackedStringArray) -> Array:
 	var args := PackedStringArray(["-r", ProjectSettings.globalize_path(file), "-d", "udp.port==3000,dis", "-T",
@@ -69,7 +75,7 @@ func test_wireshark_decodes_our_pcapng() -> void:
 			problems.append("frame %d: %s seen as PDU type '%s'" % [i + 1, pdu.get_class(), row["dis.pdu_type"]])
 		if row["dis.pdu_length"] != str(pdu.get_length()):
 			problems.append("frame %d: length %s != %d" % [i + 1, row["dis.pdu_length"], pdu.get_length()])
-		if row["_ws.malformed"] != "":
+		if row["_ws.malformed"] != "" and not _known_wireshark_limit(pdu):
 			problems.append("frame %d: %s malformed: %s" % [i + 1, pdu.get_class(), row["_ws.expert.message"]])
 		if row["_ws.expert.message"] != "":
 			severities[pdu.get_class()] = row["_ws.expert.message"]

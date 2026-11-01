@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include <dis7/AcknowledgePdu.h>
+#include <dis7/CreateEntityPdu.h>
 #include <dis7/RemoveEntityPdu.h>
 #include <dis7/StartResumePdu.h>
 #include <dis7/StopFreezePdu.h>
@@ -134,6 +135,7 @@ Ref<DisStartResumePdu> DisStartResumePdu::decode(const PackedByteArray &bytes) {
 	out->simulation_time_hour = static_cast<int32_t>(pdu.getSimulationTime().getHour());
 	out->simulation_time_past_hour = pdu.getSimulationTime().getTimePastHour();
 	out->request_id = pdu.getRequestID();
+	out->keep_trailing(bytes);
 	return out;
 }
 
@@ -202,6 +204,7 @@ Ref<DisStopFreezePdu> DisStopFreezePdu::decode(const PackedByteArray &bytes) {
 	out->frozen_behavior = pdu.getFrozenBehavior();
 	out->padding = static_cast<uint16_t>(pdu.getPadding1());
 	out->request_id = pdu.getRequestID();
+	out->keep_trailing(bytes);
 	return out;
 }
 
@@ -250,6 +253,7 @@ Ref<DisAcknowledgePdu> DisAcknowledgePdu::decode(const PackedByteArray &bytes) {
 	out->acknowledge_flag = pdu.getAcknowledgeFlag();
 	out->response_flag = pdu.getResponseFlag();
 	out->request_id = pdu.getRequestID();
+	out->keep_trailing(bytes);
 	return out;
 }
 
@@ -279,5 +283,36 @@ Ref<DisRemoveEntityPdu> DisRemoveEntityPdu::decode(const PackedByteArray &bytes)
 	out->read_header(pdu);
 	DIS_READ_IDS(out, pdu);
 	out->request_id = pdu.getRequestID();
+	out->keep_trailing(bytes);
+	return out;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Create Entity
+
+void DisCreateEntityPdu::_bind_methods() {
+	ClassDB::bind_static_method("DisCreateEntityPdu", D_METHOD("decode", "bytes"), &DisCreateEntityPdu::decode);
+}
+
+PackedByteArray DisCreateEntityPdu::encode() const {
+	DIS::CreateEntityPdu pdu;
+	write_header(pdu);
+	write_ids(pdu, originating_id, receiving_id);
+	pdu.setRequestID(static_cast<unsigned int>(request_id));
+	return marshal(pdu);
+}
+
+Ref<DisCreateEntityPdu> DisCreateEntityPdu::decode(const PackedByteArray &bytes) {
+	Ref<DisCreateEntityPdu> out = checked<DisCreateEntityPdu>(bytes, DisPdu::PDU_TYPE_CREATE_ENTITY, SIZE);
+	if (out.is_null()) {
+		return out;
+	}
+	DIS::CreateEntityPdu pdu;
+	DIS::DataStream stream = pdu_bytes::to_stream(bytes.slice(0, SIZE));
+	pdu.unmarshal(stream);
+	out->read_header(pdu);
+	DIS_READ_IDS(out, pdu);
+	out->request_id = pdu.getRequestID();
+	out->keep_trailing(bytes);
 	return out;
 }

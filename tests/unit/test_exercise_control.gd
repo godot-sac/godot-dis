@@ -169,3 +169,18 @@ func test_manual_transitions_and_handle_pdu() -> void:
 	_managed.handle_pdu(start)
 	assert_true(_managed.is_running(), "handle_pdu applies a PDU without the network")
 	assert_eq(changes, [DisExerciseControl.STATE_STOPPED, DisExerciseControl.STATE_RUNNING])
+
+
+func test_create_entity_request() -> void:
+	_setup(3142)
+	_manager.send_create_entity(Vector3i(2, 1, 0))
+	assert_true(await _wait_for(func(): return _count("ack") == 1, 2.0))
+	assert_eq(_first("ack")[2], DisAcknowledgePdu.RESPONSE_UNABLE_TO_COMPLY, "nobody handles create_entity_requested")
+	assert_eq(_first("ack")[3], DisAcknowledgePdu.ACKNOWLEDGE_CREATE_ENTITY)
+	var requests := []
+	_managed.create_entity_requested.connect(func(pdu): requests.append(pdu))
+	_manager.send_create_entity(Vector3i(2, 1, 0))
+	assert_true(await _wait_for(func(): return _count("ack") == 2, 2.0))
+	assert_eq(_events.back()[2], DisAcknowledgePdu.RESPONSE_ABLE_TO_COMPLY, "the game handles it")
+	assert_eq(requests.size(), 1)
+	assert_eq(requests[0].originating_id, Vector3i(1, 1, 0))

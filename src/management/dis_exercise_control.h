@@ -20,10 +20,13 @@ class DisNetwork;
 // Managed application (what every simulation needs): Start/Resume and Stop/Freeze addressed to this application
 // change `state` (at the real world time they ask for, or at once) and emit started / stopped; a Remove Entity
 // request for one of our DisEntity nodes emits remove_entity_requested and, with remove_entities, frees the node.
+// A Create Entity request emits create_entity_requested; it is answered "able to comply" if something is connected
+// to that signal (the game creates the entity), "unable to comply" otherwise.
 // With auto_acknowledge each request is answered with an Acknowledge PDU. With pause_tree, stopping pauses the
 // scene tree (the network and this node keep running so a Start/Resume can wake it up).
 //
-// Simulation manager: send_start_resume / send_stop_freeze / send_remove_entity return a request ID. A request to
+// Simulation manager: send_start_resume / send_stop_freeze / send_create_entity / send_remove_entity return a
+// request ID. A request to
 // one application is sent again every retry_interval until it is acknowledged (acknowledged signal) or
 // max_retries is reached (request_failed). A request to all applications is sent once; every answer arrives as
 // acknowledged, and request_failed fires if nobody answered.
@@ -87,6 +90,7 @@ private:
 	void on_start_resume(const godot::Ref<DisStartResumePdu> &pdu);
 	void on_stop_freeze(const godot::Ref<DisStopFreezePdu> &pdu);
 	void on_remove_entity(const godot::Ref<DisRemoveEntityPdu> &pdu);
+	void on_create_entity(const godot::Ref<DisCreateEntityPdu> &pdu);
 	void on_acknowledge(const godot::Ref<DisAcknowledgePdu> &pdu);
 
 protected:
@@ -101,6 +105,8 @@ public:
 	int64_t send_start_resume(const godot::Vector3i &receiving_id, double real_world_time, double simulation_time);
 	int64_t send_stop_freeze(const godot::Vector3i &receiving_id, int reason, int frozen_behavior, double real_world_time);
 	int64_t send_remove_entity(const godot::Vector3i &entity_id);
+	// Asks the application `receiving_id` (site, application, 0) to create an entity.
+	int64_t send_create_entity(const godot::Vector3i &receiving_id);
 	// Requests still waiting for an answer: [{request_id, acknowledge_flag, receiving_id, sent, answers}].
 	godot::Array get_pending_requests() const;
 

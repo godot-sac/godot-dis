@@ -1,0 +1,32 @@
+{
+  "class": "DisCommentPdu",
+  "length": 48,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 8,
+    "timestamp": 877202778,
+    "pdu_status": 228,
+    "originating_id": [
+      41014,
+      21085,
+      3104
+    ],
+    "receiving_id": [
+      33083,
+      34265,
+      53643
+    ],
+    "fixed_datums": {
+      "fixed": []
+    },
+    "variable_datums": {
+      "variable": [
+        [
+          857280785,
+          24,
+          "70f120"
+        ]
+      ]
+    }
+  }
+}

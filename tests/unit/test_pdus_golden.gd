@@ -4,7 +4,8 @@ extends GutTest
 
 const GOLDEN_DIR := "res://tests/golden/pdus/"
 const CLASSES := ["DisFirePdu", "DisDetonationPdu", "DisRemoveEntityPdu", "DisStartResumePdu", "DisStopFreezePdu",
-		"DisAcknowledgePdu"]
+		"DisAcknowledgePdu", "DisCollisionPdu", "DisCreateEntityPdu", "DisCommentPdu", "DisSetDataPdu", "DisDataPdu",
+		"DisTransmitterPdu", "DisSignalPdu"]
 
 var _cases: Array = []
 
@@ -42,6 +43,18 @@ static func _to_godot(json_value: Variant, like: Variant) -> Variant:
 			for hex: String in json_value.raw_hex:
 				out.append(hex.hex_decode())
 			return out
+		if json_value.has("bytes_hex"):
+			return (json_value.bytes_hex as String).hex_decode()
+		if json_value.has("fixed"):
+			var out := []
+			for pair: Array in json_value.fixed:
+				out.append({"id": int(pair[0]), "value": int(pair[1])})
+			return out
+		if json_value.has("variable"):
+			var out := []
+			for record: Array in json_value.variable:
+				out.append({"id": int(record[0]), "length": int(record[1]), "data": (record[2] as String).hex_decode()})
+			return out
 	match typeof(like):
 		TYPE_INT:
 			return int(json_value)
@@ -51,6 +64,8 @@ static func _to_godot(json_value: Variant, like: Variant) -> Variant:
 			return Vector3(json_value[0], json_value[1], json_value[2])
 		TYPE_PACKED_INT32_ARRAY:
 			return PackedInt32Array(json_value)
+		TYPE_PACKED_BYTE_ARRAY:
+			return PackedByteArray(json_value)
 	return json_value
 
 
@@ -151,8 +166,8 @@ func test_malformed_packets_fail_without_crashing() -> void:
 func test_random_garbage_does_not_crash() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1279
-	var types := [2, 3, 12, 13, 14, 15]
-	for i in 3000:
+	var types := [2, 3, 4, 11, 12, 13, 14, 15, 19, 20, 22, 25, 26]
+	for i in 6000:
 		var bytes := PackedByteArray()
 		bytes.resize(rng.randi_range(0, 200))
 		for j in bytes.size():
@@ -165,7 +180,7 @@ func test_random_garbage_does_not_crash() -> void:
 				bytes[8] = bytes.size() >> 8
 				bytes[9] = bytes.size() & 0xFF
 		DisPdu.decode(bytes)
-	pass_test("3000 malformed packets decoded without crashing")
+	pass_test("6000 malformed packets decoded without crashing")
 
 
 func test_simulation_management_addressing() -> void:
@@ -204,3 +219,36 @@ func test_common_api() -> void:
 		assert_eq(bytes[3], pdu.get_protocol_family(), class_name_ + " family byte")
 		assert_eq(DisPdu.decode(bytes).get_class(), class_name_, class_name_ + " round trip")
 	assert_true(DisEntityStatePdu.new() is DisPduBase, "Entity State shares the base class")
+
+
+func test_datum_helpers() -> void:
+	var comment := DisCommentPdu.new()
+	comment.add_text(1, "Phase line ALPHA crossed — ğüşiöç")
+	comment.add_fixed_datum(240000, 42)
+	comment.add_variable_datum(9, PackedByteArray([0xA0]), 3)  # 3 bits: one byte on the wire, padded to 8
+	var decoded := DisPdu.decode(comment.encode()) as DisCommentPdu
+	assert_eq(decoded.get_text(1), "Phase line ALPHA crossed — ğüşiöç")
+	assert_eq(decoded.get_text(5), "", "no such datum")
+	assert_eq(decoded.fixed_datums, [{"id": 240000, "value": 42}])
+	assert_eq(decoded.variable_datums[1], {"id": 9, "length": 3, "data": PackedByteArray([0xA0])})
+	assert_eq(comment.encode().size(), comment.get_length())
+	assert_eq(comment.get_length() % 8, 0, "datum records keep 64-bit alignment")
+
+
+func test_signal_padding_and_trailing_bytes() -> void:
+	var signal_pdu := DisSignalPdu.new()
+	signal_pdu.set_data_bytes(PackedByteArray([1, 2, 3, 4, 5]))
+	var bytes := signal_pdu.encode()
+	assert_eq(bytes.size(), 40, "32 + 5 data bytes padded to a multiple of 4")
+	assert_eq(signal_pdu.data_length, 40)
+	var decoded := DisPdu.decode(bytes) as DisSignalPdu
+	assert_eq(decoded.data, PackedByteArray([1, 2, 3, 4, 5]))
+	assert_eq(decoded.trailing_bytes, PackedByteArray(), "the padding belongs to the PDU, not to trailing bytes")
+	assert_eq(decoded.encode(), bytes)
+	# A sender's own extension after the last field survives decode + encode.
+	var remove := DisRemoveEntityPdu.new()
+	remove.trailing_bytes = PackedByteArray([0xDE, 0xAD, 0xBE, 0xEF])
+	var extended := remove.encode()
+	assert_eq(extended.size(), 32)
+	assert_eq((extended[8] << 8) | extended[9], 32, "the length field counts the trailing bytes")
+	assert_eq(DisPdu.decode(extended).encode(), extended)

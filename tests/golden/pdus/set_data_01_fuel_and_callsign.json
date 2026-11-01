@@ -1,0 +1,43 @@
+{
+  "class": "DisSetDataPdu",
+  "length": 72,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "originating_id": [
+      1,
+      1,
+      0
+    ],
+    "receiving_id": [
+      2,
+      1,
+      4
+    ],
+    "request_id": 12,
+    "fixed_datums": {
+      "fixed": [
+        [
+          57600,
+          1500
+        ],
+        [
+          57601,
+          3
+        ]
+      ]
+    },
+    "variable_datums": {
+      "variable": [
+        [
+          31010,
+          56,
+          "56495045522d31"
+        ]
+      ]
+    },
+    "padding": 0
+  }
+}

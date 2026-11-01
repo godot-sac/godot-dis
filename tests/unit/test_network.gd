@@ -256,8 +256,10 @@ func test_receives_every_pdu_type_from_open_dis_python() -> void:
 	var received := []
 	network.pdu_received.connect(func(pdu, ip, port): received.append(pdu))
 	var typed := {}
-	for signal_name in ["fire_received", "detonation_received", "remove_entity_received", "start_resume_received",
-			"stop_freeze_received", "acknowledge_received"]:
+	var signal_names := ["fire_received", "detonation_received", "remove_entity_received", "start_resume_received",
+			"stop_freeze_received", "acknowledge_received", "collision_received", "create_entity_received",
+			"comment_received", "set_data_received", "data_received", "transmitter_received", "signal_received"]
+	for signal_name in signal_names:
 		network.connect(signal_name, func(pdu): typed[signal_name] = typed.get(signal_name, 0) + 1)
 	var pid := OS.create_process(python, [ProjectSettings.globalize_path("res://tools/oracle_sender.py"),
 			"--port", "3123", "--golden", ProjectSettings.globalize_path("res://tests/golden/pdus"),
@@ -270,7 +272,7 @@ func test_receives_every_pdu_type_from_open_dis_python() -> void:
 		if received[i].encode() != golden[i]:
 			mismatches.append("#%d %s" % [i, received[i].get_class()])
 	assert_eq(mismatches, PackedStringArray(), "re-encoded PDUs equal what Python sent")
-	assert_eq(typed.size(), 6, "every typed signal fired: %s" % typed)
+	assert_eq(typed.size(), signal_names.size(), "every typed signal fired: %s" % typed)
 	assert_eq(_rejected, [], "nothing rejected")
 
 

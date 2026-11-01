@@ -1,0 +1,54 @@
+{
+  "class": "DisTransmitterPdu",
+  "length": 104,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "radio_reference_id": [
+      0,
+      0,
+      0
+    ],
+    "radio_number": 0,
+    "radio_type": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "transmit_state": 0,
+    "input_source": 0,
+    "antenna_location_ecef": {
+      "f64_list": [
+        "0000000000000000",
+        "0000000000000000",
+        "0000000000000000"
+      ]
+    },
+    "relative_antenna_location": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "antenna_pattern_type": 0,
+    "frequency": 0,
+    "bandwidth": {
+      "f64": "0000000000000000"
+    },
+    "power": {
+      "f64": "0000000000000000"
+    },
+    "modulation_type": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "crypto_system": 0,
+    "crypto_key_id": 0
+  }
+}

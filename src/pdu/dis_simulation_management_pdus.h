@@ -64,7 +64,7 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisStartResumePdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 13; }
-	int get_length() const override { return SIZE; }
+	int get_body_length() const override { return SIZE; }
 
 	void set_real_world_time_hour(int64_t value) { real_world_time_hour = value; }
 	int64_t get_real_world_time_hour() const { return real_world_time_hour; }
@@ -120,7 +120,7 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisStopFreezePdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 14; }
-	int get_length() const override { return SIZE; }
+	int get_body_length() const override { return SIZE; }
 
 	void set_real_world_time_hour(int64_t value) { real_world_time_hour = value; }
 	int64_t get_real_world_time_hour() const { return real_world_time_hour; }
@@ -170,7 +170,7 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisAcknowledgePdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 15; }
-	int get_length() const override { return SIZE; }
+	int get_body_length() const override { return SIZE; }
 
 	void set_acknowledge_flag(int value) { acknowledge_flag = value; }
 	int get_acknowledge_flag() const { return acknowledge_flag; }
@@ -191,7 +191,23 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisRemoveEntityPdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 12; }
-	int get_length() const override { return SIZE; }
+	int get_body_length() const override { return SIZE; }
+};
+
+// Create Entity PDU (type 11): asks the receiving application to create an entity. 28 bytes.
+class DisCreateEntityPdu : public DisSimulationManagementPdu {
+	GDCLASS(DisCreateEntityPdu, DisSimulationManagementPdu)
+
+protected:
+	static void _bind_methods();
+
+public:
+	static constexpr int SIZE = 28;
+
+	godot::PackedByteArray encode() const override;
+	static godot::Ref<DisCreateEntityPdu> decode(const godot::PackedByteArray &bytes);
+	int get_pdu_type() const override { return 11; }
+	int get_body_length() const override { return SIZE; }
 };
 
 VARIANT_ENUM_CAST(DisStopFreezePdu::Reason);

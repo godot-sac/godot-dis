@@ -15,9 +15,13 @@
 #include "management/dis_exercise_control.h"
 #include "network/dis_network.h"
 #include "pdu/dis_pdu.h"
+#include "pdu/dis_collision_pdu.h"
+#include "pdu/dis_datum_pdus.h"
 #include "pdu/dis_pdu_base.h"
+#include "pdu/dis_radio_pdus.h"
 #include "pdu/dis_simulation_management_pdus.h"
 #include "pdu/dis_warfare_pdus.h"
+#include "radio/dis_radio_monitor.h"
 #include "record/dis_player.h"
 #include "record/dis_recorder.h"
 #include "record/dis_recording.h"
@@ -44,6 +48,14 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(DisStartResumePdu);
 	GDREGISTER_CLASS(DisStopFreezePdu);
 	GDREGISTER_CLASS(DisAcknowledgePdu);
+	GDREGISTER_CLASS(DisCreateEntityPdu);
+	GDREGISTER_ABSTRACT_CLASS(DisDatumPdu);
+	GDREGISTER_CLASS(DisCommentPdu);
+	GDREGISTER_CLASS(DisSetDataPdu);
+	GDREGISTER_CLASS(DisDataPdu);
+	GDREGISTER_CLASS(DisCollisionPdu);
+	GDREGISTER_CLASS(DisTransmitterPdu);
+	GDREGISTER_CLASS(DisSignalPdu);
 	GDREGISTER_CLASS(DisNetwork);
 	GDREGISTER_ABSTRACT_CLASS(DisGeo);
 	GDREGISTER_CLASS(DisGeoOrigin);
@@ -56,6 +68,7 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(DisRecording);
 	GDREGISTER_CLASS(DisRecorder);
 	GDREGISTER_CLASS(DisPlayer);
+	GDREGISTER_CLASS(DisRadioMonitor);
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {

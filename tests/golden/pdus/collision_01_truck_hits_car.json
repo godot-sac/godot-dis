@@ -1,0 +1,40 @@
+{
+  "class": "DisCollisionPdu",
+  "length": 60,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "issuing_entity_id": [
+      1,
+      1,
+      5
+    ],
+    "colliding_entity_id": [
+      3,
+      1,
+      2
+    ],
+    "event_id": [
+      1,
+      1,
+      9
+    ],
+    "collision_type": 0,
+    "padding": 0,
+    "velocity": [
+      12.5,
+      -3.25,
+      0.5
+    ],
+    "mass": {
+      "f64": "40d1940000000000"
+    },
+    "location": [
+      4.0,
+      0.5,
+      -0.25
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "class": "DisCommentPdu",
+  "length": 128,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "originating_id": [
+      2,
+      1,
+      0
+    ],
+    "receiving_id": [
+      1,
+      1,
+      0
+    ],
+    "fixed_datums": {
+      "fixed": [
+        [
+          240000,
+          42
+        ],
+        [
+          1,
+          4294967295
+        ]
+      ]
+    },
+    "variable_datums": {
+      "variable": [
+        [
+          2,
+          208,
+          "54c3bc726bc3a76520c3a720c49f20c4b120c3b620c59f20c3bc"
+        ],
+        [
+          3,
+          128,
+          "000102030405060708090a0b0c0d0e0f"
+        ],
+        [
+          4,
+          8,
+          "78"
+        ]
+      ]
+    }
+  }
+}

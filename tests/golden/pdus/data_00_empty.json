@@ -1,0 +1,28 @@
+{
+  "class": "DisDataPdu",
+  "length": 40,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "originating_id": [
+      0,
+      0,
+      0
+    ],
+    "receiving_id": [
+      0,
+      0,
+      0
+    ],
+    "request_id": 0,
+    "fixed_datums": {
+      "fixed": []
+    },
+    "variable_datums": {
+      "variable": []
+    },
+    "padding": 0
+  }
+}

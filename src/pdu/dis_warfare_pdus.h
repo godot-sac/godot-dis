@@ -78,7 +78,7 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisFirePdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 2; }
-	int get_length() const override { return SIZE; }
+	int get_body_length() const override { return SIZE; }
 
 	void set_fire_mission_index(int64_t value) { fire_mission_index = value; }
 	int64_t get_fire_mission_index() const { return fire_mission_index; }
@@ -120,7 +120,7 @@ public:
 	godot::PackedByteArray encode() const override;
 	static godot::Ref<DisDetonationPdu> decode(const godot::PackedByteArray &bytes);
 	int get_pdu_type() const override { return 3; }
-	int get_length() const override;
+	int get_body_length() const override;
 
 	void set_location_in_entity(const godot::Vector3 &value) { location_in_entity = value; }
 	godot::Vector3 get_location_in_entity() const { return location_in_entity; }

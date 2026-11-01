@@ -31,7 +31,11 @@ public:
 		PDU_TYPE_START_RESUME = 13,
 		PDU_TYPE_STOP_FREEZE = 14,
 		PDU_TYPE_ACKNOWLEDGE = 15,
+		PDU_TYPE_SET_DATA = 19,
+		PDU_TYPE_DATA = 20,
 		PDU_TYPE_COMMENT = 22,
+		PDU_TYPE_TRANSMITTER = 25,
+		PDU_TYPE_SIGNAL = 26,
 	};
 
 	static constexpr int HEADER_SIZE = 12;
@@ -40,8 +44,8 @@ public:
 	// Keys: protocol_version, exercise_id, pdu_type, protocol_family, timestamp, length, pdu_status.
 	static godot::Dictionary peek_header(const godot::PackedByteArray &bytes);
 
-	// Decodes any supported PDU into its DisPduBase subclass (Entity State, Fire, Detonation, Remove Entity,
-	// Start/Resume, Stop/Freeze, Acknowledge). Returns null and sets get_last_error() otherwise.
+	// Decodes any supported PDU into its DisPduBase subclass (see is_supported()). Returns null and sets
+	// get_last_error() otherwise.
 	static godot::Ref<DisPduBase> decode(const godot::PackedByteArray &bytes);
 
 	// True if `type` is one decode() understands.
@@ -58,6 +62,8 @@ public:
 	// Internal: checks the header and that `bytes` holds at least `minimum_body` bytes of PDU.
 	// On failure sets the last error and returns false.
 	static bool validate(const godot::PackedByteArray &bytes, int expected_type, int minimum_size);
+	// The header length, or the datagram size if the sender left the length 0. Call after validate().
+	static int get_effective_length(const godot::PackedByteArray &bytes);
 	static void set_last_error(const godot::String &message);
 };
 

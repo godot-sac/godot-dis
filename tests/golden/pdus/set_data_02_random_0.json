@@ -1,0 +1,56 @@
+{
+  "class": "DisSetDataPdu",
+  "length": 120,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 144,
+    "timestamp": 2211741404,
+    "pdu_status": 92,
+    "originating_id": [
+      28018,
+      58260,
+      59597
+    ],
+    "receiving_id": [
+      65436,
+      13343,
+      45554
+    ],
+    "request_id": 2561383082,
+    "fixed_datums": {
+      "fixed": [
+        [
+          1034227548,
+          4015708314
+        ],
+        [
+          1399846801,
+          661752509
+        ],
+        [
+          874719662,
+          2221226051
+        ],
+        [
+          4282708012,
+          3026130927
+        ]
+      ]
+    },
+    "variable_datums": {
+      "variable": [
+        [
+          1279281340,
+          88,
+          "f8e172e68c739b0aebc489"
+        ],
+        [
+          3853483220,
+          72,
+          "bec026e1044d12f1c4"
+        ]
+      ]
+    },
+    "padding": 0
+  }
+}

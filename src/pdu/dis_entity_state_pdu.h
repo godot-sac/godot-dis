@@ -54,7 +54,7 @@ public:
 	int get_pdu_type() const override { return 1; }
 	int get_protocol_family() const override { return 1; }
 	// Encoded size: 144 + 16 per variable parameter.
-	int get_length() const override;
+	int get_body_length() const override;
 
 	// Getters and setters (exposed as properties).
 	void set_entity_id(const godot::Vector3i &value) { entity_id = value; }

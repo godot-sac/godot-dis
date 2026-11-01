@@ -5,7 +5,10 @@
 
 #include <godot_cpp/core/class_db.hpp>
 
+#include "dis_collision_pdu.h"
+#include "dis_datum_pdus.h"
 #include "dis_entity_state_pdu.h"
+#include "dis_radio_pdus.h"
 #include "dis_simulation_management_pdus.h"
 #include "dis_warfare_pdus.h"
 
@@ -34,6 +37,7 @@ void DisPdu::_bind_methods() {
 	ClassDB::bind_static_method("DisPdu", D_METHOD("peek_header", "bytes"), &DisPdu::peek_header);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("decode", "bytes"), &DisPdu::decode);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("is_supported", "pdu_type"), &DisPdu::is_supported);
+	ClassDB::bind_static_method("DisPdu", D_METHOD("get_effective_length", "bytes"), &DisPdu::get_effective_length);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("get_last_error"), &DisPdu::get_last_error);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("timestamp_from_seconds", "seconds_past_hour", "absolute"),
 			&DisPdu::timestamp_from_seconds);
@@ -50,7 +54,11 @@ void DisPdu::_bind_methods() {
 	BIND_ENUM_CONSTANT(PDU_TYPE_START_RESUME);
 	BIND_ENUM_CONSTANT(PDU_TYPE_STOP_FREEZE);
 	BIND_ENUM_CONSTANT(PDU_TYPE_ACKNOWLEDGE);
+	BIND_ENUM_CONSTANT(PDU_TYPE_SET_DATA);
+	BIND_ENUM_CONSTANT(PDU_TYPE_DATA);
 	BIND_ENUM_CONSTANT(PDU_TYPE_COMMENT);
+	BIND_ENUM_CONSTANT(PDU_TYPE_TRANSMITTER);
+	BIND_ENUM_CONSTANT(PDU_TYPE_SIGNAL);
 }
 
 Dictionary DisPdu::peek_header(const PackedByteArray &bytes) {
@@ -88,6 +96,20 @@ Ref<DisPduBase> DisPdu::decode(const PackedByteArray &bytes) {
 			return DisStopFreezePdu::decode(bytes);
 		case PDU_TYPE_ACKNOWLEDGE:
 			return DisAcknowledgePdu::decode(bytes);
+		case PDU_TYPE_COLLISION:
+			return DisCollisionPdu::decode(bytes);
+		case PDU_TYPE_CREATE_ENTITY:
+			return DisCreateEntityPdu::decode(bytes);
+		case PDU_TYPE_SET_DATA:
+			return DisSetDataPdu::decode(bytes);
+		case PDU_TYPE_DATA:
+			return DisDataPdu::decode(bytes);
+		case PDU_TYPE_COMMENT:
+			return DisCommentPdu::decode(bytes);
+		case PDU_TYPE_TRANSMITTER:
+			return DisTransmitterPdu::decode(bytes);
+		case PDU_TYPE_SIGNAL:
+			return DisSignalPdu::decode(bytes);
 		default:
 			set_last_error(vformat("unsupported PDU type %d", bytes[2]));
 			return Ref<DisPduBase>();
@@ -103,6 +125,13 @@ bool DisPdu::is_supported(int type) {
 		case PDU_TYPE_START_RESUME:
 		case PDU_TYPE_STOP_FREEZE:
 		case PDU_TYPE_ACKNOWLEDGE:
+		case PDU_TYPE_COLLISION:
+		case PDU_TYPE_CREATE_ENTITY:
+		case PDU_TYPE_SET_DATA:
+		case PDU_TYPE_DATA:
+		case PDU_TYPE_COMMENT:
+		case PDU_TYPE_TRANSMITTER:
+		case PDU_TYPE_SIGNAL:
 			return true;
 		default:
 			return false;
@@ -146,6 +175,11 @@ bool DisPdu::validate(const PackedByteArray &bytes, int expected_type, int minim
 	}
 	set_last_error("");
 	return true;
+}
+
+int DisPdu::get_effective_length(const PackedByteArray &bytes) {
+	const int length = bytes.size() >= HEADER_SIZE ? read_u16_be(bytes, 8) : 0;
+	return length == 0 ? static_cast<int>(bytes.size()) : length;
 }
 
 int64_t DisPdu::timestamp_from_seconds(double seconds_past_hour, bool absolute) {
