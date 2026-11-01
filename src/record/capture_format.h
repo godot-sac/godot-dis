@@ -47,7 +47,8 @@ Format detect(const uint8_t *data, size_t size, const std::string &name = "");
 Format format_from_name(const std::string &name);
 const char *format_name(Format format);
 
-// True if `payload` starts with something that looks like a DIS PDU header (version 1-7, sane length).
+// True if `payload` starts with something that looks like a DIS PDU header (version 1-7, a PDU type, a length
+// that fits; a length of 0, which some senders write, is accepted with a known protocol family).
 bool looks_like_dis(const uint8_t *payload, size_t size);
 
 // Reads a whole file image. Packets are appended to `out` in file order. `port` > 0 keeps only UDP datagrams

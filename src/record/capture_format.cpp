@@ -555,8 +555,17 @@ bool looks_like_dis(const uint8_t *payload, size_t size) {
 		return false;
 	}
 	const int version = payload[0];
+	const int family = payload[3];
 	const int length = be16(payload + 8);
-	return version >= 1 && version <= 7 && payload[2] != 0 && length >= 12 && static_cast<size_t>(length) <= size;
+	if (version < 1 || version > 7 || payload[2] == 0) {
+		return false;
+	}
+	// Some senders leave the length field 0 (opendis7-java's AllPduSender capture does); then the family has to
+	// be a real one (0-13, 129 experimental) for us to believe it.
+	if (length == 0) {
+		return family <= 13 || family == 129;
+	}
+	return length >= 12 && static_cast<size_t>(length) <= size;
 }
 
 Format format_from_name(const std::string &name) {

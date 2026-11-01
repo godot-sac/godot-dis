@@ -131,7 +131,11 @@ bool DisPdu::validate(const PackedByteArray &bytes, int expected_type, int minim
 		set_last_error(vformat("expected PDU type %d, got %d", expected_type, bytes[2]));
 		return false;
 	}
-	const int length = read_u16_be(bytes, 8);
+	int length = read_u16_be(bytes, 8);
+	if (length == 0) {
+		// Some senders never fill in the length (seen from opendis7-java); trust the datagram size instead.
+		length = static_cast<int>(bytes.size());
+	}
 	if (length > bytes.size()) {
 		set_last_error(vformat("length field says %d bytes but only %d were received", length, bytes.size()));
 		return false;
