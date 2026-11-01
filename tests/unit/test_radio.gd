@@ -36,6 +36,13 @@ func _signal() -> DisSignalPdu:
 	return pdu
 
 
+## Waits `seconds` of wall-clock time (the monitor runs on real time; wait_seconds() can be shorter headless).
+func _wait_real(seconds: float) -> void:
+	var until := Time.get_ticks_msec() + int(seconds * 1000)
+	while Time.get_ticks_msec() < until:
+		await wait_process_frames(1)
+
+
 func _kinds() -> Array:
 	return _events.map(func(e): return e[0])
 
@@ -49,19 +56,19 @@ func test_transmit_state_and_signals() -> void:
 	_monitor.handle_pdu(_signal())
 	assert_eq(_events.back(), ["started", Vector3i(1, 1, 4), 2, 243000000], "a Signal PDU means it is transmitting")
 	assert_eq(_monitor.get_transmitting_entities(), [Vector3i(1, 1, 4)])
-	await wait_seconds(0.25)
+	await _wait_real(0.25)
 	_monitor.update()
 	assert_eq(_events.back()[0], "ended", "silent for longer than signal_hold")
 
 	_monitor.handle_pdu(_transmitter(DisTransmitterPdu.TRANSMIT_ON_AND_TRANSMITTING))
 	assert_true(_monitor.is_transmitting(Vector3i(1, 1, 4)), "keyed by the Transmitter PDU alone")
-	await wait_seconds(0.25)
+	await _wait_real(0.25)
 	_monitor.update()
 	assert_true(_monitor.is_transmitting(Vector3i(1, 1, 4)), "stays keyed without Signal PDUs")
 	_monitor.handle_pdu(_transmitter(DisTransmitterPdu.TRANSMIT_OFF))
 	assert_false(_monitor.is_transmitting(Vector3i(1, 1, 4)))
 
-	await wait_seconds(0.5)
+	await _wait_real(0.5)
 	_monitor.update()
 	assert_eq(_events.back(), ["removed", Vector3i(1, 1, 4), 2], "forgotten after the timeout")
 	assert_eq(_monitor.get_radios().size(), 0)
