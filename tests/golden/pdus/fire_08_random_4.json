@@ -1,0 +1,59 @@
+{
+  "class": "DisFirePdu",
+  "length": 96,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 167,
+    "timestamp": 1742785764,
+    "pdu_status": 75,
+    "firing_entity_id": [
+      58273,
+      8350,
+      21518
+    ],
+    "target_entity_id": [
+      57016,
+      41605,
+      49893
+    ],
+    "munition_id": [
+      50403,
+      29949,
+      23589
+    ],
+    "event_id": [
+      20355,
+      43532,
+      56776
+    ],
+    "location_ecef": {
+      "f64_list": [
+        "c153488f107f7ea4",
+        "4157f25c607d6f32",
+        "c14668163ca15ddf"
+      ]
+    },
+    "velocity": [
+      108.55921173095703,
+      -915.2615356445312,
+      -507.2569580078125
+    ],
+    "munition_type": [
+      254,
+      73,
+      13054,
+      236,
+      218,
+      87,
+      99
+    ],
+    "warhead": 48902,
+    "fuse": 23616,
+    "quantity": 1508,
+    "rate": 50322,
+    "fire_mission_index": 3560831154,
+    "range": {
+      "f64": "40e34fa560000000"
+    }
+  }
+}

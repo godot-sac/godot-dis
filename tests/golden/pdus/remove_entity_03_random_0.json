@@ -1,0 +1,21 @@
+{
+  "class": "DisRemoveEntityPdu",
+  "length": 28,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 190,
+    "timestamp": 2275636884,
+    "pdu_status": 250,
+    "originating_id": [
+      38958,
+      21792,
+      25122
+    ],
+    "receiving_id": [
+      48547,
+      53982,
+      7587
+    ],
+    "request_id": 3961866393
+  }
+}

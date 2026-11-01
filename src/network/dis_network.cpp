@@ -10,6 +10,8 @@
 
 #include "pdu/dis_entity_state_pdu.h"
 #include "pdu/dis_pdu.h"
+#include "pdu/dis_simulation_management_pdus.h"
+#include "pdu/dis_warfare_pdus.h"
 
 using namespace godot;
 
@@ -55,6 +57,17 @@ void DisNetwork::_bind_methods() {
 			PropertyInfo(Variant::INT, "sender_port")));
 	ADD_SIGNAL(MethodInfo("entity_state_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
 															   "DisEntityStatePdu")));
+	ADD_SIGNAL(MethodInfo("fire_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisFirePdu")));
+	ADD_SIGNAL(MethodInfo("detonation_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														  "DisDetonationPdu")));
+	ADD_SIGNAL(MethodInfo("remove_entity_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+															 "DisRemoveEntityPdu")));
+	ADD_SIGNAL(MethodInfo("start_resume_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+															"DisStartResumePdu")));
+	ADD_SIGNAL(MethodInfo("stop_freeze_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														   "DisStopFreezePdu")));
+	ADD_SIGNAL(MethodInfo("acknowledge_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
+														   "DisAcknowledgePdu")));
 	ADD_SIGNAL(MethodInfo("packet_rejected", PropertyInfo(Variant::STRING, "reason"), PropertyInfo(Variant::STRING, "sender_ip")));
 
 	BIND_ENUM_CONSTANT(MODE_BROADCAST);
@@ -199,6 +212,32 @@ Error DisNetwork::send_bytes(const PackedByteArray &bytes) {
 	return OK;
 }
 
+// Entity Information (1), Warfare (2), Simulation Management (5) and its reliable variant (10).
+bool DisNetwork::starts_with_sender_id(int protocol_family) {
+	return protocol_family == 1 || protocol_family == 2 || protocol_family == 5 || protocol_family == 10;
+}
+
+const char *DisNetwork::typed_signal_of(int pdu_type) {
+	switch (pdu_type) {
+		case DisPdu::PDU_TYPE_ENTITY_STATE:
+			return "entity_state_received";
+		case DisPdu::PDU_TYPE_FIRE:
+			return "fire_received";
+		case DisPdu::PDU_TYPE_DETONATION:
+			return "detonation_received";
+		case DisPdu::PDU_TYPE_REMOVE_ENTITY:
+			return "remove_entity_received";
+		case DisPdu::PDU_TYPE_START_RESUME:
+			return "start_resume_received";
+		case DisPdu::PDU_TYPE_STOP_FREEZE:
+			return "stop_freeze_received";
+		case DisPdu::PDU_TYPE_ACKNOWLEDGE:
+			return "acknowledge_received";
+		default:
+			return nullptr;
+	}
+}
+
 void DisNetwork::reject(const String &reason, const String &ip) {
 	packets_rejected++;
 	emit_signal("packet_rejected", reason, ip);
@@ -229,8 +268,8 @@ void DisNetwork::poll() {
 			packets_ignored++;
 			continue;
 		}
-		// Entity Information family PDUs start their body with the entity ID: site (12-13), application (14-15).
-		if (ignore_own_packets && bytes.size() >= 16 && bytes[2] == DisPdu::PDU_TYPE_ENTITY_STATE) {
+		// PDUs of these families start their body with the sender's ID: site (12-13), application (14-15).
+		if (ignore_own_packets && bytes.size() >= 16 && starts_with_sender_id(bytes[3])) {
 			const int site = (bytes[12] << 8) | bytes[13];
 			const int application = (bytes[14] << 8) | bytes[15];
 			if (site == site_id && application == application_id) {
@@ -238,15 +277,15 @@ void DisNetwork::poll() {
 				continue;
 			}
 		}
-		const Ref<RefCounted> pdu = DisPdu::decode(bytes);
+		const Ref<DisPduBase> pdu = DisPdu::decode(bytes);
 		if (pdu.is_null()) {
 			reject(DisPdu::get_last_error(), ip);
 			continue;
 		}
 		emit_signal("pdu_received", pdu, ip, static_cast<int>(sender_port));
-		const Ref<DisEntityStatePdu> entity_state = pdu;
-		if (entity_state.is_valid()) {
-			emit_signal("entity_state_received", entity_state);
+		const char *typed_signal = typed_signal_of(pdu->get_pdu_type());
+		if (typed_signal != nullptr) {
+			emit_signal(typed_signal, pdu);
 		}
 	}
 }

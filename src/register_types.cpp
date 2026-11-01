@@ -12,8 +12,12 @@
 #include "entity/dis_entity_manager.h"
 #include "entity/dis_entity_type_map.h"
 #include "geo/dis_geo_origin.h"
+#include "management/dis_exercise_control.h"
 #include "network/dis_network.h"
 #include "pdu/dis_pdu.h"
+#include "pdu/dis_pdu_base.h"
+#include "pdu/dis_simulation_management_pdus.h"
+#include "pdu/dis_warfare_pdus.h"
 
 using namespace godot;
 
@@ -27,7 +31,16 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	}
 	GDREGISTER_CLASS(DisProbe);
 	GDREGISTER_ABSTRACT_CLASS(DisPdu);
+	GDREGISTER_ABSTRACT_CLASS(DisPduBase);
 	GDREGISTER_CLASS(DisEntityStatePdu);
+	GDREGISTER_ABSTRACT_CLASS(DisWarfarePdu);
+	GDREGISTER_CLASS(DisFirePdu);
+	GDREGISTER_CLASS(DisDetonationPdu);
+	GDREGISTER_ABSTRACT_CLASS(DisSimulationManagementPdu);
+	GDREGISTER_CLASS(DisRemoveEntityPdu);
+	GDREGISTER_CLASS(DisStartResumePdu);
+	GDREGISTER_CLASS(DisStopFreezePdu);
+	GDREGISTER_CLASS(DisAcknowledgePdu);
 	GDREGISTER_CLASS(DisNetwork);
 	GDREGISTER_ABSTRACT_CLASS(DisGeo);
 	GDREGISTER_CLASS(DisGeoOrigin);
@@ -36,6 +49,7 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(DisEntity);
 	GDREGISTER_CLASS(DisRemoteEntity);
 	GDREGISTER_CLASS(DisEntityManager);
+	GDREGISTER_CLASS(DisExerciseControl);
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {

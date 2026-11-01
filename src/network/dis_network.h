@@ -60,6 +60,8 @@ private:
 
 	void receive_waiting_packets();
 	void reject(const godot::String &reason, const godot::String &ip);
+	static bool starts_with_sender_id(int protocol_family);
+	static const char *typed_signal_of(int pdu_type);
 	int effective_destination_port() const;
 
 protected:

@@ -8,16 +8,26 @@ Writes "<out>.ready" once the socket is bound so a test can start sending, and s
 (Windows may not let another process read a file while it is still open for writing).
 """
 import argparse
+import io
 import json
 import pathlib
 import socket
 import time
 
 from opendis.PduFactory import createPdu
+from opendis.stream import DataOutputStream
+
+
+def reencoded(pdu):
+    """The PDU serialized again by Open-DIS Python: equal to the received bytes if every field was understood."""
+    buf = io.BytesIO()
+    pdu.serialize(DataOutputStream(buf))
+    return buf.getvalue().hex()
 
 
 def describe(pdu, data, sender):
-    out = {"type": type(pdu).__name__, "length": len(data), "sender": f"{sender[0]}:{sender[1]}"}
+    out = {"type": type(pdu).__name__, "length": len(data), "sender": f"{sender[0]}:{sender[1]}",
+           "hex": data.hex(), "reencoded": reencoded(pdu)}
     if type(pdu).__name__ == "EntityStatePdu":
         e = pdu.entityID
         out.update(

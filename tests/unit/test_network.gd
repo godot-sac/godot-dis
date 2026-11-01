@@ -241,3 +241,80 @@ func test_sends_to_open_dis_python() -> void:
 		assert_eq(row.get("marking"), "GD%d" % (i + 1))
 		assert_eq(row.get("length_field"), 144.0)
 		assert_almost_eq(row.location_ecef[2], 4069473.125 + i + 1, 1e-6)
+
+
+## Every golden PDU (tests/golden/pdus/, written by Open-DIS Python) sent by Python, received by DisNetwork.
+func test_receives_every_pdu_type_from_open_dis_python() -> void:
+	var python := _python()
+	if python.is_empty():
+		pending("Python oracle venv not found (tools/.venv)")
+		return
+	var golden := _golden_pdus()
+	var network := _network(3123)
+	network.filter_exercise = false  # the golden PDUs use many exercise IDs
+	network.ignore_own_packets = false  # and many sites / applications, 1:1 among them
+	var received := []
+	network.pdu_received.connect(func(pdu, ip, port): received.append(pdu))
+	var typed := {}
+	for signal_name in ["fire_received", "detonation_received", "remove_entity_received", "start_resume_received",
+			"stop_freeze_received", "acknowledge_received"]:
+		network.connect(signal_name, func(pdu): typed[signal_name] = typed.get(signal_name, 0) + 1)
+	var pid := OS.create_process(python, [ProjectSettings.globalize_path("res://tools/oracle_sender.py"),
+			"--port", "3123", "--golden", ProjectSettings.globalize_path("res://tests/golden/pdus"),
+			"--repeat", "1", "--interval", "0.002"])
+	assert_gt(pid, 0, "oracle sender started")
+	await _wait_for(func(): return received.size() >= golden.size(), 15.0)
+	assert_eq(received.size(), golden.size(), "every golden PDU arrived and decoded")
+	var mismatches := PackedStringArray()
+	for i in mini(received.size(), golden.size()):
+		if received[i].encode() != golden[i]:
+			mismatches.append("#%d %s" % [i, received[i].get_class()])
+	assert_eq(mismatches, PackedStringArray(), "re-encoded PDUs equal what Python sent")
+	assert_eq(typed.size(), 6, "every typed signal fired: %s" % typed)
+	assert_eq(_rejected, [], "nothing rejected")
+
+
+## The golden PDUs re-encoded by Godot and sent to Python, which must decode
+## each one as the right class and serialize it back to the same bytes.
+func test_sends_every_pdu_type_to_open_dis_python() -> void:
+	var python := _python()
+	if python.is_empty():
+		pending("Python oracle venv not found (tools/.venv)")
+		return
+	var golden := _golden_pdus()
+	var out := OS.get_user_data_dir().path_join("oracle_received_pdus.jsonl")
+	for path in [out, out + ".ready", out + ".done"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
+	var pid := OS.create_process(python, [ProjectSettings.globalize_path("res://tools/oracle_receiver.py"),
+			"--port", "3124", "--out", out, "--expect", str(golden.size()), "--timeout", "15"])
+	assert_gt(pid, 0, "oracle receiver started")
+	assert_true(await _wait_for(func(): return FileAccess.file_exists(out + ".ready"), 10.0), "receiver ready")
+	var sender := _network(3125, DisNetwork.MODE_UNICAST, "127.0.0.1", 3124)
+	var classes := []
+	for bytes: PackedByteArray in golden:
+		var pdu := DisPdu.decode(bytes)
+		classes.append(pdu.get_class())
+		sender.send_bytes(pdu.encode())  # send_bytes keeps each PDU's own exercise ID
+		if classes.size() % 10 == 0:
+			await wait_process_frames(1)  # don't overrun the receiver's socket buffer
+	assert_true(await _wait_for(func(): return FileAccess.file_exists(out + ".done"), 20.0), "receiver finished")
+	var lines := Array(FileAccess.get_file_as_string(out).split("\n", false))
+	assert_eq(lines.size(), golden.size(), "Python decoded every PDU")
+	var problems := PackedStringArray()
+	for i in mini(lines.size(), golden.size()):
+		var row: Dictionary = JSON.parse_string(lines[i])
+		if row.get("type") != classes[i].trim_prefix("Dis"):
+			problems.append("#%d: %s decoded as %s" % [i, classes[i], row.get("type", row.get("error"))])
+		elif row.reencoded != row.hex:
+			problems.append("#%d %s: Python re-encoded\n   %s\n   %s" % [i, classes[i], row.reencoded, row.hex])
+	assert_eq(problems, PackedStringArray())
+
+
+func _golden_pdus() -> Array:
+	var names: Array = JSON.parse_string(FileAccess.get_file_as_string("res://tests/golden/pdus/index.json"))
+	names.sort()  # the sender goes in file name order
+	var out := []
+	for name: String in names:
+		out.append(FileAccess.get_file_as_bytes("res://tests/golden/pdus/%s.bin" % name))
+	return out

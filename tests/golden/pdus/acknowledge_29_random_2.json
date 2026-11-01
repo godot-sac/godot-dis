@@ -1,0 +1,23 @@
+{
+  "class": "DisAcknowledgePdu",
+  "length": 32,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 138,
+    "timestamp": 1169249946,
+    "pdu_status": 168,
+    "originating_id": [
+      58256,
+      32886,
+      4427
+    ],
+    "receiving_id": [
+      8938,
+      23473,
+      56877
+    ],
+    "request_id": 417197957,
+    "acknowledge_flag": 60417,
+    "response_flag": 55603
+  }
+}

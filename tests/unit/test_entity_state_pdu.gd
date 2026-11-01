@@ -167,8 +167,11 @@ func test_malformed_packets_fail_without_crashing() -> void:
 		"one byte short": good.slice(0, 143),
 	}
 	var wrong_type := good.duplicate()
-	wrong_type[2] = 2
+	wrong_type[2] = 99  # no such PDU type
 	cases["wrong pdu type"] = wrong_type
+	var fire_type := good.duplicate()
+	fire_type[2] = DisPdu.PDU_TYPE_FIRE
+	assert_null(DisEntityStatePdu.decode(fire_type), "a Fire PDU is not an Entity State PDU")
 	var bad_version := good.duplicate()
 	bad_version[0] = 0
 	cases["version 0"] = bad_version

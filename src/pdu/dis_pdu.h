@@ -5,6 +5,8 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 
+#include "dis_pdu_base.h"
+
 // Static helpers shared by all PDUs: header inspection, decoding by type, validation and timestamps.
 //
 // Every buffer that comes from the network is validated here before open-dis-cpp sees it:
@@ -23,6 +25,13 @@ public:
 		PDU_TYPE_ENTITY_STATE = 1,
 		PDU_TYPE_FIRE = 2,
 		PDU_TYPE_DETONATION = 3,
+		PDU_TYPE_COLLISION = 4,
+		PDU_TYPE_CREATE_ENTITY = 11,
+		PDU_TYPE_REMOVE_ENTITY = 12,
+		PDU_TYPE_START_RESUME = 13,
+		PDU_TYPE_STOP_FREEZE = 14,
+		PDU_TYPE_ACKNOWLEDGE = 15,
+		PDU_TYPE_COMMENT = 22,
 	};
 
 	static constexpr int HEADER_SIZE = 12;
@@ -31,10 +40,14 @@ public:
 	// Keys: protocol_version, exercise_id, pdu_type, protocol_family, timestamp, length, pdu_status.
 	static godot::Dictionary peek_header(const godot::PackedByteArray &bytes);
 
-	// Decodes any supported PDU (currently Entity State). Returns null and sets get_last_error() otherwise.
-	static godot::Ref<godot::RefCounted> decode(const godot::PackedByteArray &bytes);
+	// Decodes any supported PDU into its DisPduBase subclass (Entity State, Fire, Detonation, Remove Entity,
+	// Start/Resume, Stop/Freeze, Acknowledge). Returns null and sets get_last_error() otherwise.
+	static godot::Ref<DisPduBase> decode(const godot::PackedByteArray &bytes);
 
-	// Reason the last decode() / DisEntityStatePdu.decode() call on this thread returned null.
+	// True if `type` is one decode() understands.
+	static bool is_supported(int type);
+
+	// Reason the last decode() / DisEntityStatePdu.decode() (...) call on this thread returned null.
 	static godot::String get_last_error();
 
 	// DIS timestamps count 2^31 units per hour, shifted left by one; the low bit marks absolute time.

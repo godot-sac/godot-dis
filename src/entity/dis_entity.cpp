@@ -14,6 +14,7 @@
 #include "network/dis_network.h"
 #include "pdu/dis_entity_state_pdu.h"
 #include "pdu/dis_pdu.h"
+#include "pdu/dis_warfare_pdus.h"
 
 using namespace godot;
 using dis::geo::Mat3;
@@ -27,6 +28,13 @@ constexpr double ACCELERATION_SMOOTHING = 0.25;
 
 // Entity numbers given to entities that leave entity_id.z at 0, unique within this process.
 int next_entity_number = 1;
+// Event numbers of Fire / Detonation PDUs, unique within this process (so within the application).
+int next_event_number = 1;
+
+int64_t unix_timestamp() {
+	const double unix_time = Time::get_singleton()->get_unix_time_from_system();
+	return DisPdu::timestamp_from_seconds(std::fmod(unix_time, 3600.0), true);
+}
 
 Mat3 mat3_from_basis(const Basis &b) {
 	return Mat3::from_columns(dis::geo::vec3_from_vector3(b.get_column(0)), dis::geo::vec3_from_vector3(b.get_column(1)),
@@ -51,6 +59,14 @@ void DisEntity::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("create_pdu"), &DisEntity::create_pdu);
 	ClassDB::bind_method(D_METHOD("get_effective_entity_id"), &DisEntity::get_effective_entity_id);
 	ClassDB::bind_method(D_METHOD("get_published_count"), &DisEntity::get_published_count);
+	ClassDB::bind_method(D_METHOD("create_fire_pdu", "munition_type", "target_id", "velocity", "range"),
+			&DisEntity::create_fire_pdu, DEFVAL(Vector3i()), DEFVAL(Vector3()), DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("create_detonation_pdu", "position", "result", "fire", "target_id", "velocity"),
+			&DisEntity::create_detonation_pdu, DEFVAL(Ref<DisFirePdu>()), DEFVAL(Vector3i()), DEFVAL(Vector3()));
+	ClassDB::bind_method(D_METHOD("fire", "munition_type", "target_id", "velocity", "range"), &DisEntity::fire,
+			DEFVAL(Vector3i()), DEFVAL(Vector3()), DEFVAL(0.0));
+	ClassDB::bind_method(D_METHOD("detonate", "position", "result", "fire", "target_id", "velocity"),
+			&DisEntity::detonate, DEFVAL(Ref<DisFirePdu>()), DEFVAL(Vector3i()), DEFVAL(Vector3()));
 
 #define DIS_PROPERTY_HINT(variant_type, name, hint, hint_string)                         \
 	ClassDB::bind_method(D_METHOD("set_" #name, "value"), &DisEntity::set_##name);     \
@@ -104,6 +120,9 @@ void DisEntity::_notification(int p_what) {
 		return;
 	}
 	switch (p_what) {
+		case NOTIFICATION_ENTER_TREE:
+			add_to_group(GROUP);
+			break;
 		case NOTIFICATION_READY:
 			set_physics_process(auto_update);
 			break;
@@ -214,8 +233,7 @@ Ref<DisEntityStatePdu> DisEntity::make_pdu(const dis::dr::State &state, int64_t 
 	pdu->set_dr_algorithm(dr_algorithm);
 	pdu->set_dr_linear_acceleration(dis::geo::vector3_from_vec3(state.acceleration));
 	pdu->set_dr_angular_velocity(dis::geo::vector3_from_vec3(state.angular_velocity));
-	const double unix_time = Time::get_singleton()->get_unix_time_from_system();
-	pdu->set_timestamp(DisPdu::timestamp_from_seconds(std::fmod(unix_time, 3600.0), true));
+	pdu->set_timestamp(unix_timestamp());
 	return pdu;
 }
 
@@ -317,4 +335,81 @@ void DisEntity::set_auto_update(bool value) {
 	if (is_inside_tree() && !Engine::get_singleton()->is_editor_hint()) {
 		set_physics_process(value);
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Weapons
+
+Ref<DisFirePdu> DisEntity::create_fire_pdu(const PackedInt32Array &munition_type, const Vector3i &target_id,
+		const Vector3 &velocity, double range) {
+	DisGeoOrigin *origin = get_origin();
+	ERR_FAIL_NULL_V_MSG(origin, Ref<DisFirePdu>(), "DisEntity needs a DisGeoOrigin in the scene");
+	const Vector3i id = get_effective_entity_id();
+	Ref<DisFirePdu> pdu;
+	pdu.instantiate();
+	pdu->set_timestamp(unix_timestamp());
+	pdu->set_firing_entity_id(id);
+	pdu->set_target_entity_id(target_id);
+	pdu->set_munition_id(Vector3i(id.x, id.y, 0)); // the munition is not simulated as an entity
+	pdu->set_event_id(Vector3i(id.x, id.y, next_event_number));
+	next_event_number = next_event_number % 65535 + 1;
+	pdu->set_location_ecef(origin->local_to_ecef(get_global_position()));
+	pdu->set_velocity(origin->local_vector_to_ecef(velocity));
+	if (munition_type.size() == 7) {
+		pdu->set_munition_type(munition_type);
+	}
+	pdu->set_quantity(1);
+	pdu->set_range(range);
+	return pdu;
+}
+
+Ref<DisDetonationPdu> DisEntity::create_detonation_pdu(const Vector3 &position, int result, const Ref<DisFirePdu> &fire_pdu,
+		const Vector3i &target_id, const Vector3 &velocity) {
+	DisGeoOrigin *origin = get_origin();
+	ERR_FAIL_NULL_V_MSG(origin, Ref<DisDetonationPdu>(), "DisEntity needs a DisGeoOrigin in the scene");
+	const Vector3i id = get_effective_entity_id();
+	Ref<DisDetonationPdu> pdu;
+	pdu.instantiate();
+	pdu->set_timestamp(unix_timestamp());
+	pdu->set_firing_entity_id(id);
+	if (fire_pdu.is_valid()) {
+		pdu->set_event_id(fire_pdu->get_event_id());
+		pdu->set_munition_id(fire_pdu->get_munition_id());
+		pdu->set_target_entity_id(target_id == Vector3i() ? fire_pdu->get_target_entity_id() : target_id);
+		pdu->set_munition_type(fire_pdu->get_munition_type());
+		pdu->set_warhead(fire_pdu->get_warhead());
+		pdu->set_fuse(fire_pdu->get_fuse());
+		pdu->set_quantity(fire_pdu->get_quantity());
+		pdu->set_rate(fire_pdu->get_rate());
+	} else {
+		pdu->set_event_id(Vector3i(id.x, id.y, next_event_number));
+		next_event_number = next_event_number % 65535 + 1;
+		pdu->set_munition_id(Vector3i(id.x, id.y, 0));
+		pdu->set_target_entity_id(target_id);
+		pdu->set_quantity(1);
+	}
+	pdu->set_location_ecef(origin->local_to_ecef(position));
+	pdu->set_velocity(origin->local_vector_to_ecef(velocity));
+	pdu->set_detonation_result(result);
+	return pdu;
+}
+
+Ref<DisFirePdu> DisEntity::fire(const PackedInt32Array &munition_type, const Vector3i &target_id, const Vector3 &velocity,
+		double range) {
+	const Ref<DisFirePdu> pdu = create_fire_pdu(munition_type, target_id, velocity, range);
+	DisNetwork *network = get_network();
+	if (pdu.is_valid() && network != nullptr && network->is_running()) {
+		network->send_pdu(pdu);
+	}
+	return pdu;
+}
+
+Ref<DisDetonationPdu> DisEntity::detonate(const Vector3 &position, int result, const Ref<DisFirePdu> &fire_pdu,
+		const Vector3i &target_id, const Vector3 &velocity) {
+	const Ref<DisDetonationPdu> pdu = create_detonation_pdu(position, result, fire_pdu, target_id, velocity);
+	DisNetwork *network = get_network();
+	if (pdu.is_valid() && network != nullptr && network->is_running()) {
+		network->send_pdu(pdu);
+	}
+	return pdu;
 }

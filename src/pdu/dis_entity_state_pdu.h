@@ -1,7 +1,6 @@
 #pragma once
 
 #include <godot_cpp/classes/ref.hpp>
-#include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
@@ -9,13 +8,15 @@
 #include <godot_cpp/variant/vector3.hpp>
 #include <godot_cpp/variant/vector3i.hpp>
 
+#include "dis_pdu_base.h"
+
 // DIS 7 Entity State PDU (type 1) as a Godot object. Fields are plain Godot values; encode() and
 // decode() go through open-dis-cpp. Byte layout: docs/entity-state-pdu.md.
 //
 // Units: metres, metres per second, radians. Location is WGS84 geocentric (ECEF) and kept in doubles
 // (PackedFloat64Array) because Vector3 is 32-bit.
-class DisEntityStatePdu : public godot::RefCounted {
-	GDCLASS(DisEntityStatePdu, godot::RefCounted)
+class DisEntityStatePdu : public DisPduBase {
+	GDCLASS(DisEntityStatePdu, DisPduBase)
 
 public:
 	static constexpr int BASE_SIZE = 144;
@@ -24,13 +25,6 @@ public:
 	static constexpr int DR_PARAMETERS_LENGTH = 15;
 
 private:
-	// Header
-	int protocol_version = 7;
-	int exercise_id = 1;
-	int64_t timestamp = 0;
-	int pdu_status = 0;
-
-	// Body
 	godot::Vector3i entity_id; // x = site, y = application, z = entity number
 	int force_id = 0;
 	godot::PackedInt32Array entity_type; // kind, domain, country, category, subcategory, specific, extra
@@ -54,22 +48,15 @@ protected:
 public:
 	DisEntityStatePdu();
 
-	// Serializes to DIS bytes (big-endian), with the header length filled in.
-	godot::PackedByteArray encode() const;
+	godot::PackedByteArray encode() const override;
 	// Parses DIS bytes. Returns null on malformed input; see DisPdu.get_last_error().
 	static godot::Ref<DisEntityStatePdu> decode(const godot::PackedByteArray &bytes);
+	int get_pdu_type() const override { return 1; }
+	int get_protocol_family() const override { return 1; }
 	// Encoded size: 144 + 16 per variable parameter.
-	int get_length() const;
+	int get_length() const override;
 
 	// Getters and setters (exposed as properties).
-	void set_protocol_version(int value) { protocol_version = value; }
-	int get_protocol_version() const { return protocol_version; }
-	void set_exercise_id(int value) { exercise_id = value; }
-	int get_exercise_id() const { return exercise_id; }
-	void set_timestamp(int64_t value) { timestamp = value; }
-	int64_t get_timestamp() const { return timestamp; }
-	void set_pdu_status(int value) { pdu_status = value; }
-	int get_pdu_status() const { return pdu_status; }
 	void set_entity_id(const godot::Vector3i &value) { entity_id = value; }
 	godot::Vector3i get_entity_id() const { return entity_id; }
 	void set_force_id(int value) { force_id = value; }

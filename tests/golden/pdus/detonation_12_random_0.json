@@ -1,0 +1,67 @@
+{
+  "class": "DisDetonationPdu",
+  "length": 120,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 45,
+    "timestamp": 3672771329,
+    "pdu_status": 54,
+    "firing_entity_id": [
+      11814,
+      20172,
+      2070
+    ],
+    "target_entity_id": [
+      32557,
+      14571,
+      43094
+    ],
+    "munition_id": [
+      64649,
+      40270,
+      49172
+    ],
+    "event_id": [
+      59442,
+      358,
+      64599
+    ],
+    "location_ecef": {
+      "f64_list": [
+        "c15a8bf8e55aee8e",
+        "c15774b45ce1e53e",
+        "414a7563dfbc432c"
+      ]
+    },
+    "velocity": [
+      218.79052734375,
+      997.3104248046875,
+      1393.498779296875
+    ],
+    "munition_type": [
+      9,
+      200,
+      38227,
+      114,
+      116,
+      91,
+      21
+    ],
+    "warhead": 5383,
+    "fuse": 59944,
+    "quantity": 29787,
+    "rate": 39114,
+    "location_in_entity": [
+      -5.092080116271973,
+      -0.9937878251075745,
+      -3.49627685546875
+    ],
+    "detonation_result": 109,
+    "padding": 0,
+    "variable_parameters": {
+      "raw_hex": [
+        "04408aead6405e89105fc43e893f67ee"
+      ]
+    }
+  }
+}

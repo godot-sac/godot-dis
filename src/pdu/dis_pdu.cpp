@@ -6,6 +6,8 @@
 #include <godot_cpp/core/class_db.hpp>
 
 #include "dis_entity_state_pdu.h"
+#include "dis_simulation_management_pdus.h"
+#include "dis_warfare_pdus.h"
 
 using namespace godot;
 
@@ -31,6 +33,7 @@ uint32_t read_u32_be(const PackedByteArray &bytes, int64_t offset) {
 void DisPdu::_bind_methods() {
 	ClassDB::bind_static_method("DisPdu", D_METHOD("peek_header", "bytes"), &DisPdu::peek_header);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("decode", "bytes"), &DisPdu::decode);
+	ClassDB::bind_static_method("DisPdu", D_METHOD("is_supported", "pdu_type"), &DisPdu::is_supported);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("get_last_error"), &DisPdu::get_last_error);
 	ClassDB::bind_static_method("DisPdu", D_METHOD("timestamp_from_seconds", "seconds_past_hour", "absolute"),
 			&DisPdu::timestamp_from_seconds);
@@ -41,6 +44,13 @@ void DisPdu::_bind_methods() {
 	BIND_ENUM_CONSTANT(PDU_TYPE_ENTITY_STATE);
 	BIND_ENUM_CONSTANT(PDU_TYPE_FIRE);
 	BIND_ENUM_CONSTANT(PDU_TYPE_DETONATION);
+	BIND_ENUM_CONSTANT(PDU_TYPE_COLLISION);
+	BIND_ENUM_CONSTANT(PDU_TYPE_CREATE_ENTITY);
+	BIND_ENUM_CONSTANT(PDU_TYPE_REMOVE_ENTITY);
+	BIND_ENUM_CONSTANT(PDU_TYPE_START_RESUME);
+	BIND_ENUM_CONSTANT(PDU_TYPE_STOP_FREEZE);
+	BIND_ENUM_CONSTANT(PDU_TYPE_ACKNOWLEDGE);
+	BIND_ENUM_CONSTANT(PDU_TYPE_COMMENT);
 }
 
 Dictionary DisPdu::peek_header(const PackedByteArray &bytes) {
@@ -58,17 +68,44 @@ Dictionary DisPdu::peek_header(const PackedByteArray &bytes) {
 	return header;
 }
 
-Ref<RefCounted> DisPdu::decode(const PackedByteArray &bytes) {
+Ref<DisPduBase> DisPdu::decode(const PackedByteArray &bytes) {
 	if (bytes.size() < HEADER_SIZE) {
 		set_last_error(vformat("packet too short for a PDU header: %d bytes", bytes.size()));
-		return Ref<RefCounted>();
+		return Ref<DisPduBase>();
 	}
 	switch (bytes[2]) {
 		case PDU_TYPE_ENTITY_STATE:
 			return DisEntityStatePdu::decode(bytes);
+		case PDU_TYPE_FIRE:
+			return DisFirePdu::decode(bytes);
+		case PDU_TYPE_DETONATION:
+			return DisDetonationPdu::decode(bytes);
+		case PDU_TYPE_REMOVE_ENTITY:
+			return DisRemoveEntityPdu::decode(bytes);
+		case PDU_TYPE_START_RESUME:
+			return DisStartResumePdu::decode(bytes);
+		case PDU_TYPE_STOP_FREEZE:
+			return DisStopFreezePdu::decode(bytes);
+		case PDU_TYPE_ACKNOWLEDGE:
+			return DisAcknowledgePdu::decode(bytes);
 		default:
 			set_last_error(vformat("unsupported PDU type %d", bytes[2]));
-			return Ref<RefCounted>();
+			return Ref<DisPduBase>();
+	}
+}
+
+bool DisPdu::is_supported(int type) {
+	switch (type) {
+		case PDU_TYPE_ENTITY_STATE:
+		case PDU_TYPE_FIRE:
+		case PDU_TYPE_DETONATION:
+		case PDU_TYPE_REMOVE_ENTITY:
+		case PDU_TYPE_START_RESUME:
+		case PDU_TYPE_STOP_FREEZE:
+		case PDU_TYPE_ACKNOWLEDGE:
+			return true;
+		default:
+			return false;
 	}
 }
 

@@ -35,6 +35,8 @@ SOURCE = {
 
 # SISO table uid -> key in enums.json
 TABLES = {
+    4: "pdu_type",
+    5: "protocol_family",
     6: "force_id",
     7: "entity_kind",
     8: "platform_domain",
@@ -47,6 +49,12 @@ TABLES = {
     15: "munition_category",
     29: "country",
     44: "dead_reckoning_algorithm",
+    60: "warhead",
+    61: "fuse",
+    62: "detonation_result",
+    67: "stop_freeze_reason",
+    69: "acknowledge_flag",
+    70: "acknowledge_response",
 }
 
 NS = "{http://www.sisostds.org/schemas/SISO-REF-010/2.7}"

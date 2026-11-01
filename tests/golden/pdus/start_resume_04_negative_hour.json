@@ -1,0 +1,25 @@
+{
+  "class": "DisStartResumePdu",
+  "length": 44,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "originating_id": [
+      0,
+      0,
+      0
+    ],
+    "receiving_id": [
+      0,
+      0,
+      0
+    ],
+    "request_id": 9,
+    "real_world_time_hour": -2,
+    "real_world_time_past_hour": 2,
+    "simulation_time_hour": -2147483648,
+    "simulation_time_past_hour": 3
+  }
+}

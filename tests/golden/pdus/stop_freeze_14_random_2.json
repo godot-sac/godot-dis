@@ -1,0 +1,26 @@
+{
+  "class": "DisStopFreezePdu",
+  "length": 40,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 225,
+    "timestamp": 1880257112,
+    "pdu_status": 7,
+    "originating_id": [
+      63578,
+      29836,
+      18128
+    ],
+    "receiving_id": [
+      30751,
+      46657,
+      57643
+    ],
+    "request_id": 1062790566,
+    "real_world_time_hour": 561526709,
+    "real_world_time_past_hour": 3893805303,
+    "reason": 132,
+    "frozen_behavior": 63,
+    "padding": 0
+  }
+}

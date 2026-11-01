@@ -7,70 +7,27 @@
 
 #include "dis_pdu.h"
 #include "pdu_bytes.h"
+#include "pdu_convert.h"
 
 using namespace godot;
 
+using namespace pdu_convert;
+
 namespace {
-constexpr int ENTITY_TYPE_FIELDS = 7;
-
-PackedInt32Array zeros(int count) {
-	PackedInt32Array array;
-	array.resize(count);
-	array.fill(0);
-	return array;
-}
-
 DIS::EntityType to_dis(const PackedInt32Array &type) {
-	DIS::EntityType out;
-	out.setEntityKind(static_cast<unsigned char>(type[0]));
-	out.setDomain(static_cast<unsigned char>(type[1]));
-	out.setCountry(static_cast<unsigned short>(type[2]));
-	out.setCategory(static_cast<unsigned char>(type[3]));
-	out.setSubcategory(static_cast<unsigned char>(type[4]));
-	out.setSpecific(static_cast<unsigned char>(type[5]));
-	out.setExtra(static_cast<unsigned char>(type[6]));
-	return out;
-}
-
-PackedInt32Array from_dis(const DIS::EntityType &type) {
-	PackedInt32Array out;
-	out.push_back(type.getEntityKind());
-	out.push_back(type.getDomain());
-	out.push_back(type.getCountry());
-	out.push_back(type.getCategory());
-	out.push_back(type.getSubcategory());
-	out.push_back(type.getSpecific());
-	out.push_back(type.getExtra());
-	return out;
+	return to_dis_type(type);
 }
 
 DIS::Vector3Float to_dis(const Vector3 &v) {
-	DIS::Vector3Float out;
-	out.setX(static_cast<float>(v.x));
-	out.setY(static_cast<float>(v.y));
-	out.setZ(static_cast<float>(v.z));
-	return out;
+	return to_dis_vector(v);
+}
+
+PackedInt32Array from_dis(const DIS::EntityType &type) {
+	return from_dis_type(type);
 }
 
 Vector3 from_dis(const DIS::Vector3Float &v) {
-	return Vector3(v.getX(), v.getY(), v.getZ());
-}
-
-// Copies `count` bytes from a Godot array into a raw buffer, padding with zeros.
-void copy_bytes(const PackedByteArray &from, unsigned char *to, int count) {
-	for (int i = 0; i < count; i++) {
-		to[i] = i < from.size() ? from[i] : 0;
-	}
-}
-
-PackedByteArray resized(const PackedByteArray &value, int count) {
-	PackedByteArray out = value;
-	const int64_t old_size = out.size();
-	out.resize(count);
-	for (int64_t i = old_size; i < count; i++) {
-		out[i] = 0;
-	}
-	return out;
+	return from_dis_vector(v);
 }
 } // namespace
 
@@ -84,9 +41,7 @@ DisEntityStatePdu::DisEntityStatePdu() {
 }
 
 void DisEntityStatePdu::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("encode"), &DisEntityStatePdu::encode);
 	ClassDB::bind_static_method("DisEntityStatePdu", D_METHOD("decode", "bytes"), &DisEntityStatePdu::decode);
-	ClassDB::bind_method(D_METHOD("get_length"), &DisEntityStatePdu::get_length);
 
 // Binds get_<name>/set_<name> and registers the property, to keep the list below readable.
 #define DIS_PROPERTY(variant_type, name)                                                       \
@@ -94,11 +49,6 @@ void DisEntityStatePdu::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_" #name), &DisEntityStatePdu::get_##name);          \
 	ADD_PROPERTY(PropertyInfo(Variant::variant_type, #name), "set_" #name, "get_" #name)
 
-	ADD_GROUP("Header", "");
-	DIS_PROPERTY(INT, protocol_version);
-	DIS_PROPERTY(INT, exercise_id);
-	DIS_PROPERTY(INT, timestamp);
-	DIS_PROPERTY(INT, pdu_status);
 	ADD_GROUP("Entity", "");
 	DIS_PROPERTY(VECTOR3I, entity_id);
 	DIS_PROPERTY(INT, force_id);
@@ -167,18 +117,8 @@ int DisEntityStatePdu::get_length() const {
 
 PackedByteArray DisEntityStatePdu::encode() const {
 	DIS::EntityStatePdu pdu;
-	pdu.setProtocolVersion(static_cast<unsigned char>(protocol_version));
-	pdu.setExerciseID(static_cast<unsigned char>(exercise_id));
-	pdu.setTimestamp(static_cast<unsigned int>(timestamp));
-	pdu.setPduStatus(static_cast<unsigned char>(pdu_status));
-
-	DIS::SimulationAddress address;
-	address.setSite(static_cast<unsigned short>(entity_id.x));
-	address.setApplication(static_cast<unsigned short>(entity_id.y));
-	DIS::EntityID id;
-	id.setSimulationAddress(address);
-	id.setEntityNumber(static_cast<unsigned short>(entity_id.z));
-	pdu.setEntityID(id);
+	write_header(pdu);
+	pdu.setEntityID(to_dis_entity_id(entity_id));
 	pdu.setForceId(static_cast<unsigned char>(force_id));
 	pdu.setEntityType(to_dis(entity_type));
 	pdu.setAlternativeEntityType(to_dis(alternative_entity_type));
@@ -226,11 +166,7 @@ PackedByteArray DisEntityStatePdu::encode() const {
 	}
 	pdu.setVariableParameters(parameters_list);
 
-	// open-dis-cpp does not fill in the header length during marshal().
-	pdu.setLength(static_cast<unsigned short>(pdu.getMarshalledSize()));
-	DIS::DataStream stream(DIS::BIG);
-	pdu.marshal(stream);
-	return pdu_bytes::from_stream(stream);
+	return marshal(pdu);
 }
 
 Ref<DisEntityStatePdu> DisEntityStatePdu::decode(const PackedByteArray &bytes) {
@@ -251,13 +187,8 @@ Ref<DisEntityStatePdu> DisEntityStatePdu::decode(const PackedByteArray &bytes) {
 
 	Ref<DisEntityStatePdu> out;
 	out.instantiate();
-	out->protocol_version = pdu.getProtocolVersion();
-	out->exercise_id = pdu.getExerciseID();
-	out->timestamp = pdu.getTimestamp();
-	out->pdu_status = pdu.getPduStatus();
-	const DIS::EntityID &id = pdu.getEntityID();
-	out->entity_id = Vector3i(id.getSimulationAddress().getSite(), id.getSimulationAddress().getApplication(),
-			id.getEntityNumber());
+	out->read_header(pdu);
+	out->entity_id = from_dis_entity_id(pdu.getEntityID());
 	out->force_id = pdu.getForceId();
 	out->entity_type = from_dis(pdu.getEntityType());
 	out->alternative_entity_type = from_dis(pdu.getAlternativeEntityType());

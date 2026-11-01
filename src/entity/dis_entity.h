@@ -12,7 +12,9 @@
 
 #include "entity/dead_reckoning.h"
 
+class DisDetonationPdu;
 class DisEntityStatePdu;
+class DisFirePdu;
 class DisGeoOrigin;
 class DisNetwork;
 
@@ -29,6 +31,7 @@ public:
 		VELOCITY_MANUAL, // set linear_velocity / linear_acceleration / angular_velocity yourself
 	};
 	static constexpr int64_t APPEARANCE_DEACTIVATED = 1 << 23; // general appearance "State" bit
+	static constexpr const char *GROUP = "dis_entities"; // every DisEntity in the tree joins it
 
 private:
 	godot::NodePath network_path;
@@ -94,6 +97,20 @@ public:
 	godot::Ref<DisEntityStatePdu> create_pdu();
 	godot::Vector3i get_effective_entity_id();
 	int64_t get_published_count() const { return published_count; }
+
+	// Weapons. Positions and velocities are global Godot coordinates (converted with the DisGeoOrigin).
+	// A Fire PDU from this entity's position, with a new event ID; `velocity` is the munition's. Not sent.
+	godot::Ref<DisFirePdu> create_fire_pdu(const godot::PackedInt32Array &munition_type, const godot::Vector3i &target_id,
+			const godot::Vector3 &velocity, double range);
+	// A Detonation PDU at `position`. With `fire` it continues that event (event ID, munition, target);
+	// otherwise it gets a new event ID. Not sent.
+	godot::Ref<DisDetonationPdu> create_detonation_pdu(const godot::Vector3 &position, int result,
+			const godot::Ref<DisFirePdu> &fire, const godot::Vector3i &target_id, const godot::Vector3 &velocity);
+	// create_fire_pdu / create_detonation_pdu and send it. Returns the PDU (null if there is no origin).
+	godot::Ref<DisFirePdu> fire(const godot::PackedInt32Array &munition_type, const godot::Vector3i &target_id,
+			const godot::Vector3 &velocity, double range);
+	godot::Ref<DisDetonationPdu> detonate(const godot::Vector3 &position, int result, const godot::Ref<DisFirePdu> &fire,
+			const godot::Vector3i &target_id, const godot::Vector3 &velocity);
 
 	void set_network_path(const godot::NodePath &value);
 	godot::NodePath get_network_path() const { return network_path; }

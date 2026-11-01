@@ -2,12 +2,15 @@
 
 Usage: tools/.venv/Scripts/python tools/oracle_sender.py --port 3001 [--host 127.0.0.1] [--count 5]
        [--exercise 1] [--site 7] [--application 8] [--interval 0.05] [--repeat 3] [--broadcast]
+       tools/.venv/Scripts/python tools/oracle_sender.py --port 3001 --golden tests/golden/pdus
 
 Entity n (1..count) gets marking "PY<n>" and location (n * 1000, 2 * n * 1000, 3 * n * 1000) so a
 receiver can check every field it decodes.
+With --golden DIR, sends every DIR/*.bin (PDUs Open-DIS Python wrote, see golden_pdus.py) instead, in name order.
 """
 import argparse
 import io
+import pathlib
 import socket
 import time
 
@@ -48,14 +51,19 @@ def main():
     parser.add_argument("--interval", type=float, default=0.05)
     parser.add_argument("--repeat", type=int, default=3, help="send the whole set this many times")
     parser.add_argument("--broadcast", action="store_true")
+    parser.add_argument("--golden", help="send the .bin files of this directory instead")
     args = parser.parse_args()
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     if args.broadcast:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    if args.golden:
+        packets = [f.read_bytes() for f in sorted(pathlib.Path(args.golden).glob("*.bin"))]
+    else:
+        packets = [build(args, n) for n in range(1, args.count + 1)]
     for _ in range(args.repeat):
-        for n in range(1, args.count + 1):
-            sock.sendto(build(args, n), (args.host, args.port))
+        for data in packets:
+            sock.sendto(data, (args.host, args.port))
             time.sleep(args.interval)
 
 
