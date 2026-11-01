@@ -44,8 +44,9 @@ units disappear from the other at once (it sends a "deactivated" PDU on exit).
 |---|---|---|
 | F | the next own unit fires at the nearest enemy within 30 km; the round lands after up to 4 s (shortened time of flight) with a 70 % chance to hit | Fire, then Detonation |
 | X | asks the owner of the remote unit under the mouse to remove it; the owner frees it and answers | Remove Entity, Acknowledge, final Entity State |
-| S | stops (freezes) the whole exercise: every copy and the Python traffic stop moving and sending, a banner shows who stopped it | Stop/Freeze, Acknowledge |
-| R | resumes it | Start/Resume, Acknowledge |
+| S | stops (freezes) the whole exercise: every copy and the Python traffic stop moving and sending, a banner shows who stopped it | Stop/Freeze, Acknowledge, Comment |
+| R | resumes it | Start/Resume, Acknowledge, Comment |
+| T | a 2 s radio call from the helicopter on 243.000 MHz: waves on its symbol in every copy | Transmitter, Signal |
 
 A hit sets the target's damage appearance to "destroyed" (it stops, its symbol shows the 2525D destroyed status in
 every copy). Fire lines, bursts and the exercise state are drawn by `demo/map_effects.gd` on top of the map.
@@ -56,7 +57,7 @@ network and control node (see docs/simulation-management.md).
 After `--`: `--side blue|red`, `--seconds N` (quit after N s, printing PDU counts by type), `--screenshot file.png`
 (saved at quit), `--port N` (a separate exercise, e.g. to test next to a running demo), `--record file.pcapng`
 (or `.pdulog`; replay it with `demo/replay.tscn`, see docs/recording.md). For unattended runs: `--auto-fire S`
-(fire every S seconds), `--stop-at S`, `--resume-at S`, `--remove site:app:entity@S`.
+(fire every S seconds), `--stop-at S`, `--resume-at S`, `--remove site:app:entity@S`, `--radio-at S`.
 
 An unattended check of everything at once, on port 3297 so it doesn't disturb a running demo (three terminals):
 ```powershell
@@ -70,7 +71,8 @@ replays the blue side's recording.
 `tools/demo_traffic.py` options: `--start S` (skip S seconds ahead along the routes; the airliner reaches its first
 turn after ~400 s), `--rate HZ` (updates per second, default 1), `--port N`, `--seconds N`. It sends dead reckoning
 algorithm 4 (RVW) with acceleration and turn rate, so receivers follow the vehicles through turns too. It also obeys
-Stop/Freeze, Start/Resume and Remove Entity addressed to site 3 and answers them with Open-DIS Acknowledge PDUs.
+Stop/Freeze, Start/Resume and Remove Entity addressed to site 3 and answers them with Open-DIS Acknowledge PDUs,
+and the airliner's radio talks on 118.100 MHz for 3 s every 20 s (Transmitter and Signal PDUs).
 
 ## Watch it in Wireshark
 Capture on the loopback adapter (one computer) or the LAN adapter with filter `udp.port == 3000`: Entity State PDUs

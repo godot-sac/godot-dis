@@ -316,3 +316,15 @@ sınıfla çökmediğini görmek nedeni kesinleştirdi.
 - **MSVC ile GCC farkı**: `std::all_of` için `<algorithm>` eklemeyi unutmuştuk; MSVC başka bir başlık üzerinden
   dolaylı olarak buluyordu, GCC bulmadı. Ders: kullandığın her şeyin başlığını kendin ekle; Linux derlemesi bu tür
   hataları yakalar.
+
+## Kendi kodlayıcımız: `byte_io.h` (Faz 11)
+
+- **Sınır denetimli okuyucu**: `byte_io::Reader` her okumadan önce `at + n <= end` diye bakar; taşarsa `ok()` false
+  olur ve sonraki tüm okumalar 0 döner. Böylece bozuk bir paket ayrıştırıcıyı çökertemez; ayrıştırma sonunda tek bir
+  `if (!in.ok())` yeter. open-dis-cpp'nin `vector::at()`'i exception'sız derlemede programı sonlandırıyordu.
+- **`std::memcpy` ile float bitleri**: `float`'ı `uint32_t`'ye `reinterpret_cast` etmek C++'ta tanımsız davranış
+  (strict aliasing). `memcpy(&bits, &f, 4)` doğru yol; derleyici bunu tek bir taşıma komutuna çevirir.
+- **Şablonsuz sanal "kanca"**: `DisDatumPdu::has_request()` sanal; Comment `false` döndürür, Data ve Set Data
+  `true`. Ortak `encode()` ve `decode_into()` tek yerde kalır, farkı bir fonksiyon söyler.
+- **Gerçek veriden ders**: gidiş-dönüş testi (decode → encode → aynı baytlar mı) yazdığımız alanları değil, *göz ardı
+  ettiğimiz* baytları da sınar. Wireshark örneklerinde fazladan dolgu ve 0 yazılmış aile alanı bu sayede bulundu.

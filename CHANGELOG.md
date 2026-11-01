@@ -35,10 +35,21 @@ All notable changes to this project are documented here. Versions follow [semver
   tables; `appearance_to_status()`; `entity_type_to_sidc()` accepts 2525D status digits 0–5.
 - Demo: fire (F), Remove Entity request (X), stop / resume the exercise (S / R), event log, destroyed units,
   `--record`; replay viewer `demo/replay.tscn`; the Open-DIS Python traffic obeys and acknowledges exercise control.
+- Collision, Create Entity, Comment, Set Data, Data, Transmitter and Signal PDUs (`DisCollisionPdu`,
+  `DisCreateEntityPdu`, `DisCommentPdu`, `DisSetDataPdu`, `DisDataPdu`, `DisTransmitterPdu`, `DisSignalPdu`) with
+  `DisNetwork` signals; datum helpers (`add_text()`, `get_text()`, ...); `DisExerciseControl.create_entity_requested`
+  and `send_create_entity()`.
+- `DisRadioMonitor`: radios on the network and who is transmitting.
+- `DisPduBase.trailing_bytes`: bytes a sender adds after the known fields survive decode + encode; the received
+  protocol family byte is kept too.
+- Demo: radio calls (T) shown with radio waves on the map, the Open-DIS Python airliner talks on 118.1 MHz,
+  Comment PDUs when the exercise is stopped or resumed.
 
 ### Changed
 - `DisEntityStatePdu` derives from `DisPduBase` (same properties and methods).
 - A PDU length field of 0 is read as the datagram size (some senders never fill it in).
+- `get_length()` counts `trailing_bytes`; the size of the known fields is `get_body_length()`.
+- Radio Communications PDUs that carry our own site / application are ignored like other own PDUs.
 
 ### Fixed
 - The first headless import of a new project (`--import`, `--editor --quit`) no longer crashes on exit: works

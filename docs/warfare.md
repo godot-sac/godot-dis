@@ -54,6 +54,15 @@ Entity State appearance (damage bits 3–4 for platforms: 0 none, 1 slight, 2 mo
 exactly that, and `DisEnums.appearance_to_status(appearance)` turns those bits into the MIL-STD-2525D status digit
 (3 damaged, 4 destroyed) for `entity_type_to_sidc()`.
 
+## Collision
+
+A Collision PDU (type 4, Entity Information family, 60 bytes, `DisCollisionPdu`) reports that the issuing entity
+hit another one (`colliding_entity_id`, or 0:0:0 for something that is not an entity): `event_id`,
+`collision_type` (0 inelastic, 1 elastic, others in SISO-REF-010 UID 189), the issuing entity's `velocity` (ECEF,
+m/s) and `mass` (kg), and `location` of the impact in the issuing entity's body coordinates. Receive it with
+`DisNetwork.collision_received`. Layout after the header: issuing ID (6), colliding ID (6), event ID (6), collision
+type (1), padding (1), velocity (3 × float32), mass (float32), location (3 × float32).
+
 ## Byte layouts (DIS 7, big-endian)
 
 From open-dis-cpp's DIS 7 classes, checked byte for byte against Open-DIS Python and opendis7-java (see
