@@ -143,7 +143,8 @@ static func force_to_standard_identity(force_id: int) -> String:
 
 ## A MIL-STD-2525D (number) SIDC for an entity type and force ID, for godot-milsymbol. Approximate: the
 ## category decides the symbol (tank, fighter, frigate ...); entity types without a mapping get a plain frame of
-## the right dimension. `status` 0 = present, 1 = planned / anticipated.
+## the right dimension. `status` is the 2525D status digit: 0 = present, 1 = planned / anticipated,
+## 2 = fully capable, 3 = damaged, 4 = destroyed, 5 = full to capacity (see appearance_to_status()).
 static func entity_type_to_sidc(entity_type: PackedInt32Array, force_id: int = 1, status: int = 0) -> String:
 	var v := entity_type.duplicate()
 	v.resize(7)
@@ -155,5 +156,15 @@ static func entity_type_to_sidc(entity_type: PackedInt32Array, force_id: int = 1
 			break
 	if symbol.is_empty():
 		symbol = _symbols().get("domain_fallback", {}).get(str(v[1]), ["10", "000000", "00"])
-	return "100%s%s%d000%s%s00" % [force_to_standard_identity(force_id), symbol[0], clampi(status, 0, 1), symbol[1],
+	return "100%s%s%d000%s%s00" % [force_to_standard_identity(force_id), symbol[0], clampi(status, 0, 5), symbol[1],
 			symbol[2]]
+
+
+## 2525D status digit for a platform's DIS appearance: damage bits 3-4 (slight / moderate = damaged, destroyed).
+static func appearance_to_status(appearance: int) -> int:
+	match (appearance >> 3) & 3:
+		1, 2:
+			return 3
+		3:
+			return 4
+	return 0

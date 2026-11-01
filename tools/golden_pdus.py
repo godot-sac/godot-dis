@@ -362,9 +362,9 @@ def main():
         self_check(stem, data, fields)
         (OUT / f"{stem}.bin").write_bytes(data)
         (OUT / f"{stem}.json").write_text(json.dumps({"class": cls, "length": len(data), "fields": fields},
-                                                     indent=2) + "\n")
+                                                     indent=2) + "\n", newline="\n")
         names.append(stem)
-    (OUT / "index.json").write_text(json.dumps(names, indent=2) + "\n")
+    (OUT / "index.json").write_text(json.dumps(names, indent=2) + "\n", newline="\n")
     print(f"wrote {len(names)} cases to {OUT}: {counters}")
 
 

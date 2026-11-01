@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://demo/demo_main.gd" id="1_main"]
 
 [node name="Main" type="Node"]
+process_mode = 3
 script = ExtResource("1_main")
 
 [node name="DisNetwork" type="DisNetwork" parent="."]
@@ -18,6 +19,12 @@ longitude = 32.8597
 height = 938.0
 
 [node name="DisEntityManager" type="DisEntityManager" parent="."]
+process_mode = 1
 smoothing_time = 0.5
 
+[node name="DisExerciseControl" type="DisExerciseControl" parent="."]
+pause_tree = true
+remove_entities = false
+
 [node name="OwnForces" type="Node3D" parent="."]
+process_mode = 1
