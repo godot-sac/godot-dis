@@ -77,8 +77,9 @@ jobs:
       - name: Godot tests (GUT)
         if: matrix.godot_zip != ''
         run: |
-          "$GODOT" --headless --path . --import || true
+          "$GODOT" --headless --path . --import
           "$GODOT" --headless --path . -s addons/gut/gut_cmdln.gd
+          "$PY" tools/check_first_import.py --godot "$GODOT"
 
       - uses: actions/upload-artifact@v4
         with:

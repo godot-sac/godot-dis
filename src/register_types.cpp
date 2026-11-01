@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "dis_probe.h"
+#include "editor_first_load_guard.h"
 #include "pdu/dis_entity_state_pdu.h"
 #include "geo/dis_geo.h"
 #include "entity/dis_entity.h"
@@ -17,6 +18,10 @@
 using namespace godot;
 
 void initialize_godot_dis(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		install_editor_first_load_guard();
+		return;
+	}
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
@@ -34,6 +39,10 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 }
 
 void uninitialize_godot_dis(ModuleInitializationLevel p_level) {
+	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
+		remove_editor_first_load_guard();
+		return;
+	}
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}

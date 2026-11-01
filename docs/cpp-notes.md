@@ -266,3 +266,22 @@ saati kullan.
 **CI (GitHub Actions)**: `.github/workflows/ci.yml` her push'ta Windows, Linux ve macOS'ta derler, C++ testlerini
 çalıştırır, Windows ve Linux'ta Godot'u indirip GUT testlerini koşar ve üç platformun kütüphaneleriyle tek bir
 `addons/dis` paketi üretir. Linux kısmı yerelde WSL (Ubuntu 24.04, GCC 13) ile denendi.
+
+## Godot hatasına geçici çözüm: `CallableCustom` ve yıkıcıyı kanca olarak kullanmak
+`src/editor_first_load_guard.cpp`. Godot 4.7'de yeni bir projenin ilk `--headless --import`'u eklentimizi tarama
+sırasında keşfedince çıkışta çöküyordu (godotengine/godot#111048): editör sınıf belgelerini ertelenmiş bir çağrıyla
+üretiyor, editör hemen kapanırsa bu çağrı belge verisi silindikten sonra çalışıp boş işaretçiye (`nullptr`) erişiyor.
+Hatayı minimal bir C eklentisiyle (godot-cpp'siz) yeniden üretip motorda olduğunu ayırdık; `is_exposed` kapalı bir
+sınıfla çökmediğini görmek nedeni kesinleştirdi.
+
+- **`CallableCustom`**: Godot'nun `Callable`'ını kendi C++ sınıfımızla doldurmak. Godot callable'ı bir sinyal
+  bağlantısında tutar; bağlantı (ya da sinyalin sahibi olan nesne) yok olunca callable'ı siler ve bizim yıkıcımız
+  çalışır. Burada çağrının kendisi önemsiz: kök pencerenin `renamed` sinyaline bağlıyoruz ki kök pencere silinince,
+  yani editör düğümü ve belge verisi gittikten sonra, yıkıcı çalışsın ve sınıflarımızı erkenden kaldırsın.
+- **Yıkıcı = "silinme olayı"**: RAII'nin tersten kullanımı; bir nesnenin ömrünü başka bir nesneye bağlayıp onun
+  silinişinden haberdar olmak.
+- **Anonim ad alanı (`namespace { ... }`)**: içindekiler yalnızca o `.cpp` dosyasında görünür (C'deki `static` gibi);
+  başka dosyalarla isim çakışması olmaz.
+- **`is_valid()` dersi**: hedef nesnesi olmayan callable varsayılan olarak "geçersiz" sayılıyor, `connect()` onu
+  reddedip hemen siliyor. İlk denemede bu yüzden sahte bir başarı gördük; günlükte kancanın ne zaman çalıştığına bakmak
+  ortaya çıkardı. Ders: düzeltmenin *neden* çalıştığını doğrula.

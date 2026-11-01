@@ -18,5 +18,8 @@ All notable changes to this project are documented here. Versions follow [semver
 - CI for Windows, Linux and macOS.
 
 ### Fixed
+- The first headless import of a new project (`--import`, `--editor --quit`) no longer crashes on exit: works
+  around godotengine/godot#111048 by unregistering the classes early when a headless editor loads the
+  extension mid-session (`src/editor_first_load_guard.cpp`).
 - Smoothing started from the previous frame's pose, so fast entities stalled for a frame and caught up on every
   update (visible as jitter on the demo airliner).
