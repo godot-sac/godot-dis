@@ -1,5 +1,6 @@
 # Builds the GDExtension for Windows, Linux and macOS, runs the C++ unit tests everywhere and the Godot (GUT)
-# tests on Windows and Linux, then packs addons/dis with all libraries as one artifact.
+# tests on Windows and Linux, then packs addons/dis with all libraries into the release zip and checks it in an
+# empty project. A tag vX.Y.Z also makes a draft GitHub release with that zip (docs/release.md).
 name: CI
 
 on:
@@ -61,7 +62,13 @@ jobs:
         run: |
           "$PY" -m SCons -j4 target=template_debug ${{ matrix.scons_args }}
           "$PY" -m SCons -j4 target=template_release ${{ matrix.scons_args }}
+          rm -f addons/dis/bin/${{ matrix.platform }}/*.exp addons/dis/bin/${{ matrix.platform }}/*.lib
           ls -la addons/dis/bin/${{ matrix.platform }}
+
+      # The library must export only its entry point, or it breaks other extensions (godot-jsbsim) on Linux.
+      - name: Exported symbols (Linux)
+        if: matrix.platform == 'linux'
+        run: python3 tools/check_exports.py
 
       - name: C++ unit tests (doctest)
         run: '"$PY" -m SCons tests'
@@ -99,22 +106,64 @@ jobs:
   package:
     name: Addon package
     needs: build
-    runs-on: ubuntu-latest
+    # The oldest supported runner, like the Linux build, so the check runs where the library is built.
+    runs-on: ubuntu-22.04
+    env:
+      GODOT_ZIP: Godot_v4.7.2-stable_linux.x86_64.zip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: bin-*
           path: artifacts
-      - name: Assemble addons/dis
+      - name: Pack addons/dis (all platforms)
         run: |
           for platform in windows linux macos; do
             mkdir -p "addons/dis/bin/$platform"
             cp -r "artifacts/bin-$platform/." "addons/dis/bin/$platform/"
           done
-          cp LICENSE THIRD_PARTY_NOTICES.md addons/dis/
-          find addons/dis -type f | sort
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="dev-${GITHUB_SHA::7}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          python3 tools/package_addon.py --version "$VERSION" --platforms windows,linux,macos
+          python3 -m zipfile -l "build/package/godot-dis-$VERSION.zip"
+      - name: Check the package in a new project (Linux)
+        run: |
+          curl -sSfL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_ZIP}"
+          unzip -q godot.zip -d godot_bin
+          python3 tools/check_package.py "build/package/godot-dis-$VERSION.zip" --godot "$PWD/godot_bin/${GODOT_ZIP%.zip}"
       - uses: actions/upload-artifact@v4
         with:
-          name: godot-dis-addon
-          path: addons/dis
+          name: godot-dis-${{ env.VERSION }}
+          path: build/package/godot-dis-${{ env.VERSION }}.zip
+          if-no-files-found: error
+
+  # A tag vX.Y.Z makes a draft GitHub release with the checked zip and the CHANGELOG section as notes; publish it
+  # by hand after a look (docs/release.md).
+  release:
+    name: Draft release
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    needs: package
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: godot-dis-*
+          path: dist
+          merge-multiple: true
+      - name: Create the release and attach the zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ls -la dist
+          test -f "dist/godot-dis-$VERSION.zip"
+          awk -v v="$VERSION" 'index($0, "## [" v "]") == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          test -s notes.md || echo "See CHANGELOG.md." > notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/*.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/*.zip --draft --title "godot-dis $VERSION" --notes-file notes.md
+          fi

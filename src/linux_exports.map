@@ -1,0 +1,8 @@
+/* Linker version script (Linux): the library exports only its GDExtension entry point. Everything else, including
+   the statically linked libstdc++, stays private; see SConstruct and tools/check_exports.py. */
+{
+  global:
+    godot_dis_library_init;
+  local:
+    *;
+};

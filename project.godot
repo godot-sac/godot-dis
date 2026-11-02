@@ -13,6 +13,7 @@ config_version=5
 config/name="godot-dis"
 config/description="Demo and test project for the godot-dis GDExtension."
 config/features=PackedStringArray("4.7")
+config/icon="res://icon.svg"
 
 [editor_plugins]
 

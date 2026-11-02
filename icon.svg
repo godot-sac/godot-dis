@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect x="4" y="4" width="120" height="120" rx="22" fill="#1d2633"/>
+  <!-- globe -->
+  <g fill="none" stroke="#5b7a99" stroke-width="3">
+    <circle cx="64" cy="66" r="42"/>
+    <ellipse cx="64" cy="66" rx="17" ry="42"/>
+    <path d="M22 66h84M28 45h72M28 87h72"/>
+  </g>
+  <!-- links between three entities -->
+  <g fill="none" stroke="#9ad0ff" stroke-width="3.5" stroke-dasharray="7 5" stroke-linecap="round">
+    <path d="M38 48 L88 38 M38 48 L62 92 M88 38 L62 92"/>
+  </g>
+  <!-- entities: friendly (blue rectangle), hostile (red diamond), neutral (green square) -->
+  <rect x="25" y="39" width="26" height="18" rx="2" fill="#80b3ff" stroke="#0b1520" stroke-width="3"/>
+  <path d="M88 23 L102 38 L88 53 L74 38 Z" fill="#ff8080" stroke="#0b1520" stroke-width="3"/>
+  <rect x="51" y="81" width="22" height="22" rx="2" fill="#aaffaa" stroke="#0b1520" stroke-width="3"/>
+</svg>

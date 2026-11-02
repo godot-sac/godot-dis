@@ -328,3 +328,20 @@ sınıfla çökmediğini görmek nedeni kesinleştirdi.
   `true`. Ortak `encode()` ve `decode_into()` tek yerde kalır, farkı bir fonksiyon söyler.
 - **Gerçek veriden ders**: gidiş-dönüş testi (decode → encode → aynı baytlar mı) yazdığımız alanları değil, *göz ardı
   ettiğimiz* baytları da sınar. Wireshark örneklerinde fazladan dolgu ve 0 yazılmış aile alanı bu sayede bulundu.
+
+## Paylaşımlı kütüphanede sembol görünürlüğü (yayın hazırlığı, 2026-11-02)
+
+- **Linux'ta her şey varsayılan olarak dışa açık**: GCC ile derlenen bir `.so`, içindeki her global fonksiyonu ve
+  değişkeni "dinamik sembol" olarak dışa verir (Windows DLL'inde tersine yalnızca `__declspec(dllexport)` olanlar
+  çıkar). godot-cpp Linux'ta libstdc++'ı statik bağladığı için bizim kütüphanemiz `std::locale::id`,
+  `std::regex` parçaları dahil ~4400 sembol veriyordu (`nm -D --defined-only`).
+- **Neden çöktü**: Godot eklentileri yükleyince sembolleri genel ad alanına girer. Ardından yüklenen `libJSBSim.so.1`
+  (sistemin paylaşımlı `libstdc++.so.6`'sını kullanır) bazı `std::` sembollerini bizim kopyamıza, bazılarını
+  sistemdekine bağladı; iki ayrı `locale` tablosu karışınca `std::regex` kurucusunda signal 11. Windows'ta her DLL
+  kendi CRT'sini ayrı tuttuğu için görülmedi.
+- **Çözüm, bağlayıcı sürüm betiği** (`src/linux_exports.map`, `-Wl,--version-script=`): `global:` altında yalnızca
+  `godot_dis_library_init` (Godot'un aradığı giriş noktası), `local: *;` ile geri kalan her şey gizli.
+  `-Wl,--exclude-libs,ALL` ayrıca statik kütüphanelerden gelen sembolleri gizler. Sonuç: tek sembol.
+- **Gerileme denetimi**: `tools/check_exports.py` dışa verilen sembolleri sayar (CI'da Linux adımı);
+  `tools/check_package.py --with godot-jsbsim-x.zip` iki eklentiyi aynı boş projede yükleyip J3Cub'ı uçurur. Eski
+  kütüphaneyle bu denetim daha ilk `--import`'ta çöküyor (exit -6), yenisiyle geçiyor.

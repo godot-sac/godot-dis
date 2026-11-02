@@ -44,6 +44,14 @@ All notable changes to this project are documented here. Versions follow [semver
   protocol family byte is kept too.
 - Demo: radio calls (T) shown with radio waves on the map, the Open-DIS Python airliner talks on 118.1 MHz,
   Comment PDUs when the exercise is stopped or resumed.
+- Release zip: `tools/package_addon.py` packs `godot-dis-<version>.zip` (`addons/dis/` with the Windows, Linux and
+  macOS libraries, data, icons, `LICENSE`, `THIRD_PARTY_NOTICES.md`); `tools/check_package.py` tries it in a new,
+  empty project (optionally next to other add-on zips, `--with`); CI packs and checks it on every push and makes a
+  draft GitHub release on a `vX.Y.Z` tag.
+- Editor icons for the nodes (`addons/dis/icons/`), project / Asset Library icon.
+- Docs: [getting started](docs/getting-started.md) (empty project to two simulations and a recording in about 15
+  minutes), [compatibility](docs/compatibility.md), [release](docs/release.md); README animation and social preview
+  (`tools/make_media.py`, demo option `--capture`).
 
 ### Changed
 - `DisEntityStatePdu` derives from `DisPduBase` (same properties and methods).
@@ -52,6 +60,10 @@ All notable changes to this project are documented here. Versions follow [semver
 - Radio Communications PDUs that carry our own site / application are ignored like other own PDUs.
 
 ### Fixed
+- Linux: loading godot-dis and godot-jsbsim in one project crashed (signal 11 in JSBSim's `std::regex`): the
+  library exported its statically linked libstdc++ (~4400 symbols). It now exports only its entry point
+  (`src/linux_exports.map`), checked by `tools/check_exports.py` in CI.
+- The demo no longer shows the full local path of a recording on screen.
 - The first headless import of a new project (`--import`, `--editor --quit`) no longer crashes on exit: works
   around godotengine/godot#111048 by unregistering the classes early when a headless editor loads the
   extension mid-session (`src/editor_first_load_guard.cpp`).

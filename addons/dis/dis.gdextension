@@ -12,3 +12,15 @@ linux.debug.x86_64 = "res://addons/dis/bin/linux/libgodot_dis.linux.template_deb
 linux.release.x86_64 = "res://addons/dis/bin/linux/libgodot_dis.linux.template_release.x86_64.so"
 macos.debug = "res://addons/dis/bin/macos/libgodot_dis.macos.template_debug.universal.dylib"
 macos.release = "res://addons/dis/bin/macos/libgodot_dis.macos.template_release.universal.dylib"
+
+[icons]
+
+DisNetwork = "res://addons/dis/icons/dis_network.svg"
+DisGeoOrigin = "res://addons/dis/icons/dis_geo_origin.svg"
+DisEntity = "res://addons/dis/icons/dis_entity.svg"
+DisEntityManager = "res://addons/dis/icons/dis_entity_manager.svg"
+DisRemoteEntity = "res://addons/dis/icons/dis_remote_entity.svg"
+DisExerciseControl = "res://addons/dis/icons/dis_exercise_control.svg"
+DisRecorder = "res://addons/dis/icons/dis_recorder.svg"
+DisPlayer = "res://addons/dis/icons/dis_player.svg"
+DisRadioMonitor = "res://addons/dis/icons/dis_radio_monitor.svg"

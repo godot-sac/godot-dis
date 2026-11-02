@@ -27,16 +27,40 @@ The first build compiles godot-cpp (about a minute); later builds only recompile
 After rebuilding, restart the Godot editor if it had the old library loaded.
 macOS: add `arch=universal` (one library for Intel and Apple Silicon, the path `dis.gdextension` expects).
 
+### Linux symbol visibility
+godot-cpp links libstdc++ statically on Linux, and a GCC shared library exports every global symbol by default. If
+our copy of libstdc++ is exported, another extension in the same project that uses the system's shared libstdc++
+(godot-jsbsim's `libJSBSim.so.1`) binds part of its `std::locale` / `std::regex` code to it and crashes. So the
+library is linked with a version script, `src/linux_exports.map`, that exports only `godot_dis_library_init`.
+Check it after a build (CI does):
+```sh
+python3 tools/check_exports.py      # "1 exported symbols, ok" per library
+```
+
+## Release zip
+```sh
+python tools/package_addon.py --version 0.1.0     # build/package/godot-dis-0.1.0.zip, every platform that is built
+python tools/check_package.py build/package/godot-dis-0.1.0.zip --godot <godot> [--with other-addon.zip]
+```
+The zip has `addons/dis/` at its root: `dis.gdextension`, the debug and release libraries, data, icons, the CLI
+tool, `LICENSE` and `THIRD_PARTY_NOTICES.md` (no linker files). `check_package.py` installs it in a new, empty
+project and checks the first import, the classes, the enumeration data and an entity sent over UDP on localhost.
+For a Windows + Linux zip on Windows, copy the Linux libraries (built in WSL) to `addons/dis/bin/linux/` first.
+See [release](release.md).
+
 ## Continuous integration
 `.github/workflows/ci.yml` runs on every push and pull request (once the repository is on GitHub):
 - Windows (MSVC), Linux (Ubuntu 22.04, GCC) and macOS (universal): debug and release builds, C++ unit tests.
 - Windows and Linux: downloads Godot 4.7.2 and the public sample captures, and runs the GUT tests, including the
   Open-DIS Python interop tests; Linux also installs tshark for the Wireshark test.
   Broadcast / multicast tests become "pending" if the runner's network does not loop them back.
-- A final job packs `addons/dis` with the libraries of all three platforms (artifact `godot-dis-addon`).
+- Linux: checks that the library exports only its entry point (`tools/check_exports.py`).
+- The `package` job packs the release zip with the libraries of all three platforms (`tools/package_addon.py`,
+  artifact `godot-dis-<version>`) and checks it in an empty project on Linux (`tools/check_package.py`).
+- On a `vX.Y.Z` tag the `release` job creates a draft GitHub release with that zip ([release](release.md)).
 
-The Linux job's steps were checked locally in WSL (Ubuntu 24.04, GCC 13): build, 24 C++ tests, 108 GUT tests
-(the 2 Wireshark tests pending without tshark).
+The Linux job's steps were checked locally in WSL (Ubuntu 24.04, GCC 13): build, exported symbols, 24 C++ tests, 113 GUT
+tests (the 2 Wireshark tests pending without tshark), and the release zip in an empty project.
 
 ## Test
 ```powershell

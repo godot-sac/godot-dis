@@ -4,9 +4,10 @@ DIS (IEEE 1278.1, Distributed Interactive Simulation) for Godot 4: connect a God
 exercise — entities, weapon fire and detonations, exercise control (start / stop / remove), recording and playback.
 A C++ GDExtension built on [Open-DIS](https://github.com/open-dis/open-dis-cpp) (BSD-2-Clause) and godot-cpp.
 
-**Status:** in development, not released yet. Builds and tests pass on Windows and Linux; macOS is built by CI only.
+**Status:** v0.1.0 in preparation, not released yet. Tested on Windows and Linux with Godot 4.7.2; macOS is built
+by CI only — see [compatibility](docs/compatibility.md).
 
-![Demo: two Godot simulations and Open-DIS Python on one tactical map](docs/images/demo_blue.png)
+![Demo: two Godot simulations and Open-DIS Python on one tactical map — fire, detonations, a radio call, stop and resume (2.5x speed)](docs/images/demo.gif)
 
 ## Features
 - **14 PDU types:** Entity State, Fire, Detonation, Collision, the simulation management set (Create / Remove
@@ -59,11 +60,17 @@ RPR FOM mirrors the DIS PDUs, so a DIS–HLA gateway can join this addon to an H
 ## Requirements
 - Godot 4.3 or newer (developed and tested with 4.7.2)
 - Windows x86_64 or Linux x86_64; macOS universal builds come from CI and are untested
+  ([compatibility](docs/compatibility.md))
 - To build from source: Python 3.10+, SCons, and MSVC 2022 / GCC 11+ / Clang 14+ — [docs/building.md](docs/building.md)
 
 ## Installation
-Prebuilt libraries will come with the first release. Until then, build from source
-([docs/building.md](docs/building.md)) and copy `addons/dis/` into your project's `addons/` folder.
+1. Download `godot-dis-<version>.zip` from the [releases page](https://github.com/OWNER/godot-dis/releases). It has
+   the compiled libraries for Windows, Linux and macOS; no C++ build is needed.
+2. Extract it into your project folder, so that `addons/dis/dis.gdextension` exists.
+3. Open (or restart) the editor; the `Dis*` nodes appear in *Create New Node*.
+
+[Getting started](docs/getting-started.md) goes from an empty project to two simulations that see each other, in
+about 15 minutes. To build from source instead, see [building](docs/building.md).
 
 ## Usage
 ```gdscript
@@ -87,11 +94,12 @@ func shoot(target: DisRemoteEntity) -> void:
 - In 3D on real terrain: the godot-geo repository's DIS demo uses this addon.
 
 ## Documentation
-[networking](docs/networking.md) · [coordinates](docs/coordinates.md) · [entities](docs/entities.md) ·
+[getting started](docs/getting-started.md) · [networking](docs/networking.md) · [coordinates](docs/coordinates.md) · [entities](docs/entities.md) ·
 [warfare](docs/warfare.md) · [simulation management](docs/simulation-management.md) · [radio](docs/radio.md) ·
 [recording](docs/recording.md) · [enumerations](docs/enumerations.md) ·
 [Entity State layout](docs/entity-state-pdu.md) · [interoperability](docs/interoperability.md) ·
-[building](docs/building.md) · [C++ notes](docs/cpp-notes.md)
+[compatibility](docs/compatibility.md) · [building](docs/building.md) · [release](docs/release.md) ·
+[C++ notes](docs/cpp-notes.md)
 
 ## Development
 ```powershell
@@ -99,8 +107,11 @@ func shoot(target: DisRemoteEntity) -> void:
 .\tools\.venv\Scripts\scons.exe tests                        # C++ unit tests (doctest)
 & $godot --headless --path . --import
 & $godot --headless --path . -s addons/gut/gut_cmdln.gd     # Godot tests (GUT)
+py tools/package_addon.py --version 0.1.0                   # release zip (build/package/)
+py tools/check_package.py build/package/godot-dis-0.1.0.zip --godot $godot   # ...checked in an empty project
 ```
-Details, the Python oracle and the optional tests (sample captures, tshark): [docs/building.md](docs/building.md).
+Details, the Python oracle and the optional tests (sample captures, tshark): [docs/building.md](docs/building.md);
+making a release: [docs/release.md](docs/release.md).
 
 ## Contributing
 Bug reports, questions and pull requests are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the

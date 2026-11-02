@@ -63,6 +63,13 @@ var _resume_at := -1.0
 var _remove_id := Vector3i()
 var _remove_at := -1.0
 var _radio_at := -1.0
+# Optional: --capture <dir> saves the window as PNG frames (dir/f00000000.png ...) at CAPTURE_FPS of real time, for
+# tools/make_media.py. Real time on purpose: Godot's Movie Maker mode slows the frame clock against the wall clock
+# that DIS timestamps, dead reckoning and the other simulations run on.
+const CAPTURE_FPS := 10.0
+var _capture_dir := ""
+var _capture_frame := 0
+var _capture_tasks := PackedInt64Array()
 
 
 func _ready() -> void:
@@ -89,8 +96,11 @@ func _ready() -> void:
 		add_child(_recorder)
 		_recorder.network_path = _recorder.get_path_to(network)
 		if _recorder.start(record) == OK:
-			_event("Recording to %s" % ProjectSettings.globalize_path(record))
+			_event("Recording to %s" % record)  # as given (user://...), no local path on screen
 	_quit_after = float(_argument("--seconds", "0"))
+	_capture_dir = _argument("--capture", "")
+	if _capture_dir != "":
+		DirAccess.make_dir_recursive_absolute(_capture_dir)
 	_auto_fire = float(_argument("--auto-fire", "0"))
 	_stop_at = float(_argument("--stop-at", "-1"))
 	_resume_at = float(_argument("--resume-at", "-1"))
@@ -492,12 +502,25 @@ func _process(delta: float) -> void:
 	if _remove_at >= 0.0 and elapsed >= _remove_at:
 		_remove_at = -1.0
 		_request_remove(_remove_id)
+	if _capture_dir != "":
+		_capture(elapsed)
 	_panel_clock += delta
 	if _panel_clock >= 0.25:
 		_panel_clock = 0.0
 		_update_panel(units)
 	if _quit_after > 0.0 and elapsed >= _quit_after:
 		_quit()
+
+
+func _capture(elapsed: float) -> void:
+	# One frame per 1 / CAPTURE_FPS of real time; a slow frame is repeated so the clip keeps real-time speed.
+	var image: Image = null
+	while _capture_frame < elapsed * CAPTURE_FPS:
+		if image == null:
+			image = get_viewport().get_texture().get_image()
+		var path := _capture_dir.path_join("f%08d.png" % _capture_frame)
+		_capture_tasks.append(WorkerThreadPool.add_task(func(): image.save_png(path)))
+		_capture_frame += 1
 
 
 func _type_counts(counts: Dictionary) -> String:
@@ -510,6 +533,10 @@ func _type_counts(counts: Dictionary) -> String:
 
 
 func _quit() -> void:
+	for task in _capture_tasks:
+		WorkerThreadPool.wait_for_task_completion(task)
+	if _capture_dir != "":
+		print("captured %d frames" % _capture_frame)
 	if _screenshot != "":
 		get_viewport().get_texture().get_image().save_png(_screenshot)
 		print("screenshot saved: ", _screenshot)

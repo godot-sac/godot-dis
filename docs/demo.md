@@ -58,6 +58,8 @@ After `--`: `--side blue|red`, `--seconds N` (quit after N s, printing PDU count
 (saved at quit), `--port N` (a separate exercise, e.g. to test next to a running demo), `--record file.pcapng`
 (or `.pdulog`; replay it with `demo/replay.tscn`, see docs/recording.md). For unattended runs: `--auto-fire S`
 (fire every S seconds), `--stop-at S`, `--resume-at S`, `--remove site:app:entity@S`, `--radio-at S`.
+`--capture DIR` saves the window as PNG frames, 10 per second of real time, for `tools/make_media.py`
+(see docs/release.md).
 
 An unattended check of everything at once, on port 3297 so it doesn't disturb a running demo (three terminals):
 ```powershell

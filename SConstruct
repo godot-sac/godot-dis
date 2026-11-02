@@ -20,11 +20,21 @@ opendis_sources = [
 
 if env["platform"] == "windows":
     env.Append(LIBS=["ws2_32"])  # Winsock, used by src/network/udp_socket.cpp
+if env["platform"] == "linux":
+    # godot-cpp links libstdc++ statically on Linux. Without a version script the library exports ~4400 symbols,
+    # most of them libstdc++'s, and another extension that uses the shared libstdc++ (godot-jsbsim's libJSBSim)
+    # binds part of its std::locale / std::regex code to our copy and crashes. Export only the entry point;
+    # tools/check_exports.py guards it.
+    exports_map = File("src/linux_exports.map")
+    env.Append(LINKFLAGS=["-Wl,--version-script=" + exports_map.abspath])
+    env.Append(LINKFLAGS=["-Wl,--exclude-libs,ALL"])
 
 library = env.SharedLibrary(
     "addons/dis/bin/{}/libgodot_dis{}{}".format(env["platform"], env["suffix"], env["SHLIBSUFFIX"]),
     source=sources + opendis_sources,
 )
+if env["platform"] == "linux":
+    env.Depends(library, exports_map)
 Default(library)
 
 # C++ unit tests (doctest), without Godot: `scons tests` builds and runs build/tests/unit_tests.
