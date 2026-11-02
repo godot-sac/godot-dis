@@ -13,8 +13,8 @@ const TRAIL_POINTS := 90
 
 var origin: DisGeoOrigin
 var units: Array = []
-var meters_per_pixel := 65.0
-var center := Vector2(3000, 0)  # map metres (x east, z south) shown at the middle of the control
+var meters_per_pixel := 20.0
+var center := Vector2(1500, 0)  # map metres (x east, z south) shown at the middle of the control
 var cursor_geodetic := PackedFloat64Array()
 
 var _milsymbol: Script
@@ -126,7 +126,7 @@ func _draw_grid(font: Font) -> void:
 func _draw_origin(font: Font) -> void:
 	var p := to_screen(Vector2.ZERO)
 	draw_circle(p, 3, Color(1, 1, 1, 0.5))
-	var text := "Ankara"
+	var text := "Üsküdar"
 	if origin != null:
 		text += "  %.4f° N  %.4f° E" % [origin.latitude, origin.longitude]
 	draw_string(font, p + Vector2(6, -6), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(1, 1, 1, 0.5))

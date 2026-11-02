@@ -1,5 +1,5 @@
 extends Node
-## godot-dis demo: one simulation of a two-sided exercise around Ankara.
+## godot-dis demo: one simulation of a two-sided exercise around Üsküdar, Istanbul (fictitious units).
 ##
 ## Run two copies (and optionally tools/demo_traffic.py) on one computer or on a LAN:
 ##   <godot> --path . -- --side blue
@@ -13,7 +13,7 @@ extends Node
 ## Damage bits of the DIS general appearance (bits 3-4): 3 = destroyed.
 const APPEARANCE_DESTROYED := 3 << 3
 const NEUTRAL := 3
-const MAX_RANGE := 30000.0  # metres; the sides start 10-40 km apart
+const MAX_RANGE := 15000.0  # metres; the sides start 2-12 km apart
 const HIT_CHANCE := 0.7
 const MAX_FLIGHT := 4.0  # seconds; shortened from the real time of flight so the demo stays lively
 # Munition entity types (SISO-REF-010 kind 2): domain anti-armor / anti-air, category ballistic / guided.
@@ -131,6 +131,7 @@ func _spawn_units(info: Dictionary) -> void:
 		mover.speed = unit.speed
 		mover.altitude = unit.altitude
 		mover.distance = unit.start
+		mover.surface = unit.surface
 		var entity := DisEntity.new()
 		entity.entity_id = Vector3i(0, 0, i + 1)  # site / application from the network
 		entity.force_id = info.force

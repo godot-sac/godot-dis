@@ -13,7 +13,7 @@ All notable changes to this project are documented here. Versions follow [semver
 - `DisEntityManager` ground clamping: `ground_path` (any node with `height_at(x, z)`, e.g. godot-geo `GeoTerrain`),
   `ground_clamp`, `ground_align`.
 - Warning when an entity jumps far on several updates in a row (two simulations sharing one entity ID).
-- Demo: two-sided exercise around Ankara plus civilian traffic from Open-DIS Python (`--port`; traffic `--start`,
+- Demo: two-sided exercise around Üsküdar, Istanbul plus civilian traffic from Open-DIS Python (`--port`; traffic `--start`,
   `--rate`, dead reckoning algorithm 4 with turn rate, racetrack routes); `tools/link_milsymbol.py`.
 - CI for Windows, Linux and macOS.
 - Fire, Detonation, Remove Entity, Start/Resume, Stop/Freeze and Acknowledge PDUs (`DisFirePdu`,
@@ -58,6 +58,10 @@ All notable changes to this project are documented here. Versions follow [semver
 - A PDU length field of 0 is read as the datagram size (some senders never fill it in).
 - `get_length()` counts `trailing_bytes`; the size of the known fields is `get_body_length()`.
 - Radio Communications PDUs that carry our own site / application are ignored like other own PDUs.
+- Demo scenario moved from Ankara to Üsküdar, Istanbul (origin 41.0200 N, 29.0500 E, ellipsoid height 0, the same
+  as the godot-geo Üsküdar terrain packages): land routes on main roads of the Asian side, a blue patrol craft and a
+  civilian ferry on the Bosphorus, the airliner at 3 km (first turn after ~310 s); `DemoUnitMover.surface` (stay on
+  the ground or sea surface when there is one) and `DemoUnitMover.racetrack()`.
 
 ### Fixed
 - Linux: loading godot-dis and godot-jsbsim in one project crashed (signal 11 in JSBSim's `std::regex`): the

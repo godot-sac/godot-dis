@@ -95,7 +95,7 @@ Space plays / pauses, Left / Right jump 10 s, Up / Down change the speed (0.25×
 the slider seeks. The event list shows fire, detonations and simulation management with recording time.
 Options: `--speed X`, `--seek S`, `--loop`, `--rebroadcast` (also send onto multicast 239.1.2.3:3000),
 `--seconds N --screenshot file.png`. It opens any capture, for example the Wireshark sample captures
-(`tools/fetch_captures.py`), but the map is centred on Ankara.
+(`tools/fetch_captures.py`), but the map is centred on Üsküdar (Istanbul).
 
 ## Command line
 

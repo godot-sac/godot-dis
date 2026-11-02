@@ -9,8 +9,11 @@ var speed := 10.0  # m/s
 var altitude := 0.0  # m above the origin's tangent plane
 var distance := 0.0  # along the route
 ## Optional ground: any node with height_at(x, z) -> float (e.g. godot-geo GeoTerrain). Units with altitude 0
-## drive on it and tilt with the slope; others stay at least `clearance` above it.
+## (or `surface`) drive on it and tilt with the slope; others stay at least `clearance` above it.
 var ground: Node = null
+## Stays on the ground (for ships: the sea surface that height_at gives) when there is one; `altitude` is used
+## only without ground.
+var surface := false
 var clearance := 150.0
 
 var _lengths: PackedFloat64Array = []
@@ -47,7 +50,7 @@ func _place() -> void:
 			position = Vector3(point.x, altitude, point.z)
 			var h: float = ground.height_at(point.x, point.z) if ground else NAN
 			if not is_nan(h):
-				if altitude <= 0.0:
+				if altitude <= 0.0 or surface:
 					position.y = h
 					up = _ground_normal(point.x, point.z)
 					direction = (direction - up * direction.dot(up)).normalized()
@@ -74,4 +77,19 @@ static func circle(center: Vector2, radius: float, points := 36) -> PackedVector
 	for i in points:
 		var angle := TAU * i / points
 		result.append(Vector3(center.x + radius * cos(angle), 0, center.y + radius * sin(angle)))
+	return result
+
+
+## A closed racetrack (for boats; back-and-forth routes turn on the spot): from `a` to `b` on one side, a half circle
+## of `radius` around `b`, back on the other side and a half circle around `a`. Starts at `a`, heading for `b`.
+static func racetrack(a: Vector2, b: Vector2, radius: float, points_per_turn := 8) -> PackedVector3Array:
+	var heading := (b - a).angle()
+	var result := PackedVector3Array()
+	for turn in [[b, heading - PI / 2], [a, heading + PI / 2]]:
+		var center: Vector2 = turn[0]
+		for i in points_per_turn + 1:
+			var angle: float = turn[1] + PI * i / points_per_turn
+			result.append(Vector3(center.x + radius * cos(angle), 0, center.y + radius * sin(angle)))
+	result.insert(0, result[result.size() - 1])
+	result.remove_at(result.size() - 1)
 	return result

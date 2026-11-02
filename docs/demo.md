@@ -1,4 +1,4 @@
-# Demo: a two-sided exercise around Ankara
+# Demo: a two-sided exercise around Üsküdar, Istanbul
 
 ![Blue side's view: own units, the red side's units and civilian traffic from Open-DIS Python](images/demo_blue.png)
 
@@ -7,9 +7,15 @@ script, and every copy shows all units on a tactical map:
 
 | Who | Site | Force | Units |
 |---|---|---|---|
-| Godot `--side blue` | 1 | Friendly | 2 × Leopard 2A4TR, ACV 300, attack helicopter, F-4 (Türkiye, SISO-REF-010 country 218) |
+| Godot `--side blue` | 1 | Friendly | 2 × Leopard 2A4TR, ACV 300, attack helicopter, F-4, patrol craft in the Bosphorus (Türkiye, SISO-REF-010 country 218) |
 | Godot `--side red` | 2 | Opposing | 2 tanks, AFV, self-propelled artillery, air defense, fighter (generic types) |
-| `tools/demo_traffic.py` (Open-DIS Python) | 3 | Neutral | airliner at 10 km on a racetrack, two cars, a bus |
+| `tools/demo_traffic.py` (Open-DIS Python) | 3 | Neutral | airliner at 3 km on a racetrack, two cars, a bus, an Üsküdar – Beşiktaş ferry |
+
+The origin (`DisGeoOrigin`) is 41.0200° N, 29.0500° E, ellipsoid height 0 — the same as the godot-geo Üsküdar
+terrain packages, so the godot-geo 3D demo can join the exercise. Blue moves between Altunizade, Çamlıca and
+Acıbadem, red east of the O-2 (TEM) motorway, the civilian traffic between Üsküdar, Altunizade and Kadıköy, and two
+boats on the Bosphorus. The units are fictitious and kept away from real military sites. Land routes follow main
+roads (© OpenStreetMap contributors, ODbL, taken from the godot-geo terrain package); there is no map background.
 
 Each copy publishes its own units with `DisEntity` (dead reckoning thresholds, heartbeat) and shows everyone's with
 `DisEntityManager`: names from `DisEnums`, MIL-STD-2525D symbols from godot-milsymbol. Everything goes over
@@ -71,7 +77,7 @@ Each prints what it received by PDU type; then `& $godot --path . res://demo/rep
 replays the blue side's recording.
 
 `tools/demo_traffic.py` options: `--start S` (skip S seconds ahead along the routes; the airliner reaches its first
-turn after ~400 s), `--rate HZ` (updates per second, default 1), `--port N`, `--seconds N`. It sends dead reckoning
+turn after ~310 s), `--rate HZ` (updates per second, default 1), `--port N`, `--seconds N`. It sends dead reckoning
 algorithm 4 (RVW) with acceleration and turn rate, so receivers follow the vehicles through turns too. It also obeys
 Stop/Freeze, Start/Resume and Remove Entity addressed to site 3 and answers them with Open-DIS Acknowledge PDUs,
 and the airliner's radio talks on 118.100 MHz for 3 s every 20 s (Transmitter and Signal PDUs).

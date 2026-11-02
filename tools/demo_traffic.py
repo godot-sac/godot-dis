@@ -3,11 +3,11 @@
 Usage: tools/.venv/Scripts/python.exe tools/demo_traffic.py [--group 239.1.2.3] [--port 3000] [--seconds 0]
        [--start 0] [--rate 1]
 
-Sends Entity State PDUs (site 3, force Neutral) for an airliner and some road traffic around the demo origin
-(Ankara) once per second with dead reckoning algorithm 4 (RVW: velocity, acceleration and turn rate), so the
-Godot demos move them smoothly in between, also through turns.
+Sends Entity State PDUs (site 3, force Neutral) for an airliner, some road traffic and a Bosphorus ferry (Üsküdar -
+Beşiktaş) around the demo origin (Üsküdar, Istanbul) once per second with dead reckoning algorithm 4 (RVW:
+velocity, acceleration and turn rate), so the Godot demos move them smoothly in between, also through turns.
 --seconds 0 runs until Ctrl+C. --start skips ahead along the routes (seconds of scenario time; the airliner reaches
-its first turn after ~400 s); --rate sends that many updates per second.
+its first turn after ~310 s); --rate sends that many updates per second.
 
 It is also a managed application: Stop/Freeze and Start/Resume addressed to site 3 (or everyone) freeze and resume
 the traffic, a Remove Entity request removes that vehicle, and every request is answered with an Acknowledge PDU,
@@ -27,7 +27,7 @@ from opendis.RangeCoordinates import GPS
 from opendis.dis7 import AcknowledgePdu, EntityStatePdu, EntityType, SignalPdu, TransmitterPdu, WorldCoordinates
 from opendis.stream import DataOutputStream
 
-ORIGIN = (39.9334, 32.8597, 938.0)  # same as demo/main.tscn
+ORIGIN = (41.02, 29.05, 0.0)  # Üsküdar, Istanbul; same as demo/main.tscn
 SITE, APPLICATION, FORCE_NEUTRAL = 3, 1, 3
 ALL = 0xFFFF
 DEACTIVATED = 1 << 23  # general appearance "State" bit
@@ -54,12 +54,29 @@ def racetrack(a, b, radius, points_per_turn=24):
     return route[-1:] + route[:-1]  # start at a, heading for b
 
 
+# Main roads of the Asian side (© OpenStreetMap contributors, ODbL; via the godot-geo terrain package), demo map
+# metres: a car loop Altunizade - Acıbadem - Kadıköy (Hasanpaşa) - Çamlıca, a bus loop Üsküdar - Altunizade.
+CAR_ROUTE = [
+    (480, 580), (-60, 1380), (-270, 1510), (-530, 1860), (-780, 2060), (-1010, 1920), (-760, 1920), (110, 2170),
+    (400, 2300), (450, 2460), (560, 2520), (640, 2500), (700, 2430), (750, 2380), (840, 2470), (1760, 2920),
+    (1960, 2870), (2020, 2590), (1870, 1940), (1880, 1710), (2100, 930), (2130, 520), (1630, 40), (1250, -120),
+    (1180, -90), (1090, 40), (820, 180),
+]
+BUS_ROUTE = [
+    (-2890, -640), (-2830, -640), (-2700, -560), (-2640, -570), (-2320, -690), (-1990, -870), (-1790, -890),
+    (-1480, -820), (-1310, -690), (-1130, -440), (-1140, -360), (-1100, -400), (-730, -390), (-500, -340),
+    (-400, -280), (-890, -160), (-1220, -140), (-1280, -20), (-1820, 540), (-2030, 400), (-2370, 260),
+    (-2710, -50), (-2860, -260),
+]
+SEA_SURFACE = 36.3  # m above the origin (ellipsoid): EGM2008 geoid height there less Earth curvature at ~3 km
+
 # marking, entity type, route in demo map metres (x east, z south), speed m/s, height above origin m
 UNITS = [
-    ("THY-1", (1, 2, 0, 87, 0, 0, 0), racetrack((-38000, 26000), (38000, -26000), 6000), 230.0, 10000.0),
-    ("CAR-1", (1, 1, 0, 81, 0, 0, 0), [(-12000, 14000), (16000, 13000), (16000, 16000), (-12000, 17000)], 22.0, 0.0),
-    ("CAR-2", (1, 1, 0, 81, 0, 0, 0), [(16000, 16000), (-12000, 17000), (-12000, 14000), (16000, 13000)], 18.0, 0.0),
-    ("BUS-1", (1, 1, 0, 82, 0, 0, 0), racetrack((-2000, 20000), (-2000, 9000), 60, 8), 14.0, 0.0),
+    ("THY-1", (1, 2, 0, 87, 0, 0, 0), racetrack((-20000, 12000), (20000, -12000), 4000), 150.0, 3000.0),
+    ("CAR-1", (1, 1, 0, 81, 0, 0, 0), CAR_ROUTE, 16.0, 0.0),
+    ("CAR-2", (1, 1, 0, 81, 0, 0, 0), CAR_ROUTE[::-1], 14.0, 0.0),
+    ("BUS-1", (1, 1, 0, 82, 0, 0, 0), BUS_ROUTE, 10.0, 0.0),
+    ("FERRY-1", (1, 3, 0, 80, 4, 0, 0), racetrack((-3150, -800), (-3450, -2150), 80, 4), 7.0, SEA_SURFACE),
 ]
 
 

@@ -12,9 +12,8 @@ multicast_group = "239.1.2.3"
 autostart = false
 
 [node name="DisGeoOrigin" type="DisGeoOrigin" parent="."]
-latitude = 39.9334
-longitude = 32.8597
-height = 938.0
+latitude = 41.02
+longitude = 29.05
 
 [node name="DisEntityManager" type="DisEntityManager" parent="."]
 smoothing_time = 0.3

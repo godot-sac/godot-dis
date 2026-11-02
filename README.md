@@ -87,7 +87,7 @@ func shoot(target: DisRemoteEntity) -> void:
 ```
 
 ## Demos
-- `demo/main.tscn`: a two-sided exercise around Ankara — two Godot copies and Open-DIS Python traffic on one
+- `demo/main.tscn`: a two-sided exercise around Üsküdar, Istanbul — two Godot copies and Open-DIS Python traffic on one
   multicast group; fire (F), remove (X), stop (S), resume (R) and radio calls (T) — [docs/demo.md](docs/demo.md)
 - `demo/replay.tscn`: replay a recording on the tactical map with timeline, speed and seek —
   [docs/recording.md](docs/recording.md)
