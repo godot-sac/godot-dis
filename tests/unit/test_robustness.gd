@@ -224,3 +224,40 @@ func test_body_axis_acceleration() -> void:
 	var moved := entity.global_position
 	assert_almost_eq(moved.length(), 20.0, 0.05, "½ · 10 m/s² · (2 s)²")
 	assert_almost_eq(moved.normalized().dot(forward), 1.0, 1e-4, "along the entity's own forward axis")
+
+
+func test_entity_limit() -> void:
+	var manager := _manager()
+	manager.max_entities = 3
+	var limits := []
+	manager.entity_limit_reached.connect(func(id): limits.append(id))
+	for i in 5:
+		manager.handle_entity_state(_entity_state(i + 1))
+	assert_eq(manager.get_entity_count(), 3, "only max_entities remote entities are created")
+	assert_eq(manager.get_dropped_count(), 2)
+	assert_eq(limits, [Vector3i(7, 1, 4)], "the signal fires once when the limit is reached")
+	assert_push_warning_count(1, "and one warning")
+	manager.handle_entity_state(_entity_state(1))
+	assert_eq(manager.get_dropped_count(), 2, "known entities are still updated")
+	manager.remove_entity(Vector3i(7, 1, 1))
+	manager.handle_entity_state(_entity_state(6))
+	assert_eq(manager.get_entity_count(), 3, "room again after a removal")
+	manager.handle_entity_state(_entity_state(7))
+	assert_eq(limits.size(), 2, "and the signal fires again at the next limit")
+	manager.max_entities = 0
+	manager.handle_entity_state(_entity_state(8))
+	assert_eq(manager.get_entity_count(), 4, "0 means no limit")
+
+
+func test_radio_limit() -> void:
+	var monitor := DisRadioMonitor.new()
+	monitor.max_radios = 2
+	add_child_autofree(monitor)
+	for i in 3:
+		var pdu := DisTransmitterPdu.new()
+		pdu.radio_reference_id = Vector3i(1, 1, i + 1)
+		pdu.radio_number = 1
+		monitor.handle_pdu(pdu)
+	assert_eq(monitor.get_radios().size(), 2)
+	assert_eq(monitor.get_dropped_count(), 1)
+	assert_push_warning_count(1)

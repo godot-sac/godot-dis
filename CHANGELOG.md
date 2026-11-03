@@ -84,7 +84,10 @@ First release.
   just the datagram; `.pdulog` lines with a NaN or infinite time are rejected.
 - Encoding refuses values that do not fit their length fields (PDU over 65535 bytes, more than 255 variable
   parameters or modulation parameter bytes, Signal data over 8191 bytes) instead of wrapping silently.
-- `DisEntityManager` ignores Entity State PDUs with NaN or infinite values (one warning).
+- `DisEntityManager` ignores Entity State PDUs with NaN or infinite values (one warning), and creates at most
+  `max_entities` (10000) remote entities: PDUs of further new entities are dropped (`get_dropped_count()`, one
+  warning, `entity_limit_reached` signal), so a sender cannot make it create nodes without end. `DisRadioMonitor`
+  likewise tracks at most `max_radios` (1000).
 - Body-axis dead reckoning (DRM 6–9): `DisEntity` sends the acceleration in body axes and `DisEntityManager` reads
   it that way (both used ECEF).
 - A fresh clone warned about invalid UIDs in GUT's scenes on every editor start: GUT's `.import` files are now

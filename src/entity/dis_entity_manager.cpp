@@ -91,6 +91,7 @@ void DisEntityManager::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_entity", "entity_id"), &DisEntityManager::get_entity);
 	ClassDB::bind_method(D_METHOD("get_entities"), &DisEntityManager::get_entities);
 	ClassDB::bind_method(D_METHOD("get_entity_count"), &DisEntityManager::get_entity_count);
+	ClassDB::bind_method(D_METHOD("get_dropped_count"), &DisEntityManager::get_dropped_count);
 	ClassDB::bind_method(D_METHOD("remove_entity", "entity_id"), &DisEntityManager::remove_entity);
 	ClassDB::bind_method(D_METHOD("clear"), &DisEntityManager::clear);
 
@@ -108,6 +109,7 @@ void DisEntityManager::_bind_methods() {
 	DIS_PROPERTY_HINT(FLOAT, smoothing_time, PROPERTY_HINT_RANGE, "0,5,0.05,suffix:s");
 	DIS_PROPERTY_HINT(FLOAT, smoothing_max_distance, PROPERTY_HINT_RANGE, "0,10000,1,suffix:m");
 	DIS_PROPERTY(BOOL, auto_update);
+	DIS_PROPERTY_HINT(INT, max_entities, PROPERTY_HINT_RANGE, "0,100000,1,or_greater");
 	ADD_GROUP("Ground", "ground_");
 	DIS_PROPERTY(NODE_PATH, ground_path);
 	DIS_PROPERTY_HINT(INT, ground_clamp, PROPERTY_HINT_ENUM, "Disabled,Land,All");
@@ -125,6 +127,7 @@ void DisEntityManager::_bind_methods() {
 														 "DisRemoteEntity")));
 	ADD_SIGNAL(MethodInfo("entity_updated", PropertyInfo(Variant::OBJECT, "entity", PROPERTY_HINT_NODE_TYPE,
 														"DisRemoteEntity")));
+	ADD_SIGNAL(MethodInfo("entity_limit_reached", PropertyInfo(Variant::VECTOR3I, "entity_id")));
 	ADD_SIGNAL(MethodInfo("entity_removed",
 			PropertyInfo(Variant::OBJECT, "entity", PROPERTY_HINT_NODE_TYPE, "DisRemoteEntity"),
 			PropertyInfo(Variant::STRING, "reason")));
@@ -316,6 +319,22 @@ void DisEntityManager::apply_entity_state(const Ref<DisEntityStatePdu> &pdu, dou
 	state.angular_velocity = dis::geo::vec3_from_vector3(pdu->get_dr_angular_velocity());
 
 	const bool is_new = entity == nullptr;
+	if (is_new && max_entities > 0 && entities.size() >= static_cast<size_t>(max_entities)) {
+		dropped_count++;
+		if (!at_entity_limit) {
+			at_entity_limit = true;
+			if (!warned_entity_limit) {
+				warned_entity_limit = true;
+				UtilityFunctions::push_warning("DisEntityManager ", get_name(), ": ", max_entities,
+						" remote entities (max_entities); new ones are dropped, first ", id);
+			}
+			emit_signal("entity_limit_reached", id);
+		}
+		return;
+	}
+	if (is_new) {
+		at_entity_limit = false;
+	}
 	Transform3D shown;
 	if (is_new) {
 		entity = memnew(DisRemoteEntity);

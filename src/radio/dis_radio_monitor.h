@@ -38,6 +38,9 @@ class DisRadioMonitor : public godot::Node {
 	godot::NodePath network_path;
 	double signal_hold = 0.5;
 	double timeout = 12.0;
+	int max_radios = 1000; // radios are created by whoever sends to our port; this caps the table
+	int64_t dropped_count = 0;
+	bool warned_radio_limit = false;
 
 	using Key = std::pair<uint64_t, int>; // entity, radio number
 	std::map<Key, Radio> radios;
@@ -54,7 +57,8 @@ class DisRadioMonitor : public godot::Node {
 
 	static uint64_t key_of(const godot::Vector3i &id);
 	static double now();
-	Radio &radio_for(const godot::Vector3i &entity_id, int radio_number, bool &is_new);
+	// nullptr when the radio is new and max_radios are known already.
+	Radio *radio_for(const godot::Vector3i &entity_id, int radio_number, bool &is_new);
 	void update_state(Radio &radio, double time);
 	void on_transmitter(const godot::Ref<DisTransmitterPdu> &pdu);
 	void on_signal(const godot::Ref<DisSignalPdu> &pdu);
@@ -85,4 +89,8 @@ public:
 	double get_signal_hold() const { return signal_hold; }
 	void set_timeout(double value) { timeout = value; }
 	double get_timeout() const { return timeout; }
+	void set_max_radios(int value) { max_radios = value < 0 ? 0 : value; }
+	int get_max_radios() const { return max_radios; }
+	// Transmitter / Signal PDUs of new radios not taken because of max_radios.
+	int64_t get_dropped_count() const { return dropped_count; }
 };

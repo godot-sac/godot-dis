@@ -45,14 +45,21 @@ Methods: `send_now()`, `create_pdu()`, `get_effective_entity_id()`, `process_ent
 | `dead_reckoning` | true | false: entities jump to each reported position |
 | `smoothing_time` | 0.5 s | corrections fade in over this time instead of jumping |
 | `smoothing_max_distance` | 100 m | larger corrections (teleports) jump |
+| `max_entities` | 10000 | at most this many remote entities; 0 = no limit (below) |
 
 Smoothing starts from where the entity is shown at the moment the update arrives (the old report dead-reckoned to
 that time), so a fast entity moves evenly through updates. Several jumps larger than `smoothing_max_distance` in a
 row raise a warning: usually two simulations publish the same entity ID and the entity flips between them.
 
+Anyone who can send to the port creates nodes here, so their number is capped by `max_entities`: Entity State PDUs
+of further new entities are dropped (counted by `get_dropped_count()`, one warning, and `entity_limit_reached(id)`
+each time the limit is reached) while known entities keep updating. Entity State PDUs with NaN or infinite values
+are ignored. Raise the limit for large exercises: dead reckoning 1000 entities takes about 0.2 ms per frame
+([tests and performance](#tests-and-performance)), plus whatever their scenes cost to draw.
+
 Signals: `entity_appeared(entity)`, `entity_updated(entity)` (every PDU), `entity_removed(entity, reason)` with
-reason `"timeout"`, `"deactivated"` or `"removed"`. Methods: `get_entity(Vector3i)`, `get_entities()`,
-`get_entity_count()`, `remove_entity(id)`, `clear()`, `handle_entity_state(pdu)` to feed PDUs from elsewhere and
+reason `"timeout"`, `"deactivated"` or `"removed"`, `entity_limit_reached(entity_id)`. Methods: `get_entity(Vector3i)`,
+`get_entities()`, `get_entity_count()`, `get_dropped_count()`, `remove_entity(id)`, `clear()`, `handle_entity_state(pdu)` to feed PDUs from elsewhere and
 `process_entities(now)` (with `auto_update` off).
 
 Each remote entity is a `DisRemoteEntity` (Node3D) named `Entity_site_app_number`, with the scene from the type map as

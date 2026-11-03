@@ -87,6 +87,11 @@ private:
 	double time_scale = 1.0;
 	double clock_base = 0.0;
 	bool warned_non_finite = false;
+	// Remote entities are created by whoever sends to our port; this caps how many nodes they can make us create.
+	int max_entities = 10000;
+	int64_t dropped_count = 0; // Entity State PDUs of new entities not taken because of max_entities
+	bool at_entity_limit = false;
+	bool warned_entity_limit = false;
 	double clock_ticks_base = 0.0;
 	double smoothing_time = 0.5;
 	double smoothing_max_distance = 100.0;
@@ -131,11 +136,14 @@ public:
 	double get_clock() const;
 	void set_time_scale(double value);
 	double get_time_scale() const { return time_scale; }
+	void set_max_entities(int value) { max_entities = value < 0 ? 0 : value; }
+	int get_max_entities() const { return max_entities; }
 
 	DisRemoteEntity *find_entity(const godot::Vector3i &entity_id) const;
 	godot::Object *get_entity(const godot::Vector3i &entity_id) const;
 	godot::Array get_entities() const;
 	int get_entity_count() const { return static_cast<int>(entities.size()); }
+	int64_t get_dropped_count() const { return dropped_count; }
 	void remove_entity(const godot::Vector3i &entity_id);
 	void clear();
 

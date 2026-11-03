@@ -26,7 +26,8 @@ if $DisRadioMonitor.is_transmitting(remote.entity_id):
 
 A radio is transmitting while its last Transmitter PDU says "on and transmitting" or a Signal PDU from it arrived
 less than `signal_hold` (0.5 s) ago — some senders key the radio in the Transmitter PDU, others only send Signals.
-Radios not heard from for `timeout` (12 s) are forgotten. `get_radios()` lists each radio with its entity, number,
+Radios not heard from for `timeout` (12 s) are forgotten; at most `max_radios` (1000, 0 = no limit) are tracked, PDUs
+of further new radios are dropped (`get_dropped_count()`, one warning). `get_radios()` lists each radio with its entity, number,
 frequency, transmit state, power and signal count. Signals: `radio_added`, `radio_removed`, `transmission_started`,
 `transmission_ended`.
 

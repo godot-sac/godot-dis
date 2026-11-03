@@ -7,6 +7,7 @@
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 #include "entity/scene_lookup.h"
 #include "network/dis_network.h"
@@ -21,10 +22,12 @@ void DisRadioMonitor::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_transmitting", "entity_id"), &DisRadioMonitor::is_transmitting);
 	ClassDB::bind_method(D_METHOD("get_transmitting_entities"), &DisRadioMonitor::get_transmitting_entities);
 	ClassDB::bind_method(D_METHOD("clear"), &DisRadioMonitor::clear);
+	ClassDB::bind_method(D_METHOD("get_dropped_count"), &DisRadioMonitor::get_dropped_count);
 
 	DIS_BIND_PROPERTY(DisRadioMonitor, NODE_PATH, network_path);
 	DIS_BIND_PROPERTY(DisRadioMonitor, FLOAT, signal_hold);
 	DIS_BIND_PROPERTY(DisRadioMonitor, FLOAT, timeout);
+	DIS_BIND_PROPERTY(DisRadioMonitor, INT, max_radios);
 
 	ADD_SIGNAL(MethodInfo("radio_added", PropertyInfo(Variant::VECTOR3I, "entity_id"), PropertyInfo(Variant::INT, "radio_number")));
 	ADD_SIGNAL(MethodInfo("radio_removed", PropertyInfo(Variant::VECTOR3I, "entity_id"), PropertyInfo(Variant::INT, "radio_number")));
@@ -95,17 +98,26 @@ void DisRadioMonitor::disconnect_network() {
 	}
 }
 
-DisRadioMonitor::Radio &DisRadioMonitor::radio_for(const Vector3i &entity_id, int radio_number, bool &is_new) {
+DisRadioMonitor::Radio *DisRadioMonitor::radio_for(const Vector3i &entity_id, int radio_number, bool &is_new) {
 	const Key key(key_of(entity_id), radio_number);
 	auto found = radios.find(key);
 	is_new = found == radios.end();
+	if (is_new && max_radios > 0 && radios.size() >= static_cast<size_t>(max_radios)) {
+		dropped_count++;
+		if (!warned_radio_limit) {
+			warned_radio_limit = true;
+			UtilityFunctions::push_warning("DisRadioMonitor ", get_name(), ": ", max_radios,
+					" radios (max_radios); new ones are dropped, first ", entity_id);
+		}
+		return nullptr;
+	}
 	if (is_new) {
 		Radio radio;
 		radio.entity_id = entity_id;
 		radio.radio_number = radio_number;
 		found = radios.emplace(key, radio).first;
 	}
-	return found->second;
+	return &found->second;
 }
 
 void DisRadioMonitor::update_state(Radio &radio, double time) {
@@ -142,7 +154,11 @@ void DisRadioMonitor::on_transmitter(const Ref<DisTransmitterPdu> &pdu) {
 	}
 	const double time = now();
 	bool is_new = false;
-	Radio &radio = radio_for(pdu->get_radio_reference_id(), pdu->get_radio_number(), is_new);
+	Radio *found = radio_for(pdu->get_radio_reference_id(), pdu->get_radio_number(), is_new);
+	if (found == nullptr) {
+		return;
+	}
+	Radio &radio = *found;
 	radio.transmitter = pdu;
 	radio.last_heard = time;
 	if (is_new) {
@@ -158,7 +174,11 @@ void DisRadioMonitor::on_signal(const Ref<DisSignalPdu> &pdu) {
 	}
 	const double time = now();
 	bool is_new = false;
-	Radio &radio = radio_for(pdu->get_radio_reference_id(), pdu->get_radio_number(), is_new);
+	Radio *found = radio_for(pdu->get_radio_reference_id(), pdu->get_radio_number(), is_new);
+	if (found == nullptr) {
+		return;
+	}
+	Radio &radio = *found;
 	radio.last_heard = time;
 	radio.last_signal = time;
 	radio.signal_count++;
