@@ -31,7 +31,7 @@ my_dis/
 └── addons/
     └── dis/
         ├── dis.gdextension
-        ├── bin/windows/ bin/linux/ bin/macos/   the compiled extension (debug and release)
+        ├── bin/windows/ bin/linux/ (bin/macos/) the compiled extension (debug and release; macOS from CI)
         ├── data/                                 SISO-REF-010 enumerations (see data/NOTICE.txt)
         ├── icons/  dis_enums.gd  tools/dis_cli.gd
         └── LICENSE  THIRD_PARTY_NOTICES.md
@@ -59,7 +59,7 @@ Without the editor, step 4 is the check: `... appeared (M1 Abrams)` means the ex
 
 ```gdscript
 extends Node3D
-## A vehicle that drives in circles near Ankara and shows every other vehicle on the DIS network
+## A vehicle that drives in circles in Üsküdar, Istanbul, and shows every other vehicle on the DIS network
 ## (godot-dis getting started). Run two copies and each one sees the other.
 
 ## Command line, after "--": --name ALPHA  --port 3000  --seconds 20
@@ -78,7 +78,7 @@ func _ready() -> void:
 
 	# 1. Where the scene's origin is on Earth (latitude, longitude, height above the ellipsoid).
 	var origin := DisGeoOrigin.new()
-	origin.set_origin_geodetic(39.9334, 32.8597, 938.0)
+	origin.set_origin_geodetic(41.02, 29.05, 0.0)
 	add_child(origin)
 
 	# 2. The network: multicast reaches every copy on this computer and on the LAN.

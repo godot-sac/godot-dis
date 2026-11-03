@@ -287,7 +287,9 @@ void DisNetwork::poll() {
 	int handled = 0;
 	std::string sender_address;
 	uint16_t sender_port = 0;
-	while (handled < max_packets_per_frame && socket->receive(receive_buffer, sender_address, sender_port)) {
+	// is_running() again on every packet: a signal handler may stop the network (or take it out of the tree).
+	while (handled < max_packets_per_frame && is_running() &&
+			socket->receive(receive_buffer, sender_address, sender_port)) {
 		handled++;
 		PackedByteArray bytes;
 		bytes.resize(static_cast<int64_t>(receive_buffer.size()));
@@ -313,7 +315,51 @@ bool DisNetwork::is_own(const PackedByteArray &bytes) const {
 	return site == site_id && application == application_id;
 }
 
+namespace {
+// Does a plausible PDU header start at `offset`, with all of its length inside the datagram?
+bool header_at(const PackedByteArray &bytes, int64_t offset) {
+	if (bytes.size() - offset < DisPdu::HEADER_SIZE) {
+		return false;
+	}
+	const int version = bytes[offset];
+	const int length = (bytes[offset + 8] << 8) | bytes[offset + 9];
+	return version >= 1 && version <= 7 && bytes[offset + 2] != 0 && length >= DisPdu::HEADER_SIZE &&
+			length <= bytes.size() - offset;
+}
+} // namespace
+
 void DisNetwork::process_packet(const PackedByteArray &bytes, const String &ip, int port, bool filtered) {
+	if (bytes.size() < DisPdu::HEADER_SIZE) {
+		reject(vformat("packet too short: %d bytes", bytes.size()), ip);
+		return;
+	}
+	// IEEE 1278.1-2012 allows several PDUs in one datagram, each starting where the previous one's length ends
+	// (some senders pad each PDU to 8 bytes). Anything after the last length that is not another PDU header is
+	// left to the decoder of the last PDU, as for a single PDU.
+	int64_t offset = 0;
+	while (offset < bytes.size()) {
+		const int length = (bytes.size() - offset >= DisPdu::HEADER_SIZE) ?
+				((bytes[offset + 8] << 8) | bytes[offset + 9]) :
+				0;
+		int64_t next = -1;
+		if (length >= DisPdu::HEADER_SIZE && offset + length < bytes.size()) {
+			const int64_t aligned = offset + ((length + 7) / 8) * 8;
+			if (header_at(bytes, offset + length)) {
+				next = offset + length;
+			} else if (aligned != offset + length && header_at(bytes, aligned)) {
+				next = aligned;
+			}
+		}
+		if (next < 0) {
+			process_pdu(offset == 0 ? bytes : bytes.slice(offset), ip, port, filtered);
+			return;
+		}
+		process_pdu(bytes.slice(offset, offset + length), ip, port, filtered);
+		offset = next;
+	}
+}
+
+void DisNetwork::process_pdu(const PackedByteArray &bytes, const String &ip, int port, bool filtered) {
 	if (bytes.size() < DisPdu::HEADER_SIZE) {
 		reject(vformat("packet too short: %d bytes", bytes.size()), ip);
 		return;

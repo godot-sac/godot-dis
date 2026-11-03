@@ -1,6 +1,8 @@
 # Godot
 .godot/
 *.import
+# GUT's scenes refer to its fonts and images by UID, which lives in these files
+!addons/gut/**/*.import
 export_presets.cfg
 /android/
 

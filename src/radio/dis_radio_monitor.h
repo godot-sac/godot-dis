@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <map>
 #include <utility>
+#include <vector>
 
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -41,6 +42,15 @@ class DisRadioMonitor : public godot::Node {
 	using Key = std::pair<uint64_t, int>; // entity, radio number
 	std::map<Key, Radio> radios;
 	godot::ObjectID connected_network;
+	// Signals to emit once `radios` is no longer being changed or walked (a handler may call clear()).
+	struct Event {
+		const char *signal = nullptr;
+		godot::Vector3i entity_id;
+		int radio_number = 0;
+		int64_t frequency = 0;
+	};
+	std::vector<Event> events;
+	void emit_events();
 
 	static uint64_t key_of(const godot::Vector3i &id);
 	static double now();

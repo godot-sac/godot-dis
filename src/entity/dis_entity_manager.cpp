@@ -271,10 +271,11 @@ void DisEntityManager::apply_ground(Object *ground, Vector3 &position, Quaternio
 }
 
 void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, double now) {
+	apply_entity_state(pdu, now < 0.0 ? get_clock() : now);
+}
+
+void DisEntityManager::apply_entity_state(const Ref<DisEntityStatePdu> &pdu, double now) {
 	ERR_FAIL_COND(pdu.is_null());
-	if (now < 0.0) {
-		now = get_clock();
-	}
 	DisGeoOrigin *origin = get_origin();
 	if (origin == nullptr || !is_inside_tree()) {
 		return;
@@ -290,12 +291,28 @@ void DisEntityManager::handle_entity_state(const Ref<DisEntityStatePdu> &pdu, do
 		return;
 	}
 
+	// Network input: a NaN or infinite value would reach the scene transform and the ground's height_at.
+	const PackedFloat64Array location = pdu->get_location_ecef();
+	if (location.size() != 3 || !std::isfinite(location[0]) || !std::isfinite(location[1]) ||
+			!std::isfinite(location[2]) || !pdu->get_orientation().is_finite() || !pdu->get_linear_velocity().is_finite() ||
+			!pdu->get_dr_linear_acceleration().is_finite() || !pdu->get_dr_angular_velocity().is_finite()) {
+		if (!warned_non_finite) {
+			warned_non_finite = true;
+			UtilityFunctions::push_warning("DisEntityManager ", get_name(), ": ignoring Entity State PDUs with non-finite "
+					"values (first from ", id, ")");
+		}
+		return;
+	}
+
 	dis::dr::State state;
 	state.algorithm = dead_reckoning ? pdu->get_dr_algorithm() : dis::dr::ALGORITHM_STATIC;
 	state.position = dis::geo::vec3_from_packed(pdu->get_location_ecef());
 	state.velocity = dis::geo::vec3_from_vector3(pdu->get_linear_velocity());
 	state.acceleration = dis::geo::vec3_from_vector3(pdu->get_dr_linear_acceleration());
 	state.orientation = dis::geo::euler_to_matrix(dis::geo::euler_from_vector3(pdu->get_orientation()));
+	if (dis::dr::body_axes(state.algorithm)) {
+		state.acceleration = state.orientation * state.acceleration; // body axes -> ECEF
+	}
 	state.angular_velocity = dis::geo::vec3_from_vector3(pdu->get_dr_angular_velocity());
 
 	const bool is_new = entity == nullptr;

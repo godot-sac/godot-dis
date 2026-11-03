@@ -86,6 +86,7 @@ private:
 	// playback speed, 0 while paused). clock = clock_base + (ticks - clock_ticks_base) * time_scale.
 	double time_scale = 1.0;
 	double clock_base = 0.0;
+	bool warned_non_finite = false;
 	double clock_ticks_base = 0.0;
 	double smoothing_time = 0.5;
 	double smoothing_max_distance = 100.0;
@@ -121,6 +122,9 @@ protected:
 public:
 	// Applies one Entity State PDU (called for every PDU from the network). `now` < 0 means the current time.
 	void handle_entity_state(const godot::Ref<DisEntityStatePdu> &pdu, double now = -1.0);
+	// The same with `now` taken as it is, also when negative (DisPlayer restores entities whose last PDU is older
+	// than the manager's clock).
+	void apply_entity_state(const godot::Ref<DisEntityStatePdu> &pdu, double now);
 	// Dead reckons every entity to `now` and removes timed-out ones. Called every frame when auto_update is on.
 	void process_entities(double now);
 	// Seconds on the manager's clock (what `now` defaults to above).

@@ -459,6 +459,9 @@ bool read_pdulog(const uint8_t *data, size_t size, std::vector<Packet> &out, std
 			const std::string key = "# start:";
 			if (line.compare(first, key.size(), key) == 0) {
 				start = std::strtod(line.c_str() + first + key.size(), nullptr);
+				if (!std::isfinite(start)) {
+					start = 0.0;
+				}
 			}
 			continue;
 		}
@@ -471,7 +474,7 @@ bool read_pdulog(const uint8_t *data, size_t size, std::vector<Packet> &out, std
 		Packet packet;
 		char *end = nullptr;
 		packet.time = start + std::strtod(time_text.c_str(), &end);
-		if (end == time_text.c_str() || !parse_endpoint(source, packet.source_ip, packet.source_port) ||
+		if (end == time_text.c_str() || !std::isfinite(packet.time) || !parse_endpoint(source, packet.source_ip, packet.source_port) ||
 				!parse_endpoint(destination, packet.destination_ip, packet.destination_port) || hex.size() % 2 != 0) {
 			error = "line " + std::to_string(number) + ": malformed";
 			return !out.empty();

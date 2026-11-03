@@ -33,8 +33,9 @@ application (site and application of the `DisNetwork`, or 0xFFFF for "all") chan
 - The request is acknowledged at once ("able to comply") when `auto_acknowledge` is on (default).
 - If the request names a real world time in the future, the change waits for it (`get_scheduled_time()`); a time
   more than a day ahead is taken as a clock mismatch and applied at once. A time of 0 means "now".
-- A request sent again (same originator and request ID, because our answer got lost) is acknowledged again but
-  carried out only once.
+- A request sent again within 30 s (same originator, PDU type and request ID, because our answer got lost) is
+  acknowledged again but carried out only once. Later, the same ID is a new request (a restarted manager counts
+  from 1 again).
 - `get_simulation_time()`: set by Start/Resume, runs while running, or while stopped if the Stop/Freeze set
   `FROZEN_RUN_SIMULATION_CLOCK`. `get_frozen_behavior()` gives the other bits (`FROZEN_TRANSMIT_UPDATES`,
   `FROZEN_PROCESS_UPDATES`).

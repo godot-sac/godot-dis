@@ -231,7 +231,10 @@ Ref<DisEntityStatePdu> DisEntity::make_pdu(const dis::dr::State &state, int64_t 
 	pdu->set_orientation(dis::geo::vector3_from_euler(dis::geo::matrix_to_euler(state.orientation)));
 	pdu->set_linear_velocity(dis::geo::vector3_from_vec3(state.velocity));
 	pdu->set_dr_algorithm(dr_algorithm);
-	pdu->set_dr_linear_acceleration(dis::geo::vector3_from_vec3(state.acceleration));
+	// Body-axis algorithms send the acceleration in body axes; the state keeps it in ECEF.
+	const dis::geo::Vec3 acceleration =
+			dis::dr::body_axes(dr_algorithm) ? state.orientation.transposed() * state.acceleration : state.acceleration;
+	pdu->set_dr_linear_acceleration(dis::geo::vector3_from_vec3(acceleration));
 	pdu->set_dr_angular_velocity(dis::geo::vector3_from_vec3(state.angular_velocity));
 	pdu->set_timestamp(unix_timestamp());
 	return pdu;

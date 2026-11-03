@@ -14,6 +14,6 @@ protected:
 public:
 	// Encodes a DIS 7 Entity State PDU with fixed, recognizable values (see dis_probe.cpp).
 	static godot::PackedByteArray encode_test_entity_state();
-	// Version string of the compiled library, e.g. "godot-dis 0.0.1 (open-dis-cpp 1.2.0)".
+	// Version string of the compiled library, e.g. "godot-dis 0.1.0 (open-dis-cpp 1.2.0, godot-cpp 10.0.0)".
 	static godot::String get_version();
 };

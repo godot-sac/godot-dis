@@ -64,7 +64,7 @@ tests (the 2 Wireshark tests pending without tshark), and the release zip in an 
 
 ## Test
 ```powershell
-$godot = "C:\path\to\godot.exe"   # your Godot path
+$godot = "C:\path\to\Godot_v4.7.2-stable_win64_console.exe"   # your Godot path
 & $godot --headless --path . --import
 & $godot --headless --path . -s addons/gut/gut_cmdln.gd
 ```

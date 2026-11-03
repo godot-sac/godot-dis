@@ -166,13 +166,22 @@ void DisPlayer::advance(double seconds) {
 		return;
 	}
 	position += seconds;
-	const int count = recording->get_packet_count();
-	const std::vector<Packet> &packets = recording->get_packets();
-	const double start = recording->get_start_time();
-	while (next_index < count && packets[next_index].time - start <= position) {
-		play_packet(next_index);
-		next_index++;
+	// Signal handlers of the played packets may change or clear the recording, seek, or set another one: keep
+	// this one alive and look at it again after every packet.
+	const Ref<DisRecording> current = recording;
+	const double start = current->get_start_time();
+	while (recording == current && next_index < current->get_packet_count() &&
+			current->get_packets()[next_index].time - start <= position) {
+		const int index = next_index;
+		play_packet(index);
+		if (next_index == index) { // unless a handler seeked
+			next_index++;
+		}
 	}
+	if (recording != current) {
+		return;
+	}
+	const int count = current->get_packet_count();
 	if (next_index >= count && position >= get_duration()) {
 		position = get_duration();
 		if (loop && count > 0) {
@@ -240,6 +249,6 @@ void DisPlayer::restore_entities() {
 		if (pdu.is_null() || (pdu->get_appearance() & DisEntity::APPEARANCE_DEACTIVATED)) {
 			continue;
 		}
-		manager->handle_entity_state(pdu, clock - (position - (packets[index].time - start)));
+		manager->apply_entity_state(pdu, clock - (position - (packets[index].time - start)));
 	}
 }

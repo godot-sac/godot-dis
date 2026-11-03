@@ -20,14 +20,11 @@ using namespace godot;
 namespace {
 constexpr int ALL = DisSimulationManagementPdu::ID_ALL;
 constexpr size_t HANDLED_MEMORY = 64;
+// Seconds in which the same request again counts as a resend (managers retry within a few seconds).
+constexpr double HANDLED_WINDOW = 30.0;
 // A requested start/stop time further away than this is taken as a clock mismatch and applied at once.
 constexpr double MAX_SCHEDULE_AHEAD = 24.0 * 3600.0;
 
-uint64_t request_key(const Ref<DisSimulationManagementPdu> &pdu) {
-	const Vector3i from = pdu->get_originating_id();
-	return (static_cast<uint64_t>(from.x & 0xFFFF) << 48) | (static_cast<uint64_t>(from.y & 0xFFFF) << 40) |
-			(static_cast<uint64_t>(pdu->get_pdu_type() & 0xFF) << 32) | static_cast<uint64_t>(pdu->get_request_id() & 0xFFFFFFFF);
-}
 } // namespace
 
 DisExerciseControl::DisExerciseControl() {}
@@ -170,14 +167,17 @@ Vector3i DisExerciseControl::own_id(DisNetwork *network) const {
 }
 
 bool DisExerciseControl::already_handled(const Ref<DisSimulationManagementPdu> &pdu) {
-	const uint64_t key = request_key(pdu);
-	if (std::find(handled.begin(), handled.end(), key) != handled.end()) {
-		return true;
-	}
-	handled.push_back(key);
-	if (handled.size() > HANDLED_MEMORY) {
+	const double time = now();
+	while (!handled.empty() && (handled.size() >= HANDLED_MEMORY || time - handled.front().time > HANDLED_WINDOW)) {
 		handled.pop_front();
 	}
+	const Vector3i from = pdu->get_originating_id();
+	for (const HandledRequest &request : handled) {
+		if (request.from == from && request.pdu_type == pdu->get_pdu_type() && request.request_id == pdu->get_request_id()) {
+			return true;
+		}
+	}
+	handled.push_back({ from, pdu->get_pdu_type(), pdu->get_request_id(), time });
 	return false;
 }
 
@@ -311,11 +311,14 @@ void DisExerciseControl::on_stop_freeze(const Ref<DisStopFreezePdu> &pdu) {
 
 void DisExerciseControl::on_remove_entity(const Ref<DisRemoveEntityPdu> &pdu) {
 	DisNetwork *network = get_network();
-	if (pdu.is_null() || network == nullptr || !pdu->is_addressed_to(network->get_site_id(), network->get_application_id())) {
+	if (pdu.is_null() || network == nullptr || !is_inside_tree() ||
+			!pdu->is_addressed_to(network->get_site_id(), network->get_application_id())) {
 		return;
 	}
 	const bool repeated = already_handled(pdu);
 	const int wanted = pdu->get_receiving_id().z;
+	const int site = network->get_site_id();
+	const int application = network->get_application_id();
 	int found = 0;
 	const TypedArray<Node> nodes = get_tree()->get_nodes_in_group(DisEntity::GROUP);
 	for (int64_t i = 0; i < nodes.size(); i++) {
@@ -324,16 +327,23 @@ void DisExerciseControl::on_remove_entity(const Ref<DisRemoveEntityPdu> &pdu) {
 			continue;
 		}
 		const Vector3i id = entity->get_effective_entity_id();
-		if (id.x != network->get_site_id() || id.y != network->get_application_id() || (wanted != ALL && id.z != wanted)) {
+		if (id.x != site || id.y != application || (wanted != ALL && id.z != wanted)) {
 			continue;
 		}
 		found++;
 		if (!repeated) {
+			const ObjectID entity_id(entity->get_instance_id());
 			emit_signal("remove_entity_requested", id, pdu);
-			if (remove_entities) {
+			// The handler may have freed the entity, or the network.
+			entity = Object::cast_to<DisEntity>(ObjectDB::get_instance(entity_id));
+			if (remove_entities && entity != nullptr && !entity->is_queued_for_deletion()) {
 				entity->queue_free();
 			}
 		}
+	}
+	network = get_network();
+	if (network == nullptr) {
+		return;
 	}
 	acknowledge(network, pdu, DisAcknowledgePdu::ACKNOWLEDGE_REMOVE_ENTITY,
 			found > 0 || repeated ? DisAcknowledgePdu::RESPONSE_ABLE_TO_COMPLY : DisAcknowledgePdu::RESPONSE_UNABLE_TO_COMPLY);

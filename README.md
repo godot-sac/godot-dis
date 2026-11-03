@@ -53,7 +53,7 @@ by CI only — see [compatibility](docs/compatibility.md).
 | any other | raw bytes | raw bytes | `DisNetwork.send_bytes()`, recorded and replayed unchanged | |
 
 PDUs a sender extends or pads beyond the fields above keep those bytes (`trailing_bytes`) and go back out unchanged.
-Planned next: Entity State Update, Receiver, Electromagnetic Emission, Designator.
+Planned next ([roadmap](ROADMAP.md)): Entity State Update, Receiver, Electromagnetic Emission, Designator, IFF.
 HLA is out of scope for now: it needs an RTI (the free ones, such as Portico, are Java / C++ libraries), and the
 RPR FOM mirrors the DIS PDUs, so a DIS–HLA gateway can join this addon to an HLA federation.
 
@@ -65,7 +65,7 @@ RPR FOM mirrors the DIS PDUs, so a DIS–HLA gateway can join this addon to an H
 
 ## Installation
 1. Download `godot-dis-<version>.zip` from the [releases page](https://github.com/OWNER/godot-dis/releases). It has
-   the compiled libraries for Windows, Linux and macOS; no C++ build is needed.
+   the compiled libraries for Windows and Linux (and macOS, built by CI but untested); no C++ build is needed.
 2. Extract it into your project folder, so that `addons/dis/dis.gdextension` exists.
 3. Open (or restart) the editor; the `Dis*` nodes appear in *Create New Node*.
 
@@ -99,7 +99,7 @@ func shoot(target: DisRemoteEntity) -> void:
 [recording](docs/recording.md) · [enumerations](docs/enumerations.md) ·
 [Entity State layout](docs/entity-state-pdu.md) · [interoperability](docs/interoperability.md) ·
 [compatibility](docs/compatibility.md) · [building](docs/building.md) · [release](docs/release.md) ·
-[C++ notes](docs/cpp-notes.md)
+[C++ notes](docs/cpp-notes.md) · [roadmap](ROADMAP.md)
 
 ## Development
 ```powershell

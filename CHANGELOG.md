@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - Unreleased
+First release.
+
 ### Added
 - DIS 7 Entity State PDU (`DisEntityStatePdu`), reading DIS 6 too; byte-for-byte tests against Open-DIS Python.
 - `DisNetwork`: UDP broadcast / unicast / multicast, exercise and site / application filters, port sharing.
@@ -58,6 +60,8 @@ All notable changes to this project are documented here. Versions follow [semver
 - A PDU length field of 0 is read as the datagram size (some senders never fill it in).
 - `get_length()` counts `trailing_bytes`; the size of the known fields is `get_body_length()`.
 - Radio Communications PDUs that carry our own site / application are ignored like other own PDUs.
+- `THIRD_PARTY_NOTICES.md` (also in the release zip) carries the open-dis-cpp (BSD-2-Clause) and godot-cpp (MIT)
+  license texts, as both are compiled into the libraries.
 - Demo scenario moved from Ankara to Üsküdar, Istanbul (origin 41.0200 N, 29.0500 E, ellipsoid height 0, the same
   as the godot-geo Üsküdar terrain packages): land routes on main roads of the Asian side, a blue patrol craft and a
   civilian ferry on the Bosphorus, the airliner at 3 km (first turn after ~310 s); `DemoUnitMover.surface` (stay on
@@ -68,6 +72,23 @@ All notable changes to this project are documented here. Versions follow [semver
   library exported its statically linked libstdc++ (~4400 symbols). It now exports only its entry point
   (`src/linux_exports.map`), checked by `tools/check_exports.py` in CI.
 - The demo no longer shows the full local path of a recording on screen.
+- `DisNetwork` handles every PDU of a datagram that bundles several (IEEE 1278.1-2012), not only the first one;
+  stopping the network from a signal handler while packets wait no longer crashes.
+- `DisExerciseControl`: a request from another manager with the same request ID (site 2 / application 1 and site 0
+  / application 513 shared a key) or from a restarted manager is no longer taken for a resend and ignored; a resend
+  is the same request within 30 s. A `remove_entity_requested` handler may free the entity.
+- `DisPlayer`, `DisRadioMonitor`: signal handlers that change the recording, seek, or clear the monitor no longer
+  leave the player or monitor reading freed data. Restoring entities after a seek early in a run no longer treats
+  old reports as new.
+- Decoding: the variable parameter count of Entity State and Detonation PDUs must fit the PDU's length field, not
+  just the datagram; `.pdulog` lines with a NaN or infinite time are rejected.
+- Encoding refuses values that do not fit their length fields (PDU over 65535 bytes, more than 255 variable
+  parameters or modulation parameter bytes, Signal data over 8191 bytes) instead of wrapping silently.
+- `DisEntityManager` ignores Entity State PDUs with NaN or infinite values (one warning).
+- Body-axis dead reckoning (DRM 6–9): `DisEntity` sends the acceleration in body axes and `DisEntityManager` reads
+  it that way (both used ECEF).
+- A fresh clone warned about invalid UIDs in GUT's scenes on every editor start: GUT's `.import` files are now
+  tracked.
 - The first headless import of a new project (`--import`, `--editor --quit`) no longer crashes on exit: works
   around godotengine/godot#111048 by unregistering the classes early when a headless editor loads the
   extension mid-session (`src/editor_first_load_guard.cpp`).

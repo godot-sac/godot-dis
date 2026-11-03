@@ -67,7 +67,9 @@ private:
 	void reject(const godot::String &reason, const godot::String &ip);
 	bool is_own(const godot::PackedByteArray &bytes) const;
 	// Filters (when `filtered`), decodes and emits the signals for one datagram.
+	// Splits a datagram into its PDUs (several PDUs may be bundled into one datagram) and handles each.
 	void process_packet(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool filtered);
+	void process_pdu(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool filtered);
 	void call_taps(const godot::PackedByteArray &bytes, const godot::String &ip, int port, bool outgoing, bool own);
 	static bool starts_with_sender_id(int protocol_family);
 	static const char *typed_signal_of(int pdu_type);

@@ -71,7 +71,16 @@ private:
 	double simulation_time = 0.0;
 	Pending pending;
 	std::vector<Request> requests;
-	std::deque<uint64_t> handled; // recent (originator, request ID) keys, to recognise resent requests
+	// A request we carried out: originator, PDU type and request ID, and when it arrived. The same request again
+	// within HANDLED_WINDOW seconds is a resend (the manager did not hear our acknowledge); later, or from a
+	// restarted manager that counts its request IDs from 1 again, it is a new request.
+	struct HandledRequest {
+		godot::Vector3i from;
+		int pdu_type = 0;
+		int64_t request_id = 0;
+		double time = 0.0;
+	};
+	std::deque<HandledRequest> handled;
 	int64_t next_request_id = 1;
 	godot::ObjectID connected_network;
 

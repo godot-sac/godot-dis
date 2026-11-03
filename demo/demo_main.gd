@@ -637,7 +637,7 @@ func _build_ui(title: String) -> void:
 	var help := Label.new()
 	help.text = ("F: fire at nearest enemy   X: remove unit under mouse   T: radio call\nS: stop exercise   R: resume   "
 			+ "Wheel: zoom   Drag: pan\nSymbols: MIL-STD-2525D (approx.)\n"
-			+ "Enumerations: SISO-REF-010, reprinted with permission from SISO Inc.")
+			+ "Enumerations: SISO-REF-010, reprinted with permission from SISO Inc.\nRoutes: © OpenStreetMap contributors")
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.add_theme_font_size_override("font_size", 10)
 	help.modulate = Color(1, 1, 1, 0.6)

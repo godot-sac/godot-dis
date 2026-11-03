@@ -105,8 +105,11 @@ Between PDUs every entity is moved with the algorithm it reported. DRM 1–5 are
 | 5 | FVW | P₀ + V₀t + ½A₀t² | fixed |
 
 Position, velocity and acceleration are in ECEF. "Rotates" means turning at the reported body-axis angular velocity
-ω: R(t) = R₀ · exp([ω]× t), computed with Rodrigues' formula (exact for a constant ω). Body-axis algorithms 6–9 are
-treated as their world-axis versions 2–5 for now; 0 and unknown values as static.
+ω: R(t) = R₀ · exp([ω]× t), computed with Rodrigues' formula (exact for a constant ω). Body-axis algorithms 6–9 carry
+the dead reckoning acceleration in body axes: `DisEntity` sends it that way and `DisEntityManager` turns it into ECEF
+with the reported orientation; the motion itself is then extrapolated like the world-axis versions 2–5 (velocity
+and acceleration do not turn with the entity between updates yet, see the roadmap). 0 and unknown values are
+static.
 
 Time is measured from when the PDU arrived (local clock), not from the PDU timestamp, so clocks don't need to be
 synchronised. Network delay shows up as a small lag, corrected by the next update.

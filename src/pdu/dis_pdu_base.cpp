@@ -47,6 +47,9 @@ void DisPduBase::read_header(const DIS::Pdu &pdu) {
 }
 
 PackedByteArray DisPduBase::marshal(DIS::Pdu &pdu) const {
+	const int64_t length = pdu.getMarshalledSize() + trailing_bytes.size();
+	ERR_FAIL_COND_V_MSG(length > 0xFFFF, PackedByteArray(),
+			vformat("PDU would be %d bytes; the length field allows at most 65535", length));
 	pdu.setLength(static_cast<unsigned short>(pdu.getMarshalledSize() + trailing_bytes.size()));
 	DIS::DataStream stream(DIS::BIG);
 	pdu.marshal(stream);
@@ -57,6 +60,8 @@ PackedByteArray DisPduBase::marshal(DIS::Pdu &pdu) const {
 
 PackedByteArray DisPduBase::finish(byte_io::Writer &out) const {
 	out.raw(trailing_bytes);
+	ERR_FAIL_COND_V_MSG(out.size() > 0xFFFF, PackedByteArray(),
+			vformat("PDU would be %d bytes; the length field allows at most 65535", out.size()));
 	return out.finish();
 }
 

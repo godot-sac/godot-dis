@@ -31,6 +31,8 @@ func publish(pdu: DisEntityStatePdu) -> void:
   site/application are treated as our own echo (broadcast and multicast loop back to the sender).
   Give every simulation on the network a different site/application pair.
 - Malformed packets emit `packet_rejected(reason, sender_ip)` and never reach `open-dis-cpp`.
+- A datagram may bundle several PDUs (IEEE 1278.1-2012): each one, starting where the previous one's length field
+  ends (or at the next 8-byte boundary), is filtered and decoded on its own. `packets_received` counts datagrams.
 
 `get_statistics()` returns received / sent / rejected / ignored counters and the joined multicast interfaces.
 
@@ -64,8 +66,8 @@ Wireshark (GPL) is used only as a tool here.
 2. Start capturing, filter with `udp.port == 3000`.
 3. Send some entities:
    ```powershell
-   cd path\to\godot-dis
-   & "C:\path\to\godot.exe" --headless --path . -s res://tools/send_entities.gd -- 127.0.0.1 3000 30
+   $godot = "C:\path\to\Godot_v4.7.2-stable_win64_console.exe"   # your Godot executable, run from the repo root
+   & $godot --headless --path . -s res://tools/send_entities.gd -- 127.0.0.1 3000 30
    ```
    (or `192.168.1.255 3000 30` to broadcast on the LAN.)
 4. Port 3000 is decoded as DIS automatically. On another port: right click a packet → Decode As… → DIS.

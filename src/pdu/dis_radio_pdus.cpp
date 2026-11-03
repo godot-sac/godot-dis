@@ -90,6 +90,10 @@ int DisTransmitterPdu::get_body_length() const {
 }
 
 PackedByteArray DisTransmitterPdu::encode() const {
+	ERR_FAIL_COND_V_MSG(modulation_parameters.size() > 255, PackedByteArray(),
+			vformat("%d bytes of modulation parameters; the length field allows at most 255", modulation_parameters.size()));
+	ERR_FAIL_COND_V_MSG(antenna_pattern.size() > 0xFFFF || variable_parameters.size() > 0xFFFF, PackedByteArray(),
+			"antenna pattern or variable parameters too long for their 16-bit fields");
 	byte_io::Writer out;
 	write_header(out);
 	write_id(out, radio_reference_id);
@@ -211,6 +215,8 @@ void DisSignalPdu::_bind_methods() {
 }
 
 void DisSignalPdu::set_data_bytes(const PackedByteArray &value) {
+	// data_length is a 16-bit count of bits: at most 8191 whole bytes.
+	ERR_FAIL_COND_MSG(value.size() > 8191, vformat("%d bytes of signal data; a Signal PDU carries at most 8191", value.size()));
 	data = value;
 	data_length = static_cast<int>(value.size() * 8);
 }

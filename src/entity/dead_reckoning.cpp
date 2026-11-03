@@ -30,6 +30,10 @@ bool rotates(int algorithm) {
 	return a == ALGORITHM_RPW || a == ALGORITHM_RVW;
 }
 
+bool body_axes(int algorithm) {
+	return algorithm >= ALGORITHM_FPB && algorithm <= ALGORITHM_FVB;
+}
+
 bool accelerates(int algorithm) {
 	const int a = effective_algorithm(algorithm);
 	return a == ALGORITHM_RVW || a == ALGORITHM_FVW;

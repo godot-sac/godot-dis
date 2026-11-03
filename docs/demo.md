@@ -25,17 +25,17 @@ different computers of a LAN.
 ## Run it (PowerShell, from the repo root)
 Once: link godot-milsymbol (without it the map shows plain dots) and import.
 ```powershell
-cd path\to\godot-dis
+$godot = "C:\path\to\Godot_v4.7.2-stable_win64_console.exe"   # your Godot executable
 .\tools\.venv\Scripts\python.exe tools\link_milsymbol.py
-& "C:\path\to\godot.exe" --headless --path . --import
+& $godot --headless --path . --import
 ```
 
 Then in three terminals:
 ```powershell
-& "C:\path\to\godot.exe" --path . res://demo/main.tscn -- --side blue
+& $godot --path . res://demo/main.tscn -- --side blue
 ```
 ```powershell
-& "C:\path\to\godot.exe" --path . res://demo/main.tscn -- --side red
+& $godot --path . res://demo/main.tscn -- --side red
 ```
 ```powershell
 .\tools\.venv\Scripts\python.exe tools\demo_traffic.py

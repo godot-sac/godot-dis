@@ -41,6 +41,8 @@ struct Pose {
 // counterparts 2-5 (v0.1 scope); 0 and unknown values are treated as static.
 int effective_algorithm(int algorithm);
 bool rotates(int algorithm);
+// Body-axis algorithms (FPB, RPB, RVB, FVB): the PDU's dead reckoning acceleration is in body axes.
+bool body_axes(int algorithm);
 bool accelerates(int algorithm);
 
 // Pose of `state` after `dt` seconds.

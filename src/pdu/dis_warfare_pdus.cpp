@@ -147,6 +147,8 @@ int DisDetonationPdu::get_body_length() const {
 }
 
 PackedByteArray DisDetonationPdu::encode() const {
+	ERR_FAIL_COND_V_MSG(variable_parameters.size() > 255, PackedByteArray(),
+			vformat("%d variable parameters; the count field allows at most 255", variable_parameters.size()));
 	DIS::DetonationPdu pdu;
 	write_header(pdu);
 	pdu.setFiringEntityID(to_dis_entity_id(firing_entity_id));
@@ -177,11 +179,12 @@ Ref<DisDetonationPdu> DisDetonationPdu::decode(const PackedByteArray &bytes) {
 	if (!DisPdu::validate(bytes, DisPdu::PDU_TYPE_DETONATION, BASE_SIZE)) {
 		return Ref<DisDetonationPdu>();
 	}
-	// Byte 101 is the variable parameter count; make sure they are all inside the packet.
+	// Byte 101 is the variable parameter count; make sure they are all inside the PDU's length.
 	const int count = bytes[101];
 	const int needed = BASE_SIZE + VARIABLE_PARAMETER_SIZE * count;
-	if (bytes.size() < needed) {
-		DisPdu::set_last_error(vformat("%d variable parameters need %d bytes, got %d", count, needed, bytes.size()));
+	if (DisPdu::get_effective_length(bytes) < needed) {
+		DisPdu::set_last_error(vformat("%d variable parameters need %d bytes, the PDU has %d", count, needed,
+				DisPdu::get_effective_length(bytes)));
 		return Ref<DisDetonationPdu>();
 	}
 	DIS::DetonationPdu pdu;

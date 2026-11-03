@@ -1,5 +1,6 @@
 #include "radio/dis_radio_monitor.h"
 
+#include <string_view>
 #include <vector>
 
 #include <godot_cpp/classes/engine.hpp>
@@ -117,9 +118,21 @@ void DisRadioMonitor::update_state(Radio &radio, double time) {
 	radio.transmitting = transmitting;
 	if (transmitting) {
 		const int64_t frequency = radio.transmitter.is_valid() ? radio.transmitter->get_frequency() : 0;
-		emit_signal("transmission_started", radio.entity_id, radio.radio_number, frequency);
+		events.push_back({ "transmission_started", radio.entity_id, radio.radio_number, frequency });
 	} else {
-		emit_signal("transmission_ended", radio.entity_id, radio.radio_number);
+		events.push_back({ "transmission_ended", radio.entity_id, radio.radio_number });
+	}
+}
+
+void DisRadioMonitor::emit_events() {
+	const std::vector<Event> pending = std::move(events);
+	events.clear();
+	for (const Event &event : pending) {
+		if (event.signal == std::string_view("transmission_started")) {
+			emit_signal(event.signal, event.entity_id, event.radio_number, event.frequency);
+		} else {
+			emit_signal(event.signal, event.entity_id, event.radio_number);
+		}
 	}
 }
 
@@ -133,9 +146,10 @@ void DisRadioMonitor::on_transmitter(const Ref<DisTransmitterPdu> &pdu) {
 	radio.transmitter = pdu;
 	radio.last_heard = time;
 	if (is_new) {
-		emit_signal("radio_added", radio.entity_id, radio.radio_number);
+		events.push_back({ "radio_added", radio.entity_id, radio.radio_number });
 	}
 	update_state(radio, time);
+	emit_events();
 }
 
 void DisRadioMonitor::on_signal(const Ref<DisSignalPdu> &pdu) {
@@ -149,9 +163,10 @@ void DisRadioMonitor::on_signal(const Ref<DisSignalPdu> &pdu) {
 	radio.last_signal = time;
 	radio.signal_count++;
 	if (is_new) {
-		emit_signal("radio_added", radio.entity_id, radio.radio_number);
+		events.push_back({ "radio_added", radio.entity_id, radio.radio_number });
 	}
 	update_state(radio, time);
+	emit_events();
 }
 
 void DisRadioMonitor::handle_pdu(const Ref<DisPduBase> &pdu) {
@@ -170,7 +185,7 @@ void DisRadioMonitor::update() {
 		Radio &radio = it->second;
 		if (time - radio.last_heard > timeout) {
 			if (radio.transmitting) {
-				emit_signal("transmission_ended", radio.entity_id, radio.radio_number);
+				events.push_back({ "transmission_ended", radio.entity_id, radio.radio_number });
 			}
 			removed.emplace_back(radio.entity_id, radio.radio_number);
 			it = radios.erase(it);
@@ -180,8 +195,9 @@ void DisRadioMonitor::update() {
 		++it;
 	}
 	for (const auto &[entity_id, radio_number] : removed) {
-		emit_signal("radio_removed", entity_id, radio_number);
+		events.push_back({ "radio_removed", entity_id, radio_number });
 	}
+	emit_events();
 }
 
 Dictionary DisRadioMonitor::describe(const Radio &radio) {
