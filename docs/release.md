@@ -29,7 +29,8 @@ the release of tag `v<version>` and expects `addons/dis/` at its root); keep the
   python tools/demo_traffic.py --port 3391 --seconds 62 --start 200
   godot --path . res://demo/main.tscn -- --side blue --port 3391 --seconds 50 --capture <frames> --auto-fire 5 --radio-at 9 --stop-at 32 --resume-at 37
   ```
-  then `python tools/make_media.py <frames>` (needs Pillow). `--capture` saves 10 frames per second of real time
+  then `python tools/make_media.py <frames> --width 640` (needs Pillow; keeps the GIF under 1 MB).
+  `--capture` saves 10 frames per second of real time
   (Godot's Movie Maker mode would slow the frame clock against the DIS wall clock).
 - `icon.svg` (128×128) → `docs/images/icon.png` with `godot --headless --path . -s res://tools/render_icons.gd`:
   the Asset Library icon. The editor icons of the nodes are in `addons/dis/icons/` and ship with the addon.
