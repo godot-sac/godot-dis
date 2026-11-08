@@ -1,4 +1,4 @@
-# Builds the GDExtension for Windows, Linux and macOS, runs the C++ unit tests everywhere and the Godot (GUT)
+# Builds the GDExtension for Windows and Linux, runs the C++ unit tests everywhere and the Godot (GUT)
 # tests on Windows and Linux, then packs addons/dis with all libraries into the release zip and checks it in an
 # empty project. A tag vX.Y.Z also makes a draft GitHub release with that zip (docs/release.md).
 name: CI

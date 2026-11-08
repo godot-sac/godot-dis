@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-08
 First release.
 
 ### Added
@@ -17,7 +17,7 @@ First release.
 - Warning when an entity jumps far on several updates in a row (two simulations sharing one entity ID).
 - Demo: two-sided exercise around Üsküdar, Istanbul plus civilian traffic from Open-DIS Python (`--port`; traffic `--start`,
   `--rate`, dead reckoning algorithm 4 with turn rate, racetrack routes); `tools/link_milsymbol.py`.
-- CI for Windows, Linux and macOS.
+- CI for Windows and Linux.
 - Fire, Detonation, Remove Entity, Start/Resume, Stop/Freeze and Acknowledge PDUs (`DisFirePdu`,
   `DisDetonationPdu`, `DisRemoveEntityPdu`, `DisStartResumePdu`, `DisStopFreezePdu`, `DisAcknowledgePdu`) on a
   common `DisPduBase`; `DisPdu.decode()` returns any of them; byte-for-byte golden tests against Open-DIS Python.
@@ -46,8 +46,8 @@ First release.
   protocol family byte is kept too.
 - Demo: radio calls (T) shown with radio waves on the map, the Open-DIS Python airliner talks on 118.1 MHz,
   Comment PDUs when the exercise is stopped or resumed.
-- Release zip: `tools/package_addon.py` packs `godot-dis-<version>.zip` (`addons/dis/` with the Windows, Linux and
-  macOS libraries, data, icons, `LICENSE`, `THIRD_PARTY_NOTICES.md`); `tools/check_package.py` tries it in a new,
+- Release zip: `tools/package_addon.py` packs `godot-dis-<version>.zip` (`addons/dis/` with the Windows and Linux
+  libraries, data, icons, `LICENSE`, `THIRD_PARTY_NOTICES.md`); `tools/check_package.py` tries it in a new,
   empty project (optionally next to other add-on zips, `--with`); CI packs and checks it on every push and makes a
   draft GitHub release on a `vX.Y.Z` tag.
 - Editor icons for the nodes (`addons/dis/icons/`), project / Asset Library icon.
