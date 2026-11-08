@@ -31,6 +31,23 @@ static func _known_wireshark_limit(pdu: DisPduBase) -> bool:
 	return pdu is DisSignalPdu and pdu.data_length == 0
 
 
+## The fields this tshark knows, out of `fields` (older Wireshark versions lack some DIS fields).
+func _missing_fields(tshark: String, fields: PackedStringArray) -> PackedStringArray:
+	var output := []
+	OS.execute(tshark, ["-G", "fields"], output, true)
+	var known := {}
+	for line: String in "".join(output).split("
+", false):
+		var columns := line.split("	")
+		if columns.size() > 2:
+			known[columns[2]] = true
+	var missing := PackedStringArray()
+	for field in fields:
+		if not field.begins_with("_ws.") and not known.has(field):
+			missing.append(field)
+	return missing
+
+
 ## Runs tshark on `file` and returns one Dictionary per frame with the requested fields.
 func _tshark_fields(tshark: String, file: String, fields: PackedStringArray) -> Array:
 	var args := PackedStringArray(["-r", ProjectSettings.globalize_path(file), "-d", "udp.port==3000,dis", "-T",
@@ -161,12 +178,17 @@ func test_wireshark_reads_emission_and_receiver_fields() -> void:
 	for pdu: DisPduBase in [receiver, iff, designator, emission]:
 		recording.add_packet(pdu.encode(), 1793534400.0 + recording.get_packet_count())
 	recording.save("user://wireshark_emission_fields.pcapng")
-	var rows := _tshark_fields(tshark, "user://wireshark_emission_fields.pcapng", ["dis.radio.receive_state",
+	var fields := PackedStringArray(["dis.radio.receive_state",
 			"dis.receive_power", "dis.radio.transmitter_radio_id", "dis.iff.system_type", "dis.iff.system_name",
 			"dis.iff.system_mode", "dis.iff.system_designator", "dis.iff.system_specific_data",
 			"dis.iff.alternate_parameter_4", "dis.iff.parameter_1", "dis.iff.parameter_6", "dis.designator_code_name",
 			"dis.designator_power", "dis.designator_wavelength", "dis.em.fund.frequency", "dis.em.beam.parameter_index",
 			"dis.jamming_mode_seq", "_ws.malformed"])
+	var missing := _missing_fields(tshark, fields)
+	if not missing.is_empty():
+		pending("this tshark has no %s (Wireshark 4.6 has them)" % ", ".join(missing))
+		return
+	var rows := _tshark_fields(tshark, "user://wireshark_emission_fields.pcapng", fields)
 	assert_eq(rows.size(), 4)
 	if rows.size() != 4:
 		return
