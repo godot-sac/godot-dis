@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntityTypeMapping" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		One entity type pattern and the scene it selects, used by [DisEntityTypeMap].
+	</brief_description>
+	<description>
+		Pairs a pattern for the 7 entity type fields (kind:domain:country:category:subcategory:specific:extra) with a scene. Each field is a non-negative integer or [code]*[/code], which matches anything. Trailing fields can be left out and then count as [code]*[/code]: [code]1:2[/code] matches every air platform, [code]1:2:*:1[/code] air platforms of category 1 of any country.
+		An entity type shorter than 7 fields is treated as if the missing fields were 0. A mapping with an invalid or empty pattern never matches; setting an invalid pattern prints a warning.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_specificity" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of fields of the pattern that are not wildcards (0 to 7), or [code]-1[/code] if the pattern is invalid. [DisEntityTypeMap] prefers the mapping with the highest value.
+			</description>
+		</method>
+		<method name="matches" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_type" type="PackedInt32Array" />
+			<description>
+				Returns [code]true[/code] if [param entity_type] (7 integers; missing trailing fields count as 0) matches the pattern in every non-wildcard field. Always [code]false[/code] if the pattern is invalid.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="entity_type" type="String" setter="set_entity_type" getter="get_entity_type" default="&quot;&quot;">
+			The pattern as text, for example [code]"1:1:225:1:1"[/code]. See the class description for the syntax.
+		</member>
+		<member name="scene" type="PackedScene" setter="set_scene" getter="get_scene">
+			The scene instanced for matching entities.
+		</member>
+	</members>
+</class>

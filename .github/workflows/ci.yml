@@ -93,6 +93,14 @@ jobs:
           "$GODOT" --headless --path . -s addons/gut/gut_cmdln.gd
           "$PY" tools/check_first_import.py --godot "$GODOT"
 
+      # The class reference (doc_classes/, built into the debug library) must match the API and be filled in.
+      - name: Class reference (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          "$GODOT" --headless --path . --doctool . --gdextension-docs
+          git diff --exit-code -- doc_classes || { echo "doc_classes/ is out of date: commit the regenerated XML"; exit 1; }
+          python3 tools/check_docs.py
+
       - uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.platform }}

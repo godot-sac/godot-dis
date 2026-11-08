@@ -372,3 +372,28 @@ confirmed the cause.
   `tools/check_package.py --with godot-jsbsim-x.zip` loads both addons in the same empty project and flies the
   J3Cub. With the old library this check crashes at the very first `--import` (exit -6); with the new one it
   passes.
+
+## Class reference in the editor: `doc_classes/` (v0.2, 2026-11-08)
+- **What it is**: Godot's own classes get their F1 help from XML files (one per class: brief description,
+  description, every method, property, signal and constant). Since Godot 4.3 a GDExtension can hand the editor the
+  same XML.
+- **Generating the skeleton**: `<godot> --headless --path . --doctool . --gdextension-docs` loads the extension,
+  asks it for its registered classes (whatever `_bind_methods` declared) and writes `doc_classes/<Class>.xml` with
+  empty descriptions. Run again after an API change: existing descriptions are kept, new members appear empty.
+- **Building it in**: a small function in `SConstruct` concatenates the XML files, compresses them with zlib and
+  writes `build/gen/class_reference.gen.cpp`: two `const int` sizes and a `const unsigned char[]` with the bytes.
+  At namespace scope `const` variables are private to their `.cpp` file (internal linkage); the `extern`
+  declarations in `src/class_reference.h`, included by the generated file, make them visible to
+  `src/class_reference.cpp`, which decompresses them and calls the editor's
+  `editor_help_load_xml_from_utf8_chars_and_len`. Only `template_debug` builds get the data (SConstruct defines
+  `CLASS_REFERENCE`; without it `load_class_reference()` is empty): the editor loads the debug library, and the
+  release library that games use stays smaller.
+- **Why not godot-cpp's own builder** (`env.GodotCPPDocData`): it generates the same array plus a global
+  `static DocDataRegistration` object. A global object's constructor runs when the library is loaded, before any
+  of our code ("static initialization"), and godot-cpp then always loads the docs at editor initialization. With
+  docs loaded, the editor crash of godotengine/godot#111048 came back (a new project's first headless `--import`
+  crashed at exit in all three runs of `tools/check_first_import.py`): the editor generates docs for the loaded XML
+  after freeing its own doc data. Loading by hand lets `register_types.cpp` skip the docs exactly when
+  `install_editor_first_load_guard()` reports that the guard is active.
+- **Keeping it complete**: `tools/check_docs.py` fails when a registered class has no XML or a description is empty;
+  CI also regenerates the XML and fails if it differs from the committed files (the API changed, the docs did not).

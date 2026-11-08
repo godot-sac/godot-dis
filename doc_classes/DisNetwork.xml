@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisNetwork" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Sends and receives DIS (IEEE 1278.1) PDUs over a UDP socket.
+	</brief_description>
+	<description>
+		[DisNetwork] owns one IPv4 UDP socket. Add it to the scene, set the connection properties and connect to its signals. With [member autostart] it opens the socket in [code]_ready[/code] and reads every waiting datagram each frame; the socket is never opened inside the editor.
+		Each datagram is split into its PDUs (a datagram may bundle several), filtered by [member exercise_id] and by the sender's site/application, decoded, and emitted as [signal pdu_received] followed by a signal specific to the PDU type. Malformed or unsupported packets emit [signal packet_rejected] instead. Outgoing PDUs are encoded with [method send_pdu] or sent as raw bytes with [method send_bytes].
+		The node adds itself to the group [code]dis_network[/code], which [DisEntity], [DisEntityManager] and the other DIS nodes use to find it when no path is set.
+		[codeblock]
+		@onready var network: DisNetwork = $DisNetwork
+
+		func _ready() -&gt; void:
+			network.entity_state_received.connect(_on_entity_state)
+
+		func _on_entity_state(pdu: DisEntityStatePdu) -&gt; void:
+			print(pdu.marking, " at ", pdu.location_ecef)
+		[/codeblock]
+		[b]Note:[/b] Changing connection properties while running has no effect until [method start] is called again.
+	</description>
+	<tutorials>
+		<link title="Getting started">https://github.com/godot-sac/godot-dis/blob/main/docs/getting-started.md</link>
+		<link title="Networking">https://github.com/godot-sac/godot-dis/blob/main/docs/networking.md</link>
+	</tutorials>
+	<methods>
+		<method name="get_effective_destination_port" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the UDP port outgoing packets are sent to: [member destination_port] if it is greater than 0, otherwise [member port].
+			</description>
+		</method>
+		<method name="get_send_address" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the IPv4 address outgoing packets are sent to, as set by the last successful [method start]: [member destination_address] in broadcast and unicast modes, [member multicast_group] in multicast mode. Returns an empty string before the first start.
+			</description>
+		</method>
+		<method name="get_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns packet counters since the node was created or the last [method reset_statistics], as a [Dictionary]:
+				- [code]received[/code]: datagrams read from the socket.
+				- [code]sent[/code]: datagrams sent successfully.
+				- [code]rejected[/code]: packets that were too short or could not be decoded (see [signal packet_rejected]).
+				- [code]ignored[/code]: PDUs dropped by the exercise or own-packet filter.
+				- [code]injected[/code]: packets passed to [method inject_packet].
+				- [code]multicast_interfaces[/code]: [PackedStringArray] of the interface names joined in multicast mode (empty otherwise).
+			</description>
+		</method>
+		<method name="inject_packet">
+			<return type="void" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<param index="1" name="sender_ip" type="String" default="&quot;127.0.0.1&quot;" />
+			<param index="2" name="sender_port" type="int" default="0" />
+			<param index="3" name="filtered" type="bool" default="false" />
+			<description>
+				Handles [param bytes] as if they had just been received from [param sender_ip]:[param sender_port], without touching the socket. It works while the network is stopped. [DisPlayer] uses it to replay recordings into the scene. Injected packets are not passed to recorders.
+				If [param filtered] is [code]true[/code], [member filter_exercise] and [member ignore_own_packets] apply; otherwise every packet that decodes is emitted.
+			</description>
+		</method>
+		<method name="is_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the socket is open.
+			</description>
+		</method>
+		<method name="poll">
+			<return type="void" />
+			<description>
+				Reads and dispatches all waiting packets now, up to [member max_packets_per_frame]. This is done automatically every frame while the node is in the tree (outside the editor); call it manually only in tests or tools. Does nothing if the network is not running.
+			</description>
+		</method>
+		<method name="reset_statistics">
+			<return type="void" />
+			<description>
+				Sets the counters returned by [method get_statistics] to zero.
+			</description>
+		</method>
+		<method name="send_bytes">
+			<return type="int" enum="Error" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Sends [param bytes] unchanged as one datagram to [method get_send_address] on [method get_effective_destination_port]. Returns [constant @GlobalScope.ERR_UNCONFIGURED] (and prints an error) if the network is not running, [constant @GlobalScope.ERR_CANT_CONNECT] if the send fails, otherwise [constant @GlobalScope.OK].
+			</description>
+		</method>
+		<method name="send_pdu">
+			<return type="int" enum="Error" />
+			<param index="0" name="pdu" type="RefCounted" />
+			<description>
+				Encodes [param pdu] and sends it with [method send_bytes]. [param pdu] must be an object with an [code]encode()[/code] method returning a [PackedByteArray], such as [DisEntityStatePdu]; if it has an integer [code]exercise_id[/code] property, that is set to this node's [member exercise_id] first. Returns [constant @GlobalScope.ERR_INVALID_PARAMETER] if [param pdu] is [code]null[/code] or has no [code]encode()[/code], otherwise the result of [method send_bytes].
+			</description>
+		</method>
+		<method name="start">
+			<return type="int" enum="Error" />
+			<description>
+				Closes the socket if open, then opens it on [member port] bound to [member bind_address] and prepares sending according to [member mode]. In multicast mode it joins [member multicast_group] on every routable IPv4 interface (or only on [member multicast_interface]) and enables multicast loopback. Returns [constant @GlobalScope.ERR_CANT_OPEN] if the port cannot be bound, [constant @GlobalScope.ERR_CANT_CONNECT] if no interface could join the multicast group, otherwise [constant @GlobalScope.OK]. Errors are also printed.
+			</description>
+		</method>
+		<method name="stop">
+			<return type="void" />
+			<description>
+				Leaves any joined multicast group and closes the socket. Called automatically when the node exits the tree.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="application_id" type="int" setter="set_application_id" getter="get_application_id" default="1">
+			Application number of this simulation (0 to 65535). Together with [member site_id] it identifies packets sent by this application so that [member ignore_own_packets] can drop them. Give every simulation on a network a different site/application pair.
+		</member>
+		<member name="autostart" type="bool" setter="set_autostart" getter="get_autostart" default="true">
+			If [code]true[/code], [method start] is called when the node is ready (not in the editor).
+		</member>
+		<member name="bind_address" type="String" setter="set_bind_address" getter="get_bind_address" default="&quot;*&quot;">
+			Local IPv4 address the socket binds to. [code]"*"[/code] or an empty string binds to all interfaces.
+		</member>
+		<member name="destination_address" type="String" setter="set_destination_address" getter="get_destination_address" default="&quot;255.255.255.255&quot;">
+			IPv4 address packets are sent to in [constant MODE_BROADCAST] and [constant MODE_UNICAST]. Ignored in multicast mode, which sends to [member multicast_group].
+			[b]Note:[/b] On Windows with several adapters (VPN, WSL), [code]255.255.255.255[/code] may leave through the wrong adapter; use the subnet broadcast address such as [code]192.168.1.255[/code].
+		</member>
+		<member name="destination_port" type="int" setter="set_destination_port" getter="get_destination_port" default="0">
+			UDP port packets are sent to. [code]0[/code] means the same as [member port].
+		</member>
+		<member name="exercise_id" type="int" setter="set_exercise_id" getter="get_exercise_id" default="1">
+			Exercise ID (0 to 255). [method send_pdu] stamps it on outgoing PDUs, and with [member filter_exercise] incoming PDUs with a different exercise ID are ignored.
+		</member>
+		<member name="filter_exercise" type="bool" setter="set_filter_exercise" getter="get_filter_exercise" default="true">
+			If [code]true[/code], received PDUs whose exercise ID differs from [member exercise_id] are dropped and counted as [code]ignored[/code] in [method get_statistics].
+		</member>
+		<member name="ignore_own_packets" type="bool" setter="set_ignore_own_packets" getter="get_ignore_own_packets" default="true">
+			If [code]true[/code], received PDUs whose sender ID matches [member site_id] and [member application_id] are dropped (counted as [code]ignored[/code]). This removes the echo of our own broadcast or multicast traffic. The sender ID is read from the first 4 bytes of the body of Entity Information, Warfare, Radio Communications, Simulation Management and Simulation Management with Reliability PDUs; other families are never treated as own.
+		</member>
+		<member name="max_packets_per_frame" type="int" setter="set_max_packets_per_frame" getter="get_max_packets_per_frame" default="1000">
+			Maximum number of datagrams read per call to [method poll]. Remaining packets wait for the next frame.
+		</member>
+		<member name="mode" type="int" setter="set_mode" getter="get_mode" enum="DisNetwork.Mode" default="0">
+			How the network sends and receives. See [enum Mode].
+		</member>
+		<member name="multicast_group" type="String" setter="set_multicast_group" getter="get_multicast_group" default="&quot;239.1.2.3&quot;">
+			IPv4 multicast group joined and sent to in [constant MODE_MULTICAST].
+		</member>
+		<member name="multicast_interface" type="String" setter="set_multicast_interface" getter="get_multicast_interface" default="&quot;&quot;">
+			Name or IPv4 address of the network adapter used in [constant MODE_MULTICAST]. If empty, the group is joined on every adapter with a routable IPv4 address (link-local [code]169.254.x.x[/code] adapters are skipped) and the operating system picks the interface for sending. If set, only that adapter joins and it is also used for sending.
+		</member>
+		<member name="port" type="int" setter="set_port" getter="get_port" default="3000">
+			UDP port to listen on (1 to 65535). It is also the destination port unless [member destination_port] is set. DIS commonly uses 3000.
+		</member>
+		<member name="share_port" type="bool" setter="set_share_port" getter="get_share_port" default="true">
+			If [code]true[/code], the socket allows address reuse so that several DIS applications on one computer can listen on the same [member port]. Each receives broadcast and multicast traffic, but a unicast packet reaches only one of them. If [code]false[/code], [method start] fails when the port is taken.
+		</member>
+		<member name="site_id" type="int" setter="set_site_id" getter="get_site_id" default="1">
+			Site number of this simulation (0 to 65535). See [member application_id].
+		</member>
+	</members>
+	<signals>
+		<signal name="acknowledge_received">
+			<param index="0" name="pdu" type="DisAcknowledgePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisAcknowledgePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="collision_received">
+			<param index="0" name="pdu" type="DisCollisionPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisCollisionPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="comment_received">
+			<param index="0" name="pdu" type="DisCommentPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisCommentPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="create_entity_received">
+			<param index="0" name="pdu" type="DisCreateEntityPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisCreateEntityPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="data_received">
+			<param index="0" name="pdu" type="DisDataPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisDataPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="detonation_received">
+			<param index="0" name="pdu" type="DisDetonationPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisDetonationPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="entity_state_received">
+			<param index="0" name="pdu" type="DisEntityStatePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisEntityStatePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="fire_received">
+			<param index="0" name="pdu" type="DisFirePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisFirePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="packet_rejected">
+			<param index="0" name="reason" type="String" />
+			<param index="1" name="sender_ip" type="String" />
+			<description>
+				Emitted when a packet is dropped because it is shorter than a PDU header, has an unsupported PDU type or cannot be decoded. [param reason] describes the problem; [param sender_ip] is the sender's address. Packets removed by the exercise or own-packet filters are not rejected, only counted as ignored.
+			</description>
+		</signal>
+		<signal name="pdu_received">
+			<param index="0" name="pdu" type="Object" />
+			<param index="1" name="sender_ip" type="String" />
+			<param index="2" name="sender_port" type="int" />
+			<description>
+				Emitted for every PDU that passes the filters and decodes, before the PDU-specific signal. [param pdu] is the [DisPduBase] subclass matching the PDU type. [param sender_ip] and [param sender_port] identify the UDP sender (for injected packets, the values given to [method inject_packet]).
+			</description>
+		</signal>
+		<signal name="remove_entity_received">
+			<param index="0" name="pdu" type="DisRemoveEntityPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisRemoveEntityPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="set_data_received">
+			<param index="0" name="pdu" type="DisSetDataPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisSetDataPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="signal_received">
+			<param index="0" name="pdu" type="DisSignalPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisSignalPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="start_resume_received">
+			<param index="0" name="pdu" type="DisStartResumePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisStartResumePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="stop_freeze_received">
+			<param index="0" name="pdu" type="DisStopFreezePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisStopFreezePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="transmitter_received">
+			<param index="0" name="pdu" type="DisTransmitterPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisTransmitterPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="MODE_BROADCAST" value="0" enum="Mode">
+			Sends to [member destination_address] (default [code]255.255.255.255[/code]) and receives everything arriving on [member port].
+		</constant>
+		<constant name="MODE_UNICAST" value="1" enum="Mode">
+			Sends to the single host [member destination_address] and receives everything arriving on [member port].
+		</constant>
+		<constant name="MODE_MULTICAST" value="2" enum="Mode">
+			Joins [member multicast_group] and sends to it. Multicast loopback is on, so other applications on the same computer also receive the PDUs.
+		</constant>
+	</constants>
+</class>

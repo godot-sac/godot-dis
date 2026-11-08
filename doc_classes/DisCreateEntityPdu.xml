@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisCreateEntityPdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Create Entity PDU (type 11): asks an application to create an entity.
+	</brief_description>
+	<description>
+		A Create Entity PDU asks the application named by [member DisSimulationManagementPdu.receiving_id] to create an entity. It has no fields of its own beyond those of [DisSimulationManagementPdu] and is 28 bytes long. The receiver answers with a [DisAcknowledgePdu] carrying the same [member DisSimulationManagementPdu.request_id].
+		What gets created is up to the receiving game; [DisExerciseControl] only reports the request.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisCreateEntityPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Create Entity PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Create Entity PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 28 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+</class>

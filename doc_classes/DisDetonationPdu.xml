@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisDetonationPdu" inherits="DisWarfarePdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Detonation PDU (type 3): a munition detonated or impacted.
+	</brief_description>
+	<description>
+		A Detonation PDU reports that a munition detonated or hit something at [member DisWarfarePdu.location_ecef]. It is 104 bytes plus 16 bytes per variable parameter and has protocol family 2 (Warfare); most fields are inherited from [DisWarfarePdu]. Use the same [member DisWarfarePdu.event_id], munition descriptor and target as the [DisFirePdu] it belongs to.
+		[member DisWarfarePdu.munition_id] is the exploding entity ID here, and [member DisWarfarePdu.velocity] is the munition's velocity at detonation (ECEF, m/s). [member detonation_result] says what the munition hit; [member location_in_entity] gives the impact point in the target's own frame.
+		Variable parameters (for example articulation records) are kept as raw 16-byte records in [member variable_parameters].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisDetonationPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Detonation PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Detonation PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 104 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes]. The variable parameter count in the PDU must fit inside the length, otherwise the PDU is rejected.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="detonation_result" type="int" setter="set_detonation_result" getter="get_detonation_result" default="0">
+			What the munition did, as a SISO-REF-010 "Detonation Result" code (8-bit). The most common values are the [enum DetonationResult] constants; other codes are allowed.
+		</member>
+		<member name="location_in_entity" type="Vector3" setter="set_location_in_entity" getter="get_location_in_entity" default="Vector3(0, 0, 0)">
+			Location of the detonation relative to the target entity, as a [Vector3] in metres in the target's body coordinates (32-bit floats on the wire). Meaningful when the munition hit an entity.
+		</member>
+		<member name="padding" type="int" setter="set_padding" getter="get_padding" default="0">
+			The 16-bit padding field that follows the variable parameter count. Normally 0; kept so that decoded PDUs encode to the same bytes.
+		</member>
+		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
+			Variable parameter records as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. Entries of any other size are skipped by [method DisPduBase.encode] and an error is printed.
+		</member>
+	</members>
+	<constants>
+		<constant name="RESULT_OTHER" value="0" enum="DetonationResult">
+			Detonation result 0, other.
+		</constant>
+		<constant name="RESULT_ENTITY_IMPACT" value="1" enum="DetonationResult">
+			Detonation result 1: the munition hit an entity.
+		</constant>
+		<constant name="RESULT_ENTITY_PROXIMATE_DETONATION" value="2" enum="DetonationResult">
+			Detonation result 2: the munition detonated close to an entity.
+		</constant>
+		<constant name="RESULT_GROUND_IMPACT" value="3" enum="DetonationResult">
+			Detonation result 3: the munition hit the ground.
+		</constant>
+		<constant name="RESULT_GROUND_PROXIMATE_DETONATION" value="4" enum="DetonationResult">
+			Detonation result 4: the munition detonated close to the ground.
+		</constant>
+		<constant name="RESULT_DETONATION" value="5" enum="DetonationResult">
+			Detonation result 5: a detonation without further detail.
+		</constant>
+		<constant name="RESULT_NONE_OR_DUD" value="6" enum="DetonationResult">
+			Detonation result 6: no detonation, or the munition was a dud.
+		</constant>
+		<constant name="RESULT_AIR_HIT" value="17" enum="DetonationResult">
+			Detonation result 17: the munition hit an aircraft or other airborne target.
+		</constant>
+		<constant name="RESULT_WATER_IMPACT" value="24" enum="DetonationResult">
+			Detonation result 24: the munition hit water.
+		</constant>
+		<constant name="RESULT_AIR_BURST" value="25" enum="DetonationResult">
+			Detonation result 25: the munition burst in the air.
+		</constant>
+	</constants>
+</class>

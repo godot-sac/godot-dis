@@ -9,6 +9,35 @@ env = SConscript("thirdparty/godot-cpp/SConstruct", {"api_version": "4.3"})
 env.Append(CPPPATH=["src/", "src/compat/", "thirdparty/open-dis-cpp/src/"])
 
 sources = Glob("src/*.cpp") + Glob("src/*/*.cpp")
+
+# Class reference for the editor (F1, Inspector tooltips) from doc_classes/*.xml, in the debug library only (the editor
+# loads that one). Regenerate the XML after API changes: <godot> --headless --path . --doctool . --gdextension-docs
+# Loaded by src/class_reference.cpp rather than godot-cpp's GodotCPPDocData; the header there says why.
+def class_reference_source(target, source, env):
+    import zlib
+
+    xml = "".join(open(str(s), encoding="utf-8").read() for s in sorted(source, key=str)).encode("utf-8")
+    packed = zlib.compress(xml, 9)
+    with open(str(target[0]), "w", encoding="utf-8", newline="\n") as f:
+        f.write('// Generated from doc_classes/*.xml by SConstruct. Do not edit.\n#include "class_reference.h"\n\n')
+        f.write("const int CLASS_REFERENCE_SIZE = {};\n".format(len(xml)))
+        f.write("const int CLASS_REFERENCE_PACKED_SIZE = {};\n".format(len(packed)))
+        f.write("const unsigned char CLASS_REFERENCE_PACKED[] = {\n")
+        for i in range(0, len(packed), 32):
+            f.write("\t" + ",".join(str(b) for b in packed[i : i + 32]) + ",\n")
+        f.write("};\n")
+
+
+if env["target"] in ["editor", "template_debug"]:
+    env.Append(CPPDEFINES=["CLASS_REFERENCE"])
+    sources.append(
+        env.Command(
+            "build/gen/class_reference.gen.cpp",
+            Glob("doc_classes/*.xml"),
+            Action(class_reference_source, "Generating the class reference: $TARGET"),
+        )
+    )
+
 opendis_env = env.Clone()
 if opendis_env["platform"] == "windows" and not opendis_env.get("use_mingw"):
     # Third-party code: don't fail the build on its warnings.

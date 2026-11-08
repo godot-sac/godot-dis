@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisRadioMonitor" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Keeps track of the radios on the network and who is transmitting, from Transmitter and Signal PDUs.
+	</brief_description>
+	<description>
+		Listens to [signal DisNetwork.transmitter_received] and [signal DisNetwork.signal_received] of a [DisNetwork] (found through the group [code]dis_network[/code] unless [member network_path] is set) and keeps a table of radios, identified by the entity that carries them and the radio number. No audio is decoded or played.
+		A radio counts as transmitting while its last [DisTransmitterPdu] says "on and transmitting" ([constant DisTransmitterPdu.TRANSMIT_ON_AND_TRANSMITTING]) or while a [DisSignalPdu] from it arrived less than [member signal_hold] seconds ago. A radio that is not heard from (no Transmitter and no Signal PDU) for [member timeout] seconds is forgotten. The table is updated every frame; nothing runs in the editor.
+		[codeblock]
+		$DisRadioMonitor.transmission_started.connect(
+				func(entity_id: Vector3i, radio: int, frequency: int):
+					print("%s transmits on %.3f MHz" % [entity_id, frequency / 1e6]))
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Radio">https://github.com/godot-sac/godot-dis/blob/main/docs/radio.md</link>
+	</tutorials>
+	<methods>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Forgets all radios without emitting [signal radio_removed] or [signal transmission_ended].
+			</description>
+		</method>
+		<method name="get_dropped_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns how many Transmitter or Signal PDUs of new radios were dropped because [member max_radios] was reached.
+			</description>
+		</method>
+		<method name="get_radios" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of [Dictionary], one per known radio, with the keys:
+				- [code]entity_id[/code]: [Vector3i] ID of the entity carrying the radio.
+				- [code]radio_number[/code]: radio number within that entity.
+				- [code]frequency[/code]: centre frequency in Hz from the last Transmitter PDU, or [code]0[/code] if only Signal PDUs were seen.
+				- [code]transmit_state[/code]: transmit state from the last Transmitter PDU (see the [code]TRANSMIT_*[/code] constants of [DisTransmitterPdu]), or [code]-1[/code] if none was seen.
+				- [code]power[/code]: transmitted power in dBm, or [code]0.0[/code] if no Transmitter PDU was seen.
+				- [code]transmitting[/code]: whether the radio is transmitting now.
+				- [code]signal_count[/code]: number of Signal PDUs received from the radio.
+				- [code]seconds_since_heard[/code]: seconds since the last Transmitter or Signal PDU.
+			</description>
+		</method>
+		<method name="get_transmitting_entities" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of the entity IDs ([Vector3i]) that have at least one radio transmitting now, each listed once.
+			</description>
+		</method>
+		<method name="handle_pdu">
+			<return type="void" />
+			<param index="0" name="pdu" type="DisPduBase" />
+			<description>
+				Applies a [DisTransmitterPdu] or [DisSignalPdu] as if it had been received from the network; other PDU types are ignored. The node already does this for the PDUs of its [DisNetwork]; use this to feed PDUs from another source.
+			</description>
+		</method>
+		<method name="is_transmitting" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity_id" type="Vector3i" />
+			<description>
+				Returns [code]true[/code] if any radio of the entity [param entity_id] is transmitting now.
+			</description>
+		</method>
+		<method name="update">
+			<return type="void" />
+			<description>
+				Updates the transmitting state of every radio from the current time and forgets radios not heard from for [member timeout] seconds, emitting the matching signals. Called automatically every frame.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="max_radios" type="int" setter="set_max_radios" getter="get_max_radios" default="1000">
+			Maximum number of radios in the table. Transmitter and Signal PDUs of further new radios are dropped (see [method get_dropped_count]) and a warning is printed once. [code]0[/code] means no limit.
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] to listen to. If empty, the first node in the group [code]dis_network[/code] is used. Changing it while in the tree reconnects.
+		</member>
+		<member name="signal_hold" type="float" setter="set_signal_hold" getter="get_signal_hold" default="0.5">
+			Time in seconds a radio keeps counting as transmitting after its last Signal PDU, if its Transmitter PDU does not say "on and transmitting".
+		</member>
+		<member name="timeout" type="float" setter="set_timeout" getter="get_timeout" default="12.0">
+			Time in seconds without any Transmitter or Signal PDU after which a radio is removed.
+		</member>
+	</members>
+	<signals>
+		<signal name="radio_added">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<param index="1" name="radio_number" type="int" />
+			<description>
+				Emitted when a radio is first heard. [param entity_id] is the ID of the entity carrying it and [param radio_number] its radio number.
+			</description>
+		</signal>
+		<signal name="radio_removed">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<param index="1" name="radio_number" type="int" />
+			<description>
+				Emitted when a radio is removed because it was not heard from for [member timeout] seconds. [param entity_id] and [param radio_number] identify it. Not emitted by [method clear].
+			</description>
+		</signal>
+		<signal name="transmission_ended">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<param index="1" name="radio_number" type="int" />
+			<description>
+				Emitted when a radio stops transmitting, including when it is removed while transmitting. [param entity_id] and [param radio_number] identify the radio. Not emitted by [method clear].
+			</description>
+		</signal>
+		<signal name="transmission_started">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<param index="1" name="radio_number" type="int" />
+			<param index="2" name="frequency" type="int" />
+			<description>
+				Emitted when a radio starts transmitting. [param entity_id] and [param radio_number] identify the radio and [param frequency] is its centre frequency in Hz from the last Transmitter PDU, or [code]0[/code] if none was received.
+			</description>
+		</signal>
+	</signals>
+</class>

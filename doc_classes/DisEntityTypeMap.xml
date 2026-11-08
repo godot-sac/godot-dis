@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntityTypeMap" inherits="Resource" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Chooses the scene that represents a remote entity, from its DIS entity type.
+	</brief_description>
+	<description>
+		A [Resource] holding a list of [DisEntityTypeMapping] and a [member default_scene]. A [DisEntityManager] looks up the entity type of every new remote entity here and instances the resulting scene as the child of its [DisRemoteEntity].
+		An entity type has 7 fields (SISO-REF-010): kind, domain, country, category, subcategory, specific, extra. The mapping that matches the entity type with the most non-wildcard fields wins; between equally specific mappings the one earlier in [member mappings] wins. If no mapping matches, or the winner has no scene, [member default_scene] is used.
+		[codeblock]
+		var tank := DisEntityTypeMapping.new()
+		tank.entity_type = "1:1"   # every land platform
+		tank.scene = preload("res://tank.tscn")
+		var map := DisEntityTypeMap.new()
+		map.mappings = [tank]
+		map.default_scene = preload("res://generic.tscn")
+		$DisEntityManager.type_map = map
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Entities and dead reckoning">https://github.com/godot-sac/godot-dis/blob/main/docs/entities.md</link>
+	</tutorials>
+	<methods>
+		<method name="find_mapping" qualifiers="const">
+			<return type="DisEntityTypeMapping" />
+			<param index="0" name="entity_type" type="PackedInt32Array" />
+			<description>
+				Returns the [DisEntityTypeMapping] in [member mappings] that matches [param entity_type] with the highest specificity (see [method DisEntityTypeMapping.get_specificity]); ties go to the earliest entry. Returns [code]null[/code] if none matches. Null entries and objects of other classes in the array are skipped.
+			</description>
+		</method>
+		<method name="find_scene" qualifiers="const">
+			<return type="PackedScene" />
+			<param index="0" name="entity_type" type="PackedInt32Array" />
+			<description>
+				Returns the scene of the mapping found by [method find_mapping], or [member default_scene] if there is no match or the matching mapping has no scene. May return [code]null[/code].
+			</description>
+		</method>
+		<method name="parse_pattern" qualifiers="static">
+			<return type="PackedInt32Array" />
+			<param index="0" name="pattern" type="String" />
+			<description>
+				Parses an entity type pattern of up to 7 colon-separated fields and returns it as a [PackedInt32Array] of 7 values, where [code]-1[/code] stands for a wildcard ([code]*[/code] or a field left out at the end). Fields must be non-negative integers of at most 9 digits. Returns an empty array if the pattern is invalid. For example [code]"1:2:*:1"[/code] gives [code][1, 2, -1, 1, -1, -1, -1][/code].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="default_scene" type="PackedScene" setter="set_default_scene" getter="get_default_scene">
+			Scene used when no mapping matches, or the matching mapping has no scene. If [code]null[/code], such entities get no visual child.
+		</member>
+		<member name="mappings" type="Array" setter="set_mappings" getter="get_mappings" default="[]">
+			The list of [DisEntityTypeMapping] resources to search.
+		</member>
+	</members>
+</class>

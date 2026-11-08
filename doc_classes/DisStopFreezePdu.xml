@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisStopFreezePdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Stop/Freeze PDU (type 14): asks applications to stop or freeze the exercise.
+	</brief_description>
+	<description>
+		A Stop/Freeze PDU asks the receiver to stop or freeze at the real-world time given by [member real_world_time_hour] and [member real_world_time_past_hour], for the given [member reason]. [member frozen_behavior] says what the receiver keeps doing while frozen. It is 40 bytes long. The receiver answers with a [DisAcknowledgePdu] carrying the same [member DisSimulationManagementPdu.request_id].
+		The real-world time is a DIS Clock Time record: a signed 32-bit hour count and a DIS timestamp past the hour (2^31 units per hour, shifted left by one; lowest bit set = absolute time). [method get_real_world_time] and [method set_real_world_time] convert it to and from seconds.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisStopFreezePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Stop/Freeze PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Stop/Freeze PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 40 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+		<method name="get_real_world_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the real-world stop time in seconds since the UNIX epoch (UTC), computed from [member real_world_time_hour] and [member real_world_time_past_hour]. 0 means "now" for [DisExerciseControl].
+			</description>
+		</method>
+		<method name="set_real_world_time">
+			<return type="void" />
+			<param index="0" name="unix_seconds" type="float" />
+			<description>
+				Sets [member real_world_time_hour] and [member real_world_time_past_hour] from [param unix_seconds], seconds since the UNIX epoch (UTC), marking the time as absolute.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="frozen_behavior" type="int" setter="set_frozen_behavior" getter="get_frozen_behavior" default="0">
+			What the receiver keeps doing while frozen, as a bit mask of [enum FrozenBehavior] values (8-bit). 0 means stop completely.
+		</member>
+		<member name="padding" type="int" setter="set_padding" getter="get_padding" default="0">
+			The 16-bit padding field after the frozen behavior. Normally 0; kept so that decoded PDUs encode to the same bytes.
+		</member>
+		<member name="real_world_time_hour" type="int" setter="set_real_world_time_hour" getter="get_real_world_time_hour" default="0">
+			Hour part of the real-world time (signed 32-bit). See also [member real_world_time_past_hour].
+		</member>
+		<member name="real_world_time_past_hour" type="int" setter="set_real_world_time_past_hour" getter="get_real_world_time_past_hour" default="0">
+			Time past the hour of the real-world time as a DIS timestamp (2^31 units per hour, shifted left by one; lowest bit set = absolute).
+		</member>
+		<member name="reason" type="int" setter="set_reason" getter="get_reason" default="0">
+			Why the exercise is stopped or frozen (8-bit): one of the [enum Reason] values or another SISO-REF-010 "Stop/Freeze Reason" code.
+		</member>
+	</members>
+	<constants>
+		<constant name="REASON_OTHER" value="0" enum="Reason">
+			Reason 0, other.
+		</constant>
+		<constant name="REASON_RECESS" value="1" enum="Reason">
+			Reason 1: the exercise is paused for a recess.
+		</constant>
+		<constant name="REASON_TERMINATION" value="2" enum="Reason">
+			Reason 2: the exercise is terminated.
+		</constant>
+		<constant name="REASON_SYSTEM_FAILURE" value="3" enum="Reason">
+			Reason 3: stopped because of a system failure.
+		</constant>
+		<constant name="REASON_SECURITY_VIOLATION" value="4" enum="Reason">
+			Reason 4: stopped because of a security violation.
+		</constant>
+		<constant name="REASON_ENTITY_RECONSTITUTION" value="5" enum="Reason">
+			Reason 5: stopped for entity reconstitution.
+		</constant>
+		<constant name="REASON_STOP_FOR_RESET" value="6" enum="Reason">
+			Reason 6: stopped so the exercise can be reset.
+		</constant>
+		<constant name="REASON_STOP_FOR_RESTART" value="7" enum="Reason">
+			Reason 7: stopped so the exercise can be restarted.
+		</constant>
+		<constant name="REASON_ABORT_TRAINING_RETURN_TO_TACTICAL_OPERATIONS" value="8" enum="Reason">
+			Reason 8: training aborted, return to tactical operations.
+		</constant>
+		<constant name="FROZEN_RUN_SIMULATION_CLOCK" value="1" enum="FrozenBehavior">
+			Bit 1 of [member frozen_behavior]: the simulation clock keeps running while frozen.
+		</constant>
+		<constant name="FROZEN_TRANSMIT_UPDATES" value="2" enum="FrozenBehavior">
+			Bit 2 of [member frozen_behavior]: the application keeps transmitting PDUs (such as Entity State updates) while frozen.
+		</constant>
+		<constant name="FROZEN_PROCESS_UPDATES" value="4" enum="FrozenBehavior">
+			Bit 4 of [member frozen_behavior]: the application keeps processing received PDUs while frozen.
+		</constant>
+	</constants>
+</class>

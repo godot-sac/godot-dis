@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntity" inherits="Node3D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Publishes the global transform of a node as DIS Entity State PDUs.
+	</brief_description>
+	<description>
+		Put a [DisEntity] on (or below) a moving [Node3D] and it announces that node to the DIS network. Its position and orientation are converted to geocentric (ECEF) coordinates with a [DisGeoOrigin], so the scene needs one.
+		Like real DIS simulations it does not send every frame. It keeps a copy of the last state it sent and runs the same dead reckoning the receivers run ([member dr_algorithm]). Every physics frame it compares that prediction with the real transform and sends a new Entity State PDU when the prediction is off by more than [member position_threshold] or [member orientation_threshold], when a property such as [member marking] changed, or when [member heartbeat_interval] has passed.
+		When the node leaves the scene tree it sends one last PDU with the [constant APPEARANCE_DEACTIVATED] bit set, so receivers remove the entity at once instead of waiting for a timeout.
+		The node finds its [DisNetwork] and [DisGeoOrigin] through the groups [code]dis_network[/code] and [code]dis_geo_origin[/code] unless [member network_path] and [member origin_path] are set. Every [DisEntity] in the tree joins the group [code]dis_entities[/code]. Nothing runs in the editor.
+		[codeblock]
+		# Child of the node that moves.
+		$DisEntity.marking = "TANK 1"
+		$DisEntity.entity_type = PackedInt32Array([1, 1, 225, 1, 1, 0, 0])
+		$DisEntity.fire(PackedInt32Array([2, 2, 0, 2, 0, 0, 0]), Vector3i(1, 1, 7), Vector3(0, 0, -1500), 2000.0)
+		[/codeblock]
+		[b]Note:[/b] If no [DisGeoOrigin] is found, nothing is published and a warning is printed once.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="create_detonation_pdu">
+			<return type="DisDetonationPdu" />
+			<param index="0" name="position" type="Vector3" />
+			<param index="1" name="result" type="int" />
+			<param index="2" name="fire" type="DisFirePdu" default="null" />
+			<param index="3" name="target_id" type="Vector3i" default="Vector3i(0, 0, 0)" />
+			<param index="4" name="velocity" type="Vector3" default="Vector3(0, 0, 0)" />
+			<description>
+				Creates a Detonation PDU from this entity without sending it. [param position] is the burst point in global Godot coordinates (metres) and [param velocity] the munition's velocity in global Godot axes (m/s); both are converted to ECEF with the [DisGeoOrigin]. [param result] is the detonation result code (for example [constant DisDetonationPdu.RESULT_ENTITY_IMPACT]).
+				If [param fire] is given, the PDU continues that event: it copies the event ID, munition ID, munition type, warhead, fuse, quantity and rate, and the target from [param fire] (unless [param target_id] is not (0, 0, 0), which overrides it). Without [param fire] it gets a new event ID, munition ID (site, application, 0), quantity 1 and [param target_id] as target.
+				Returns [code]null[/code] and prints an error if there is no [DisGeoOrigin].
+			</description>
+		</method>
+		<method name="create_fire_pdu">
+			<return type="DisFirePdu" />
+			<param index="0" name="munition_type" type="PackedInt32Array" />
+			<param index="1" name="target_id" type="Vector3i" default="Vector3i(0, 0, 0)" />
+			<param index="2" name="velocity" type="Vector3" default="Vector3(0, 0, 0)" />
+			<param index="3" name="range" type="float" default="0.0" />
+			<description>
+				Creates a Fire PDU from this entity without sending it. The firing entity is this entity's effective ID, the location is its current global position, and the event ID is new (site, application, a number unique within the process). The munition ID is (site, application, 0) because the round is not simulated as an entity, and the quantity is 1.
+				[param munition_type] is the 7-field munition entity type; it is ignored unless it has exactly 7 elements. [param target_id] is the target entity ID, or (0, 0, 0) for none. [param velocity] is the munition velocity in global Godot axes (m/s). [param range] is the range to the target in metres, [code]0[/code] if unknown.
+				Returns [code]null[/code] and prints an error if there is no [DisGeoOrigin].
+			</description>
+		</method>
+		<method name="create_pdu">
+			<return type="DisEntityStatePdu" />
+			<description>
+				Returns the Entity State PDU this entity would send now, built from its current transform and properties, without sending it or changing the publishing state. Returns [code]null[/code] and prints an error if there is no [DisGeoOrigin].
+			</description>
+		</method>
+		<method name="detonate">
+			<return type="DisDetonationPdu" />
+			<param index="0" name="position" type="Vector3" />
+			<param index="1" name="result" type="int" />
+			<param index="2" name="fire" type="DisFirePdu" default="null" />
+			<param index="3" name="target_id" type="Vector3i" default="Vector3i(0, 0, 0)" />
+			<param index="4" name="velocity" type="Vector3" default="Vector3(0, 0, 0)" />
+			<description>
+				Calls [method create_detonation_pdu] with the same arguments and sends the result with the [DisNetwork], if it is running. Returns the PDU, or [code]null[/code] if there is no [DisGeoOrigin]. The PDU is returned even when the network is not running and nothing was sent.
+			</description>
+		</method>
+		<method name="fire">
+			<return type="DisFirePdu" />
+			<param index="0" name="munition_type" type="PackedInt32Array" />
+			<param index="1" name="target_id" type="Vector3i" default="Vector3i(0, 0, 0)" />
+			<param index="2" name="velocity" type="Vector3" default="Vector3(0, 0, 0)" />
+			<param index="3" name="range" type="float" default="0.0" />
+			<description>
+				Calls [method create_fire_pdu] with the same arguments and sends the result with the [DisNetwork], if it is running. Returns the PDU, which can be passed to [method detonate] later to continue the same event, or [code]null[/code] if there is no [DisGeoOrigin]. The PDU is returned even when the network is not running and nothing was sent.
+			</description>
+		</method>
+		<method name="get_effective_entity_id">
+			<return type="Vector3i" />
+			<description>
+				Returns the entity ID that is actually published. Fields of [member entity_id] that are 0 are filled in: the site and application from the [DisNetwork] ([member DisNetwork.site_id], [member DisNetwork.application_id], or 1 if there is no network), and the entity number from a counter shared by all entities in this process (1 to 65534), assigned the first time it is needed.
+			</description>
+		</method>
+		<method name="get_published_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns how many Entity State PDUs this entity has published (including the final deactivation PDU and PDUs created while the network was not running).
+			</description>
+		</method>
+		<method name="process_entity">
+			<return type="void" />
+			<param index="0" name="now" type="float" />
+			<description>
+				Samples the node's motion and sends a PDU if one is needed. This is called automatically every physics frame while [member auto_update] is [code]true[/code]; call it yourself when [member auto_update] is off. [param now] is a time in seconds that must increase between calls (the automatic call passes the physics time accumulated by this node). Does nothing if the node is not in the tree. While [member publishing] is [code]false[/code] the motion is still sampled but nothing is sent.
+			</description>
+		</method>
+		<method name="send_now">
+			<return type="int" enum="Error" />
+			<description>
+				Sends an Entity State PDU immediately, regardless of the thresholds and heartbeat. Returns [constant @GlobalScope.ERR_UNCONFIGURED] if there is no [DisGeoOrigin] or the network is not running, otherwise the result of [method DisNetwork.send_pdu]. The [signal published] signal is emitted and the dead reckoning baseline is reset even if the network is not running.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="angular_velocity" type="Vector3" setter="set_angular_velocity" getter="get_angular_velocity" default="Vector3(0, 0, 0)">
+			Angular velocity in radians per second about the node's own axes (X right, Y up, Z back). With [constant VELOCITY_ESTIMATED] it is overwritten every frame by a low-pass filtered estimate (time constant 0.1 s); with [constant VELOCITY_MANUAL] the value you set is published.
+		</member>
+		<member name="appearance" type="int" setter="set_appearance" getter="get_appearance" default="0">
+			Entity appearance bit field published in the PDU, as defined in SISO-REF-010 for the entity type. Changing it sends a PDU at once. Bit 23 is the "deactivated" state bit ([constant APPEARANCE_DEACTIVATED]).
+		</member>
+		<member name="auto_update" type="bool" setter="set_auto_update" getter="get_auto_update" default="true">
+			If [code]true[/code], [method process_entity] is called every physics frame. Set it to [code]false[/code] to drive the entity yourself.
+		</member>
+		<member name="capabilities" type="int" setter="set_capabilities" getter="get_capabilities" default="0">
+			Entity capabilities bit field published in the PDU (SISO-REF-010). Changing it sends a PDU at once.
+		</member>
+		<member name="dr_algorithm" type="int" setter="set_dr_algorithm" getter="get_dr_algorithm" default="2">
+			Dead reckoning algorithm announced in the PDU and used for the send decision: 0 Other, 1 Static, 2 FPW, 3 RPW, 4 RVW, 5 FVW, 6 FPB, 7 RPB, 8 RVB, 9 FVB. F/R means fixed/rotating orientation, P/V constant velocity/acceleration, W/B world/body axes. Use 4 (RVW) for aircraft and anything that turns or accelerates. The body-axis variants 6 to 9 are published with the acceleration in body axes but extrapolated like 2 to 5. Changing it sends a PDU at once.
+		</member>
+		<member name="entity_id" type="Vector3i" setter="set_entity_id" getter="get_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID as (site, application, entity number). Fields that are 0 are filled in automatically; see [method get_effective_entity_id]. Changing it sends a PDU at once.
+		</member>
+		<member name="entity_type" type="PackedInt32Array" setter="set_entity_type" getter="get_entity_type" default="PackedInt32Array(0, 0, 0, 0, 0, 0, 0)">
+			Entity type as 7 integers: kind, domain, country, category, subcategory, specific, extra (SISO-REF-010). Arrays of another size are resized to 7, padded with 0. Changing it sends a PDU at once.
+		</member>
+		<member name="force_id" type="int" setter="set_force_id" getter="get_force_id" default="1">
+			Force the entity belongs to: 0 Other, 1 Friendly, 2 Opposing, 3 Neutral. Changing it sends a PDU at once.
+		</member>
+		<member name="heartbeat_interval" type="float" setter="set_heartbeat_interval" getter="get_heartbeat_interval" default="5.0">
+			Longest time in seconds between two Entity State PDUs, even if the entity does not move.
+		</member>
+		<member name="linear_acceleration" type="Vector3" setter="set_linear_acceleration" getter="get_linear_acceleration" default="Vector3(0, 0, 0)">
+			Linear acceleration in metres per second squared, in global Godot axes. With [constant VELOCITY_ESTIMATED] it is overwritten every frame by a low-pass filtered estimate (time constant 0.25 s); with [constant VELOCITY_MANUAL] the value you set is published.
+		</member>
+		<member name="linear_velocity" type="Vector3" setter="set_linear_velocity" getter="get_linear_velocity" default="Vector3(0, 0, 0)">
+			Linear velocity in metres per second, in global Godot axes. With [constant VELOCITY_ESTIMATED] it is overwritten every frame by a low-pass filtered estimate (time constant 0.1 s) of the node's motion between physics frames; with [constant VELOCITY_MANUAL] the value you set is published.
+		</member>
+		<member name="marking" type="String" setter="set_marking" getter="get_marking" default="&quot;&quot;">
+			Text marking of the entity (call sign), published in the PDU. The DIS field holds 11 characters. Changing it sends a PDU at once.
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] to publish through. If empty, the first node in the group [code]dis_network[/code] is used.
+		</member>
+		<member name="orientation_threshold" type="float" setter="set_orientation_threshold" getter="get_orientation_threshold" default="0.05235988">
+			Angle in radians (shown in degrees in the editor) by which the real orientation may differ from the receivers' dead-reckoned orientation before a new PDU is sent. The default is 3 degrees.
+		</member>
+		<member name="origin_path" type="NodePath" setter="set_origin_path" getter="get_origin_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisGeoOrigin] used for the coordinate conversion. If empty, the first node in the group [code]dis_geo_origin[/code] is used.
+		</member>
+		<member name="position_threshold" type="float" setter="set_position_threshold" getter="get_position_threshold" default="1.0">
+			Distance in metres by which the real position may differ from the receivers' dead-reckoned position before a new PDU is sent.
+		</member>
+		<member name="publishing" type="bool" setter="set_publishing" getter="is_publishing" default="true">
+			If [code]false[/code], [method process_entity] samples the motion but sends nothing. [method send_now] still sends.
+		</member>
+		<member name="velocity_source" type="int" setter="set_velocity_source" getter="get_velocity_source" default="0">
+			Where [member linear_velocity], [member linear_acceleration] and [member angular_velocity] come from. See [enum VelocitySource].
+		</member>
+	</members>
+	<signals>
+		<signal name="published">
+			<param index="0" name="pdu" type="DisEntityStatePdu" />
+			<description>
+				Emitted each time an Entity State PDU is produced for sending (including the final deactivation PDU), just before it is passed to the [DisNetwork]. [param pdu] is the PDU that was built; it is emitted even if the network is not running and nothing is sent.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="VELOCITY_ESTIMATED" value="0" enum="VelocitySource">
+			Velocity, acceleration and angular velocity are estimated from the node's motion between physics frames and low-pass filtered.
+		</constant>
+		<constant name="VELOCITY_MANUAL" value="1" enum="VelocitySource">
+			The values of [member linear_velocity], [member linear_acceleration] and [member angular_velocity] are published as they are, for example taken from a [CharacterBody3D].
+		</constant>
+		<constant name="APPEARANCE_DEACTIVATED" value="8388608">
+			Bit 23 of [member appearance], the general appearance "State" bit meaning the entity is deactivated. Receivers remove an entity that reports it. It is set automatically in the PDU sent when the node leaves the tree.
+		</constant>
+	</constants>
+</class>

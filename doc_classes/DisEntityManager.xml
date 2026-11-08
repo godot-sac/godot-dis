@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntityManager" inherits="Node3D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Creates and moves a node for every remote entity announced by Entity State PDUs.
+	</brief_description>
+	<description>
+		[DisEntityManager] listens to a [DisNetwork] ([signal DisNetwork.entity_state_received]). For each new entity ID it adds a [DisRemoteEntity] child named [code]Entity_site_application_number[/code], with the scene chosen by [member type_map] as its child. Every frame it moves each entity with dead reckoning, using the algorithm and the position, velocity, acceleration, orientation and angular velocity from the last PDU. Corrections that arrive with a new PDU are faded in over [member smoothing_time] instead of jumping.
+		An entity is removed when a PDU with the "deactivated" appearance bit ([constant DisEntity.APPEARANCE_DEACTIVATED]) arrives or when nothing is heard from it for [member timeout] seconds. Removed entities are freed with [method Node.queue_free].
+		Positions are converted from geocentric (ECEF) coordinates to the scene with a [DisGeoOrigin]; without one in the scene, all PDUs are ignored and a warning is printed once. The manager finds its [DisNetwork] and [DisGeoOrigin] through the groups [code]dis_network[/code] and [code]dis_geo_origin[/code] unless [member network_path] and [member origin_path] are set. If it finds no network, PDUs can still be fed with [method handle_entity_state]. Nothing runs in the editor.
+		Entity State PDUs with NaN or infinite values are ignored (one warning). Because anyone who can send to the port creates nodes here, the number of entities is limited by [member max_entities].
+		[codeblock]
+		func _ready() -&gt; void:
+			$DisEntityManager.entity_appeared.connect(
+					func(e: DisRemoteEntity): print(e.marking, " joined at ", e.get_geodetic()))
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Getting started">https://github.com/godot-sac/godot-dis/blob/main/docs/getting-started.md</link>
+		<link title="Entities and dead reckoning">https://github.com/godot-sac/godot-dis/blob/main/docs/entities.md</link>
+	</tutorials>
+	<methods>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Removes every remote entity. [signal entity_removed] is emitted for each with the reason [code]"removed"[/code].
+			</description>
+		</method>
+		<method name="get_clock" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the manager's clock in seconds. It runs with real time multiplied by [member time_scale] and is what entity times, [member timeout] and [method process_entities] are measured on. Its zero point is arbitrary.
+			</description>
+		</method>
+		<method name="get_dropped_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns how many Entity State PDUs of new entities were dropped because [member max_entities] was reached.
+			</description>
+		</method>
+		<method name="get_entities" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an [Array] of all current [DisRemoteEntity] nodes, in no particular order.
+			</description>
+		</method>
+		<method name="get_entity" qualifiers="const">
+			<return type="Object" />
+			<param index="0" name="entity_id" type="Vector3i" />
+			<description>
+				Returns the [DisRemoteEntity] with the given entity ID (site, application, entity number), or [code]null[/code] if there is none.
+			</description>
+		</method>
+		<method name="get_entity_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of remote entities currently managed.
+			</description>
+		</method>
+		<method name="handle_entity_state">
+			<return type="void" />
+			<param index="0" name="pdu" type="DisEntityStatePdu" />
+			<param index="1" name="now" type="float" default="-1.0" />
+			<description>
+				Applies one Entity State PDU as if it had just been received from the network: creates or updates the entity, or removes it if the PDU is a deactivation. Use it to feed PDUs from another source. [param now] is the time on the manager's clock ([method get_clock]) at which the PDU counts as received; a negative value, the default, means now.
+			</description>
+		</method>
+		<method name="is_ground_clamped" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="entity" type="Object" />
+			<description>
+				Returns [code]true[/code] if [member ground_clamp] applies to [param entity], a [DisRemoteEntity] (whether or not [member ground_path] is set). Returns [code]false[/code] for other objects.
+			</description>
+		</method>
+		<method name="process_entities">
+			<return type="void" />
+			<param index="0" name="now" type="float" />
+			<description>
+				Dead reckons every entity to time [param now] on the manager's clock, applies smoothing and ground clamping, and removes entities not heard from for longer than [member timeout] (reason [code]"timeout"[/code]). This is done every frame with [code]get_clock()[/code] while [member auto_update] is [code]true[/code]; call it yourself when it is off.
+			</description>
+		</method>
+		<method name="remove_entity">
+			<return type="void" />
+			<param index="0" name="entity_id" type="Vector3i" />
+			<description>
+				Removes the entity with the given ID, if it exists, emitting [signal entity_removed] with the reason [code]"removed"[/code]. A later PDU for the same ID creates it again.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="auto_update" type="bool" setter="set_auto_update" getter="get_auto_update" default="true">
+			If [code]true[/code], [method process_entities] is called every frame.
+		</member>
+		<member name="dead_reckoning" type="bool" setter="set_dead_reckoning" getter="get_dead_reckoning" default="true">
+			If [code]true[/code], entities move between PDUs with the dead reckoning algorithm they report. If [code]false[/code], they are treated as static and stay at the last reported position until the next PDU.
+		</member>
+		<member name="ground_align" type="bool" setter="set_ground_align" getter="get_ground_align" default="true">
+			If [code]true[/code], ground-clamped entities are tilted to the slope of the ground, keeping their reported heading. The slope is measured with four [code]height_at[/code] samples [member ground_align_distance] to each side of the entity.
+		</member>
+		<member name="ground_align_distance" type="float" setter="set_ground_align_distance" getter="get_ground_align_distance" default="4.0">
+			Half the footprint, in metres, over which the ground slope is measured when [member ground_align] is on.
+		</member>
+		<member name="ground_clamp" type="int" setter="set_ground_clamp" getter="get_ground_clamp" default="1">
+			Which entities are placed on the ground at [member ground_path]. See [enum GroundClamp].
+		</member>
+		<member name="ground_path" type="NodePath" setter="set_ground_path" getter="get_ground_path" default="NodePath(&quot;&quot;)">
+			Path to a node with a method [code]height_at(x: float, z: float) -&gt; float[/code] returning the ground height in global metres at global X and Z, or [code]NAN[/code] where there is no ground (for example a [code]GeoTerrain[/code] from godot-geo). Clamped entities get that height as their Y position; where the result is not finite, the reported height is kept. If empty, nothing is clamped. If the node has no such method, a warning is printed once and nothing is clamped. godot-dis does not depend on godot-geo; the method is called by name.
+		</member>
+		<member name="max_entities" type="int" setter="set_max_entities" getter="get_max_entities" default="10000">
+			Maximum number of remote entities. Entity State PDUs of further new entities are dropped (see [method get_dropped_count]) while known entities keep updating. [signal entity_limit_reached] is emitted and a warning printed when the limit is first reached. [code]0[/code] means no limit.
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] to listen to. If empty, the first node in the group [code]dis_network[/code] is used. Changing it while in the tree reconnects.
+		</member>
+		<member name="origin_path" type="NodePath" setter="set_origin_path" getter="get_origin_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisGeoOrigin] used for the coordinate conversion. If empty, the first node in the group [code]dis_geo_origin[/code] is used.
+		</member>
+		<member name="smoothing_max_distance" type="float" setter="set_smoothing_max_distance" getter="get_smoothing_max_distance" default="100.0">
+			Corrections larger than this distance in metres are not smoothed; the entity jumps. If three updates in a row jump farther than this, a warning is printed once for that entity, since it usually means two simulations publish the same entity ID.
+		</member>
+		<member name="smoothing_time" type="float" setter="set_smoothing_time" getter="get_smoothing_time" default="0.5">
+			Time in seconds over which the difference between the old and the new prediction fades out after a PDU arrives. [code]0[/code] disables smoothing.
+		</member>
+		<member name="time_scale" type="float" setter="set_time_scale" getter="get_time_scale" default="1.0">
+			Speed of the manager's clock relative to real time. [DisPlayer] sets it to the playback speed ([code]0[/code] while paused) so that dead reckoning and [member timeout] follow replay time. Changing it does not make the clock jump.
+		</member>
+		<member name="timeout" type="float" setter="set_timeout" getter="get_timeout" default="12.0">
+			Time in seconds on the manager's clock after which an entity that has not sent a PDU is removed. The default is 2.4 times the usual 5 s heartbeat.
+		</member>
+		<member name="type_map" type="DisEntityTypeMap" setter="set_type_map" getter="get_type_map">
+			The [DisEntityTypeMap] that chooses the scene instanced under each new [DisRemoteEntity] from its entity type. If not set, or if no mapping matches, the entity node has no children.
+		</member>
+	</members>
+	<signals>
+		<signal name="entity_appeared">
+			<param index="0" name="entity" type="Object" />
+			<description>
+				Emitted after a new [DisRemoteEntity] has been created and placed. [param entity] is the new node.
+			</description>
+		</signal>
+		<signal name="entity_limit_reached">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<description>
+				Emitted when [member max_entities] is reached and a PDU of a new entity is dropped; once per time the limit is hit, not for each dropped PDU. [param entity_id] is the (site, application, entity number) of the entity that was dropped.
+			</description>
+		</signal>
+		<signal name="entity_removed">
+			<param index="0" name="entity" type="Object" />
+			<param index="1" name="reason" type="String" />
+			<description>
+				Emitted when an entity is removed, just before it is queued for deletion. [param entity] is the node and [param reason] is [code]"timeout"[/code] (not heard from), [code]"deactivated"[/code] (the PDU had the deactivated appearance bit) or [code]"removed"[/code] ([method remove_entity] or [method clear]).
+			</description>
+		</signal>
+		<signal name="entity_updated">
+			<param index="0" name="entity" type="Object" />
+			<description>
+				Emitted for every Entity State PDU of an existing entity, after the entity has been updated. [param entity] is its node.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="GROUND_CLAMP_DISABLED" value="0" enum="GroundClamp">
+			No entity is placed on the ground.
+		</constant>
+		<constant name="GROUND_CLAMP_LAND" value="1" enum="GroundClamp">
+			Land platforms, life forms and cultural features are placed on the ground: entity kind 1, 3 or 5 with domain 1 (land).
+		</constant>
+		<constant name="GROUND_CLAMP_ALL" value="2" enum="GroundClamp">
+			Every entity is placed on the ground, including aircraft and ships.
+		</constant>
+	</constants>
+</class>

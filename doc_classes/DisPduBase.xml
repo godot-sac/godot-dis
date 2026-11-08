@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisPduBase" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base class of all PDU objects; holds the common header fields and [method encode].
+	</brief_description>
+	<description>
+		Every PDU class ([DisEntityStatePdu], [DisFirePdu], ...) derives from DisPduBase. It holds the fields of the 12-byte DIS header that are not fixed by the class: [member protocol_version], [member exercise_id], [member timestamp] and [member pdu_status]. The PDU type and protocol family are fixed by the class and read with [method get_pdu_type] and [method get_protocol_family].
+		Subclasses add the body fields and a static [code]decode()[/code] method; [method DisPdu.decode] picks the right one from the type byte. [method encode] writes the PDU as big-endian DIS bytes with the header length filled in.
+		Bytes that a sender put after the last field godot-dis knows, and the protocol family byte if the sender wrote a different one, are kept when decoding and written back when encoding, so a decoded PDU encodes to the same bytes it came from.
+		[codeblock]
+		var pdu := DisEntityStatePdu.new()
+		pdu.entity_id = Vector3i(1, 1, 7)
+		pdu.timestamp = DisPdu.timestamp_from_seconds(Time.get_unix_time_from_system(), true)
+		var bytes := pdu.encode()
+		var copy := DisEntityStatePdu.decode(bytes)
+		[/codeblock]
+		[b]Note:[/b] DisPduBase itself has no body; its [method encode] returns an empty array. Use one of the subclasses.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="encode" qualifiers="const">
+			<return type="PackedByteArray" />
+			<description>
+				Serializes the PDU to DIS bytes (big-endian) with the header length field set. Returns an empty [PackedByteArray] and prints an error if the PDU cannot be represented, for example when it would exceed 65535 bytes, has more than 255 variable parameters, or has a list that does not fit its count field. Also returns an empty array on a plain DisPduBase.
+			</description>
+		</method>
+		<method name="get_length" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the encoded size in bytes: the fixed and variable fields the class knows about plus the size of [member trailing_bytes]. For a successfully encoded PDU this equals the size of the array returned by [method encode].
+			</description>
+		</method>
+		<method name="get_pdu_type" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the PDU type number of this class, one of the [enum DisPdu.PduType] values. Abstract classes such as DisPduBase and [DisWarfarePdu] return 0.
+			</description>
+		</method>
+		<method name="get_protocol_family" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the protocol family number of this class: 1 for Entity Information ([DisEntityStatePdu], [DisCollisionPdu]), 2 for Warfare, 4 for Radio Communications, 5 for Simulation Management. DisPduBase itself returns 0.
+				This is the class's own family. If a decoded packet carried a different family byte, that byte is kept and written back by [method encode], but is not reported here.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="exercise_id" type="int" setter="set_exercise_id" getter="get_exercise_id" default="1">
+			Exercise ID (header byte 1, 0-255). Receivers usually ignore PDUs of other exercises.
+		</member>
+		<member name="pdu_status" type="int" setter="set_pdu_status" getter="get_pdu_status" default="0">
+			PDU Status (header byte 10), the DIS 7 bit field for things like the transferred-entity and LVC indicators. Kept as received; 0 if unused.
+		</member>
+		<member name="protocol_version" type="int" setter="set_protocol_version" getter="get_protocol_version" default="7">
+			Protocol version (header byte 0). 7 is DIS 7 (IEEE 1278.1-2012), 6 is DIS 6. The decoders accept versions 1 to 7.
+		</member>
+		<member name="timestamp" type="int" setter="set_timestamp" getter="get_timestamp" default="0">
+			Raw 32-bit header timestamp (units of 3600 s / 2^31 past the hour, shifted left by one bit; lowest bit set = absolute time). Build it with [method DisPdu.timestamp_from_seconds] and read it with [method DisPdu.timestamp_to_seconds]. Only the lower 32 bits are written.
+		</member>
+		<member name="trailing_bytes" type="PackedByteArray" setter="set_trailing_bytes" getter="get_trailing_bytes" default="PackedByteArray()">
+			Bytes inside the PDU's length field that follow the last field godot-dis decodes, such as vendor extensions or sender padding. They are set by the decoders and appended by [method encode]. Empty for PDUs you create yourself.
+		</member>
+	</members>
+</class>

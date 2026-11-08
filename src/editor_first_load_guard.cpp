@@ -53,21 +53,25 @@ Window *get_root() {
 
 } // namespace
 
-void install_editor_first_load_guard() {
-	if (active_guard || !Engine::get_singleton()->is_editor_hint()) {
-		return;
+bool install_editor_first_load_guard() {
+	if (active_guard) {
+		return true;
+	}
+	if (!Engine::get_singleton()->is_editor_hint()) {
+		return false;
 	}
 	// At startup the extensions are initialized before the main loop (and the display server) exist: nothing to guard.
 	Window *root = get_root();
 	if (root == nullptr) {
-		return;
+		return false;
 	}
 	// The editor treats a display server that cannot draw as command line mode (--headless).
 	if (DisplayServer::get_singleton()->window_can_draw()) {
-		return;
+		return false;
 	}
 	active_guard = memnew(FirstLoadGuard);
 	root->connect(GUARD_SIGNAL, Callable(active_guard));
+	return true;
 }
 
 void remove_editor_first_load_guard() {

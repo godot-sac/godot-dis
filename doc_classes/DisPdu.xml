@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisPdu" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Static helpers to inspect, decode and validate DIS PDUs and to convert DIS timestamps.
+	</brief_description>
+	<description>
+		DisPdu is a collection of static methods shared by all PDU classes; it is not instantiated. Use [method peek_header] to read the 12-byte header without decoding the body, and [method decode] to turn a received packet into the matching [DisPduBase] subclass.
+		All input is validated before it is parsed, so a malformed packet makes [method decode] return [code]null[/code] instead of failing; the reason is available from [method get_last_error].
+		[codeblock]
+		func _on_packet(bytes: PackedByteArray) -&gt; void:
+			var header := DisPdu.peek_header(bytes)
+			if header.is_empty() or not DisPdu.is_supported(header["pdu_type"]):
+				return
+			var pdu := DisPdu.decode(bytes)
+			if pdu == null:
+				push_warning("Bad PDU: " + DisPdu.get_last_error())
+				return
+			if pdu is DisFirePdu:
+				print("Fired by ", pdu.firing_entity_id)
+		[/codeblock]
+		[b]Note:[/b] [DisNetwork] already decodes incoming packets and emits signals; call these methods directly only when you read packets yourself, for example from a file.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisPduBase" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Decodes [param bytes] into the [DisPduBase] subclass selected by the PDU type byte (byte 2 of the header), for example a [DisEntityStatePdu] or a [DisFirePdu]. The supported types are the [enum PduType] values other than [constant PDU_TYPE_OTHER]; see [method is_supported].
+				Returns [code]null[/code] and sets [method get_last_error] if [param bytes] is shorter than 12 bytes, the type is not supported, or the type's own decoder rejects the packet (unknown protocol version, length field larger than the data, body too short or inconsistent).
+			</description>
+		</method>
+		<method name="get_effective_length" qualifiers="static">
+			<return type="int" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Returns the length of the PDU in [param bytes]: the header length field (bytes 8-9), or [code]bytes.size()[/code] if that field is 0 (some senders never fill it in) or if [param bytes] is shorter than a header.
+				This does not validate anything; the value can be larger than [code]bytes.size()[/code] for a truncated packet.
+			</description>
+		</method>
+		<method name="get_last_error" qualifiers="static">
+			<return type="String" />
+			<description>
+				Returns the reason the last failed decode on the calling thread was rejected, such as [code]"unsupported PDU type 99"[/code]. The message is kept per thread, so a receive thread and the main thread do not overwrite each other. It is set to an empty string when a later decode gets through header validation.
+			</description>
+		</method>
+		<method name="is_supported" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="pdu_type" type="int" />
+			<description>
+				Returns [code]true[/code] if [method decode] can decode [param pdu_type], one of the [enum PduType] values except [constant PDU_TYPE_OTHER].
+			</description>
+		</method>
+		<method name="peek_header" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Reads the 12-byte PDU header of [param bytes] without decoding the body. Returns an empty [Dictionary] if [param bytes] is shorter than 12 bytes. Otherwise the keys are [code]protocol_version[/code], [code]exercise_id[/code], [code]pdu_type[/code], [code]protocol_family[/code], [code]timestamp[/code] (raw unsigned 32-bit value, see [method timestamp_to_seconds]), [code]length[/code] (the raw length field, which may be 0) and [code]pdu_status[/code], all as [int].
+				The values are not validated; check [code]pdu_type[/code] with [method is_supported] before decoding.
+			</description>
+		</method>
+		<method name="timestamp_from_seconds" qualifiers="static">
+			<return type="int" />
+			<param index="0" name="seconds_past_hour" type="float" />
+			<param index="1" name="absolute" type="bool" />
+			<description>
+				Converts [param seconds_past_hour] to a DIS timestamp as used in the PDU header. A DIS timestamp counts 2^31 units per hour, shifted left by one bit; the lowest bit is set for absolute time ([param absolute] = [code]true[/code], the sender's clock is synchronised to UTC) and clear for relative time.
+				[param seconds_past_hour] is wrapped into the range 0 to 3600 first, so negative values and values above one hour are accepted. Assign the result to [member DisPduBase.timestamp].
+			</description>
+		</method>
+		<method name="timestamp_is_absolute" qualifiers="static">
+			<return type="bool" />
+			<param index="0" name="timestamp" type="int" />
+			<description>
+				Returns [code]true[/code] if the lowest bit of [param timestamp] is set, meaning it is absolute (UTC-synchronised) time rather than relative time.
+			</description>
+		</method>
+		<method name="timestamp_to_seconds" qualifiers="static">
+			<return type="float" />
+			<param index="0" name="timestamp" type="int" />
+			<description>
+				Converts a DIS [param timestamp] to seconds past the hour (0 to 3600), ignoring the absolute/relative bit. Only the lower 32 bits of [param timestamp] are used.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="PDU_TYPE_OTHER" value="0" enum="PduType">
+			PDU type 0, "Other". Not decodable; [method is_supported] returns [code]false[/code].
+		</constant>
+		<constant name="PDU_TYPE_ENTITY_STATE" value="1" enum="PduType">
+			Entity State PDU ([DisEntityStatePdu]), protocol family 1 (Entity Information).
+		</constant>
+		<constant name="PDU_TYPE_FIRE" value="2" enum="PduType">
+			Fire PDU ([DisFirePdu]), protocol family 2 (Warfare).
+		</constant>
+		<constant name="PDU_TYPE_DETONATION" value="3" enum="PduType">
+			Detonation PDU ([DisDetonationPdu]), protocol family 2 (Warfare).
+		</constant>
+		<constant name="PDU_TYPE_COLLISION" value="4" enum="PduType">
+			Collision PDU ([DisCollisionPdu]), protocol family 1 (Entity Information).
+		</constant>
+		<constant name="PDU_TYPE_CREATE_ENTITY" value="11" enum="PduType">
+			Create Entity PDU ([DisCreateEntityPdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_REMOVE_ENTITY" value="12" enum="PduType">
+			Remove Entity PDU ([DisRemoveEntityPdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_START_RESUME" value="13" enum="PduType">
+			Start/Resume PDU ([DisStartResumePdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_STOP_FREEZE" value="14" enum="PduType">
+			Stop/Freeze PDU ([DisStopFreezePdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_ACKNOWLEDGE" value="15" enum="PduType">
+			Acknowledge PDU ([DisAcknowledgePdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_SET_DATA" value="19" enum="PduType">
+			Set Data PDU ([DisSetDataPdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_DATA" value="20" enum="PduType">
+			Data PDU ([DisDataPdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_COMMENT" value="22" enum="PduType">
+			Comment PDU ([DisCommentPdu]), protocol family 5 (Simulation Management).
+		</constant>
+		<constant name="PDU_TYPE_TRANSMITTER" value="25" enum="PduType">
+			Transmitter PDU ([DisTransmitterPdu]), protocol family 4 (Radio Communications).
+		</constant>
+		<constant name="PDU_TYPE_SIGNAL" value="26" enum="PduType">
+			Signal PDU ([DisSignalPdu]), protocol family 4 (Radio Communications).
+		</constant>
+	</constants>
+</class>

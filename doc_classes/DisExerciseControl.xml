@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisExerciseControl" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Starts, stops and manages a DIS exercise with Simulation Management PDUs, both as a managed application and as a simulation manager.
+	</brief_description>
+	<description>
+		One node plays both roles of DIS exercise control. It listens to the Start/Resume, Stop/Freeze, Remove Entity, Create Entity and Acknowledge signals of a [DisNetwork] (found through the group [code]dis_network[/code] unless [member network_path] is set).
+		[b]Managed application.[/b] A Start/Resume or Stop/Freeze PDU addressed to this application (the [member DisNetwork.site_id] and [member DisNetwork.application_id] of the network, where [constant DisSimulationManagementPdu.ID_ALL] matches everything) changes [method get_state] and emits [signal started] or [signal stopped] and [signal state_changed]. If the PDU names a real world time in the future, the change waits for it ([method get_scheduled_time]); a time more than 24 hours ahead is taken as a clock mismatch and applied at once, and a time of 0 means now. A Remove Entity request for one of this application's [DisEntity] nodes emits [signal remove_entity_requested] and, with [member remove_entities], frees the node. A Create Entity request emits [signal create_entity_requested]. With [member auto_acknowledge], every request is answered with an Acknowledge PDU. A request received again within 30 seconds (same originator, PDU type and request ID) is acknowledged again but carried out only once.
+		[b]Simulation manager.[/b] [method send_start_resume], [method send_stop_freeze], [method send_create_entity] and [method send_remove_entity] send a request and return its request ID. A request to one application is sent again every [member retry_interval] until it is acknowledged ([signal acknowledged]) or [member max_retries] resends are used up ([signal request_failed]). A request to all applications is sent once; every answer arrives as [signal acknowledged], and [signal request_failed] is emitted if nobody answered within the time the retries would have taken.
+		[codeblock]
+		@onready var exercise: DisExerciseControl = $DisExerciseControl
+
+		func _ready() -&gt; void:
+			exercise.stopped.connect(func(pdu): print("frozen"))
+			exercise.started.connect(func(pdu): print("running, simulation time ", exercise.get_simulation_time()))
+
+		func freeze_everyone() -&gt; void:
+			exercise.send_stop_freeze()
+		[/codeblock]
+		Nothing runs in the editor.
+	</description>
+	<tutorials>
+		<link title="Simulation management">https://github.com/godot-sac/godot-dis/blob/main/docs/simulation-management.md</link>
+	</tutorials>
+	<methods>
+		<method name="get_frozen_behavior" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the frozen behavior bit field of the last Stop/Freeze that stopped this application (see [constant DisStopFreezePdu.FROZEN_RUN_SIMULATION_CLOCK] and the other [code]FROZEN_*[/code] constants). It is 0 while running. This node only acts on the clock bit; the other bits are for your own code.
+			</description>
+		</method>
+		<method name="get_pending_requests" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns the requests sent by this node that are still waiting for an answer, as an [Array] of [Dictionary] with the keys [code]request_id[/code], [code]acknowledge_flag[/code], [code]receiving_id[/code] ([Vector3i]), [code]sent[/code] (how many times the PDU has been sent) and [code]answers[/code] (how many acknowledgements arrived so far).
+			</description>
+		</method>
+		<method name="get_scheduled_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the real world time, in seconds since the Unix epoch, at which a received Start/Resume or Stop/Freeze will take effect, or [code]0[/code] if none is waiting.
+			</description>
+		</method>
+		<method name="get_simulation_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the simulation time in seconds. It is set from the simulation time of a received Start/Resume and advances every frame while running, or while stopped if the Stop/Freeze set [constant DisStopFreezePdu.FROZEN_RUN_SIMULATION_CLOCK]. It starts at 0.
+			</description>
+		</method>
+		<method name="get_state" qualifiers="const">
+			<return type="int" enum="DisExerciseControl.State" />
+			<description>
+				Returns the current [enum State].
+			</description>
+		</method>
+		<method name="handle_pdu">
+			<return type="void" />
+			<param index="0" name="pdu" type="DisPduBase" />
+			<description>
+				Handles [param pdu] as if it had been received from the network. Start/Resume, Stop/Freeze, Remove Entity, Create Entity and Acknowledge PDUs are processed; other types are ignored. The node already does this for the PDUs of its [DisNetwork]; use this to feed PDUs from another source.
+			</description>
+		</method>
+		<method name="is_running" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if the state is [constant STATE_RUNNING].
+			</description>
+		</method>
+		<method name="send_create_entity">
+			<return type="int" />
+			<param index="0" name="receiving_id" type="Vector3i" />
+			<description>
+				Asks the application [param receiving_id] (site, application, 0) to create an entity by sending a Create Entity PDU, and returns the request ID. Returns [code]0[/code] and prints an error if there is no [DisNetwork] or it is not running. The receiver answers "able to comply" only if its game handles [signal create_entity_requested].
+			</description>
+		</method>
+		<method name="send_remove_entity">
+			<return type="int" />
+			<param index="0" name="entity_id" type="Vector3i" />
+			<description>
+				Asks the owner of the entity [param entity_id] (site, application, entity number) to remove it by sending a Remove Entity PDU, and returns the request ID. An entity number of [constant DisSimulationManagementPdu.ID_ALL] means all entities of that application. Returns [code]0[/code] and prints an error if there is no [DisNetwork] or it is not running.
+			</description>
+		</method>
+		<method name="send_start_resume">
+			<return type="int" />
+			<param index="0" name="receiving_id" type="Vector3i" default="Vector3i(65535, 65535, 65535)" />
+			<param index="1" name="real_world_time" type="float" default="0.0" />
+			<param index="2" name="simulation_time" type="float" default="0.0" />
+			<description>
+				Sends a Start/Resume PDU and returns the request ID, or [code]0[/code] (with an error) if there is no [DisNetwork] or it is not running. [param receiving_id] is the receiving application as (site, application, 0); the default (65535, 65535, 65535) addresses everyone. [param real_world_time] is when the receivers should start, in seconds since the Unix epoch; [code]0[/code] means at once. [param simulation_time] is the simulation time in seconds the receivers continue from.
+			</description>
+		</method>
+		<method name="send_stop_freeze">
+			<return type="int" />
+			<param index="0" name="receiving_id" type="Vector3i" default="Vector3i(65535, 65535, 65535)" />
+			<param index="1" name="reason" type="int" default="1" />
+			<param index="2" name="frozen_behavior" type="int" default="0" />
+			<param index="3" name="real_world_time" type="float" default="0.0" />
+			<description>
+				Sends a Stop/Freeze PDU and returns the request ID, or [code]0[/code] (with an error) if there is no [DisNetwork] or it is not running. [param receiving_id] is the receiving application as (site, application, 0); the default addresses everyone. [param reason] is one of the [code]REASON_*[/code] constants of [DisStopFreezePdu] (default recess). [param frozen_behavior] is a bit field of its [code]FROZEN_*[/code] constants. [param real_world_time] is when the receivers should stop, in seconds since the Unix epoch; [code]0[/code] means at once.
+			</description>
+		</method>
+		<method name="start">
+			<return type="void" />
+			<description>
+				Sets the state to [constant STATE_RUNNING] by hand, without a PDU, cancels any scheduled change and emits [signal started] (with a [code]null[/code] PDU) and, if the state changed, [signal state_changed]. Unpauses the tree if [member pause_tree] is on.
+			</description>
+		</method>
+		<method name="stop">
+			<return type="void" />
+			<param index="0" name="frozen_behavior" type="int" default="0" />
+			<description>
+				Sets the state to [constant STATE_STOPPED] by hand, without a PDU, with the given [param frozen_behavior] bit field, cancels any scheduled change and emits [signal stopped] (with a [code]null[/code] PDU) and, if the state changed, [signal state_changed]. Pauses the tree if [member pause_tree] is on.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="auto_acknowledge" type="bool" setter="set_auto_acknowledge" getter="get_auto_acknowledge" default="true">
+			If [code]true[/code], every request addressed to this application is answered with an Acknowledge PDU: "able to comply", or "unable to comply" for a Remove Entity request that found no entity and a Create Entity request that nothing handles.
+		</member>
+		<member name="max_retries" type="int" setter="set_max_retries" getter="get_max_retries" default="3">
+			How many times a request to a single application is sent again while it is not acknowledged. After the last resend and one more [member retry_interval], [signal request_failed] is emitted. For a request to all applications this only sets how long to wait for answers: [code]max_retries + 1[/code] times [member retry_interval].
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] to use. If empty, the first node in the group [code]dis_network[/code] is used. Changing it while in the tree reconnects.
+		</member>
+		<member name="pause_tree" type="bool" setter="set_pause_tree" getter="get_pause_tree" default="false">
+			If [code]true[/code], stopping pauses the scene tree ([member SceneTree.paused]) and starting unpauses it. This node and its [DisNetwork] are set to [constant Node.PROCESS_MODE_ALWAYS] when ready so that a Start/Resume can still arrive; other nodes that should run while paused need that mode too.
+		</member>
+		<member name="remove_entities" type="bool" setter="set_remove_entities" getter="get_remove_entities" default="true">
+			If [code]true[/code], a Remove Entity request frees the matching [DisEntity] nodes of this application after [signal remove_entity_requested] is emitted (a [DisEntity] leaving the tree sends its final "deactivated" PDU). If [code]false[/code] only the signal is emitted and your code removes the entity.
+		</member>
+		<member name="retry_interval" type="float" setter="set_retry_interval" getter="get_retry_interval" default="1.0">
+			Time in seconds between sending a request again.
+		</member>
+		<member name="start_stopped" type="bool" setter="set_start_stopped" getter="get_start_stopped" default="false">
+			If [code]true[/code], the node stops when it is ready and waits for a Start/Resume.
+		</member>
+	</members>
+	<signals>
+		<signal name="acknowledged">
+			<param index="0" name="request_id" type="int" />
+			<param index="1" name="response_flag" type="int" />
+			<param index="2" name="pdu" type="DisAcknowledgePdu" />
+			<description>
+				Emitted when an Acknowledge PDU for a request sent by this node arrives. [param request_id] is the request ID returned by the send method, [param response_flag] is the response of the receiver (see the [code]RESPONSE_*[/code] constants of [DisAcknowledgePdu], for example able or unable to comply) and [param pdu] is the Acknowledge PDU. For a request to all applications this is emitted once per answering application.
+			</description>
+		</signal>
+		<signal name="create_entity_requested">
+			<param index="0" name="pdu" type="DisCreateEntityPdu" />
+			<description>
+				Emitted when a Create Entity PDU addressed to this application arrives (not for a repeat of the same request). [param pdu] is the request. Create the entity in your game. If nothing is connected to this signal the request is answered "unable to comply".
+			</description>
+		</signal>
+		<signal name="remove_entity_requested">
+			<param index="0" name="entity_id" type="Vector3i" />
+			<param index="1" name="pdu" type="DisRemoveEntityPdu" />
+			<description>
+				Emitted for each [DisEntity] of this application that a Remove Entity PDU asks to remove (not for a repeat of the same request), before the node is freed. [param entity_id] is the effective entity ID of the [DisEntity] and [param pdu] is the request.
+			</description>
+		</signal>
+		<signal name="request_failed">
+			<param index="0" name="request_id" type="int" />
+			<description>
+				Emitted when a request sent by this node got no answer after all retries. [param request_id] is the request ID returned by the send method.
+			</description>
+		</signal>
+		<signal name="started">
+			<param index="0" name="pdu" type="DisStartResumePdu" />
+			<description>
+				Emitted when the application starts or resumes, by a received Start/Resume PDU or by [method start]. [param pdu] is the [DisStartResumePdu], or [code]null[/code] when started by hand or by [member start_stopped].
+			</description>
+		</signal>
+		<signal name="state_changed">
+			<param index="0" name="state" type="int" />
+			<description>
+				Emitted when the state changes between running and stopped. [param state] is the new [enum State].
+			</description>
+		</signal>
+		<signal name="stopped">
+			<param index="0" name="pdu" type="DisStopFreezePdu" />
+			<description>
+				Emitted when the application stops or freezes, by a received Stop/Freeze PDU or by [method stop]. It is emitted even if it was already stopped. [param pdu] is the [DisStopFreezePdu], or [code]null[/code] when stopped by hand or by [member start_stopped].
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="STATE_RUNNING" value="0" enum="State">
+			The simulation is running.
+		</constant>
+		<constant name="STATE_STOPPED" value="1" enum="State">
+			The simulation is stopped or frozen.
+		</constant>
+	</constants>
+</class>

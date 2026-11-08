@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisPlayer" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Plays a DisRecording back into the scene or onto the network, with speed, pause, seek and loop.
+	</brief_description>
+	<description>
+		Plays the datagrams of a [DisRecording] at their recorded times. Depending on [member output], each datagram is injected into a [DisNetwork] so that its signals fire as if the packet had just arrived ([constant OUTPUT_LOCAL]; filters are not applied, so a [DisEntityManager] shows the recorded entities), sent on the network ([constant OUTPUT_NETWORK]) or both.
+		Position and duration are in seconds since the first packet. If a [DisEntityManager] is found ([member entity_manager_path], or the first one in the scene), playback speed also scales its dead-reckoning clock ([member DisEntityManager.time_scale], 0 while paused or stopped), and [method seek] rebuilds the picture at once: the manager is cleared and the last Entity State PDU of each entity before the new position is applied, aged by how long before it was sent.
+		The recording is loaded from [member path] when the node is ready, if no [member recording] is set. Nothing runs in the editor.
+		[codeblock]
+		var player := DisPlayer.new()
+		add_child(player)
+		player.load("user://exercise.pcapng")
+		player.speed = 4.0
+		player.play()
+		[/codeblock]
+		[b]Note:[/b] Changing the recording or calling [method seek], [method pause] or [method play] sets the [member DisEntityManager.time_scale] of the manager, which stops dead reckoning of live entities while not playing.
+	</description>
+	<tutorials>
+		<link title="Recording and playback">https://github.com/godot-sac/godot-dis/blob/main/docs/recording.md</link>
+	</tutorials>
+	<methods>
+		<method name="advance">
+			<return type="void" />
+			<param index="0" name="seconds" type="float" />
+			<description>
+				Moves the playback position forward by [param seconds] of recording time and plays all packets that fall due, without using the wall clock. Called every frame with the frame time multiplied by [member speed] while playing; call it yourself in tests and tools. At the end it loops or, if playing, stops and emits [signal finished].
+			</description>
+		</method>
+		<method name="get_duration" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the duration of the recording in seconds, [code]0.0[/code] if there is none.
+			</description>
+		</method>
+		<method name="get_position" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the playback position in seconds since the first packet.
+			</description>
+		</method>
+		<method name="is_playing" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] while playing.
+			</description>
+		</method>
+		<method name="load">
+			<return type="int" enum="Error" />
+			<param index="0" name="file_path" type="String" />
+			<description>
+				Loads the file at [param file_path] into a new [DisRecording] and sets it as [member recording] (which stops playback and rewinds). Returns [constant @GlobalScope.OK], or the error of [method DisRecording.load] with a message printed.
+			</description>
+		</method>
+		<method name="pause">
+			<return type="void" />
+			<description>
+				Pauses playback, keeping the position.
+			</description>
+		</method>
+		<method name="play">
+			<return type="void" />
+			<description>
+				Starts or resumes playback. If the position is at the end, it starts again from the beginning. Prints an error and does nothing if there is no recording.
+			</description>
+		</method>
+		<method name="seek">
+			<return type="void" />
+			<param index="0" name="time" type="float" />
+			<description>
+				Jumps to [param time] in seconds since the first packet, clamped to the duration. Entities in the [DisEntityManager] are rebuilt for the new position (only with local output), and [signal seeked] is emitted. Playback continues or stays paused as before.
+			</description>
+		</method>
+		<method name="stop">
+			<return type="void" />
+			<description>
+				Pauses and seeks to the start.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="autoplay" type="bool" setter="set_autoplay" getter="get_autoplay" default="false">
+			If [code]true[/code], playback starts when the node is ready and a recording is available.
+		</member>
+		<member name="entity_manager_path" type="NodePath" setter="set_entity_manager_path" getter="get_entity_manager_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisEntityManager] whose clock follows the playback speed and which is rebuilt on seek. If empty, the first [DisEntityManager] in the scene is used.
+		</member>
+		<member name="exercise_id_override" type="int" setter="set_exercise_id_override" getter="get_exercise_id_override" default="-1">
+			If 0 or greater, the exercise ID (byte 1) of every played datagram is replaced by this value, so that old recordings pass the exercise filter of the live network. [code]-1[/code] leaves datagrams unchanged.
+		</member>
+		<member name="loop" type="bool" setter="set_loop" getter="get_loop" default="false">
+			If [code]true[/code], playback seeks back to the start when it reaches the end instead of finishing.
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] used for output. If empty, the first node in the group [code]dis_network[/code] is used.
+		</member>
+		<member name="output" type="int" setter="set_output" getter="get_output" default="1">
+			Where played datagrams go. See [enum Output].
+		</member>
+		<member name="path" type="String" setter="set_path" getter="get_path" default="&quot;&quot;">
+			Recording file that is loaded when the node is ready if [member recording] is not set. [method load] sets it to the loaded file.
+		</member>
+		<member name="recording" type="DisRecording" setter="set_recording" getter="get_recording">
+			The [DisRecording] being played. Setting it stops playback and rewinds to the start.
+		</member>
+		<member name="speed" type="float" setter="set_speed" getter="get_speed" default="1.0">
+			Playback speed as a multiple of real time. Negative values are set to 0, which makes the position stand still.
+		</member>
+	</members>
+	<signals>
+		<signal name="finished">
+			<description>
+				Emitted when playback reaches the end of the recording and [member loop] is off.
+			</description>
+		</signal>
+		<signal name="packet_played">
+			<param index="0" name="index" type="int" />
+			<param index="1" name="bytes" type="PackedByteArray" />
+			<description>
+				Emitted after each datagram has been played. [param index] is its index in the recording and [param bytes] its bytes (with the exercise ID replaced if [member exercise_id_override] is set).
+			</description>
+		</signal>
+		<signal name="seeked">
+			<param index="0" name="position" type="float" />
+			<description>
+				Emitted after [method seek] (also from [method stop] and from looping). [param position] is the new position in seconds since the first packet.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="OUTPUT_LOCAL" value="1" enum="Output">
+			Inject the datagrams into the local [DisNetwork] so its signals fire as if they had arrived. The network does not need to be running.
+		</constant>
+		<constant name="OUTPUT_NETWORK" value="2" enum="Output">
+			Send the datagrams on the network with [method DisNetwork.send_bytes], using the network's destination. Only if the network is running.
+		</constant>
+		<constant name="OUTPUT_BOTH" value="3" enum="Output">
+			Both [constant OUTPUT_LOCAL] and [constant OUTPUT_NETWORK].
+		</constant>
+	</constants>
+</class>

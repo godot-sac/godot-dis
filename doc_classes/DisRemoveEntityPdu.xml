@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisRemoveEntityPdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Remove Entity PDU (type 12): asks an application to remove an entity.
+	</brief_description>
+	<description>
+		A Remove Entity PDU asks the application that owns [member DisSimulationManagementPdu.receiving_id] to remove that entity from the exercise. It has no fields of its own beyond those of [DisSimulationManagementPdu] and is 28 bytes long. The receiver answers with a [DisAcknowledgePdu] carrying the same [member DisSimulationManagementPdu.request_id].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisRemoveEntityPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Remove Entity PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Remove Entity PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 28 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+</class>

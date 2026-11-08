@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisGeo" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Static helpers for geodetic, ECEF and DIS orientation conversions.
+	</brief_description>
+	<description>
+		Pure functions that do not need a scene. Use [DisGeoOrigin] to convert between ECEF and scene coordinates.
+		Latitude and longitude are in [b]degrees[/b], heights in metres above the WGS84 ellipsoid (not sea level). Every other angle is in [b]radians[/b]. ECEF positions are [PackedFloat64Array]s [code][x, y, z][/code] in metres (Earth-centred, Earth-fixed, WGS84; +Z through the North Pole). Calculations are done in double precision.
+		DIS orientation is the Euler triple [code]Vector3(psi, theta, phi)[/code] that rotates the ECEF axes into the body axes (+X forward, +Y right, +Z down): first [code]psi[/code] about Z, then [code]theta[/code] about the new Y, then [code]phi[/code] about the new X. Heading, pitch and roll are the same three rotations starting from the local north-east-down axes: heading is clockwise from true north, pitch is nose up and roll is right wing down.
+		[codeblock]
+		var ecef := DisGeo.geodetic_to_ecef(39.9334, 32.8597, 938.0)
+		var back := DisGeo.ecef_to_geodetic(ecef) # [39.9334, 32.8597, 938.0]
+		[/codeblock]
+		[b]Note:[/b] At [code]theta[/code] of plus or minus 90 degrees (gimbal lock) only the difference of psi and phi is defined; the conversion to heading, pitch and roll then returns a roll of 0.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="dis_euler_to_heading_pitch_roll" qualifiers="static">
+			<return type="Vector3" />
+			<param index="0" name="orientation" type="Vector3" />
+			<param index="1" name="latitude" type="float" />
+			<param index="2" name="longitude" type="float" />
+			<description>
+				Converts a DIS orientation [param orientation] [code]Vector3(psi, theta, phi)[/code], in radians, to [code]Vector3(heading, pitch, roll)[/code], in radians, relative to the local north-east-down frame at [param latitude] and [param longitude] (degrees).
+			</description>
+		</method>
+		<method name="ecef_to_geodetic" qualifiers="static">
+			<return type="PackedFloat64Array" />
+			<param index="0" name="ecef" type="PackedFloat64Array" />
+			<description>
+				Converts an ECEF position [param ecef] (3 values, metres) to a [PackedFloat64Array] [code][latitude, longitude, height][/code]: degrees, degrees, metres above the WGS84 ellipsoid. Prints an error if [param ecef] does not have exactly 3 elements; the result is then meaningless (computed from the origin of the Earth-centred frame).
+			</description>
+		</method>
+		<method name="geodetic_to_ecef" qualifiers="static">
+			<return type="PackedFloat64Array" />
+			<param index="0" name="latitude" type="float" />
+			<param index="1" name="longitude" type="float" />
+			<param index="2" name="height" type="float" />
+			<description>
+				Converts [param latitude] and [param longitude] (degrees) and [param height] (metres above the WGS84 ellipsoid) to an ECEF position, returned as a [PackedFloat64Array] [code][x, y, z][/code] in metres.
+			</description>
+		</method>
+		<method name="heading_pitch_roll_to_dis_euler" qualifiers="static">
+			<return type="Vector3" />
+			<param index="0" name="heading_pitch_roll" type="Vector3" />
+			<param index="1" name="latitude" type="float" />
+			<param index="2" name="longitude" type="float" />
+			<description>
+				Converts [param heading_pitch_roll] [code]Vector3(heading, pitch, roll)[/code], in radians, relative to the local north-east-down frame at [param latitude] and [param longitude] (degrees), to a DIS orientation [code]Vector3(psi, theta, phi)[/code] in radians.
+			</description>
+		</method>
+	</methods>
+</class>

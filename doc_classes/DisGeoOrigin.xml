@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisGeoOrigin" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Places a geographic point at the origin of the scene and converts between ECEF and scene coordinates.
+	</brief_description>
+	<description>
+		DIS positions are geocentric (ECEF) coordinates, millions of metres from the scene. [DisGeoOrigin] defines which point on Earth ([member latitude], [member longitude], [member height]) sits at the scene's [code](0, 0, 0)[/code] and converts positions, directions and orientations in both directions. Add one to the scene; [DisEntity] and [DisEntityManager] find it through the group [code]dis_geo_origin[/code] unless they have an [code]origin_path[/code].
+		The scene is the local tangent plane at the origin: +X is east, +Y is up, -Z is north, one unit is one metre. A level entity facing north has the identity basis. The subtraction of the origin is done in double precision; only the small local result is rounded to 32 bits.
+		[codeblock]
+		func _on_entity_state(pdu: DisEntityStatePdu) -&gt; void:
+			$Tank.transform = $DisGeoOrigin.dis_to_transform(pdu.location_ecef, pdu.orientation)
+		[/codeblock]
+		[b]Note:[/b] The Earth curves away below the tangent plane: about 8 m at 10 km and 785 m at 100 km from the origin. Keep scenes within a few hundred kilometres of the origin; [Vector3] precision also drops far from [code](0, 0, 0)[/code].
+	</description>
+	<tutorials>
+		<link title="Coordinates">https://github.com/godot-sac/godot-dis/blob/main/docs/coordinates.md</link>
+	</tutorials>
+	<methods>
+		<method name="basis_to_dis_euler" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="basis" type="Basis" />
+			<description>
+				Converts a scene [Basis] to a DIS orientation [code]Vector3(psi, theta, phi)[/code] in radians, relative to ECEF at this origin. The Basis is orthonormalized first, so scale is ignored. The entity is taken to look along -Z with +Y up and +X right. Note that the result is relative to the tangent plane at the origin, not at the entity's own location.
+			</description>
+		</method>
+		<method name="dis_euler_to_basis" qualifiers="const">
+			<return type="Basis" />
+			<param index="0" name="orientation" type="Vector3" />
+			<description>
+				Converts a DIS orientation [param orientation] [code]Vector3(psi, theta, phi)[/code], in radians, to a scene [Basis] (the entity looks along -Z, +Y is up, +X is right). See [method basis_to_dis_euler].
+			</description>
+		</method>
+		<method name="dis_to_transform" qualifiers="const">
+			<return type="Transform3D" />
+			<param index="0" name="location_ecef" type="PackedFloat64Array" />
+			<param index="1" name="orientation" type="Vector3" />
+			<description>
+				Returns a [Transform3D] with the basis of [method dis_euler_to_basis] for [param orientation] and the origin of [method ecef_to_local] for [param location_ecef].
+			</description>
+		</method>
+		<method name="ecef_to_local" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="ecef" type="PackedFloat64Array" />
+			<description>
+				Converts an ECEF position [param ecef] ([PackedFloat64Array] of 3 values, metres) to scene coordinates.
+			</description>
+		</method>
+		<method name="ecef_vector_to_local" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="vector" type="Vector3" />
+			<description>
+				Converts a direction or velocity [param vector] given in ECEF axes (for example in m/s) to scene axes. Only the rotation is applied, there is no translation.
+			</description>
+		</method>
+		<method name="geodetic_to_local" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="latitude" type="float" />
+			<param index="1" name="longitude" type="float" />
+			<param index="2" name="height" type="float" />
+			<description>
+				Converts [param latitude] and [param longitude] (degrees) and [param height] (metres above the WGS84 ellipsoid) to scene coordinates.
+			</description>
+		</method>
+		<method name="get_origin_ecef" qualifiers="const">
+			<return type="PackedFloat64Array" />
+			<description>
+				Returns the ECEF position of the scene origin as a [PackedFloat64Array] [code][x, y, z][/code] in metres.
+			</description>
+		</method>
+		<method name="local_to_ecef" qualifiers="const">
+			<return type="PackedFloat64Array" />
+			<param index="0" name="position" type="Vector3" />
+			<description>
+				Converts a scene position to an ECEF position, returned as a [PackedFloat64Array] [code][x, y, z][/code] in metres.
+			</description>
+		</method>
+		<method name="local_to_geodetic" qualifiers="const">
+			<return type="PackedFloat64Array" />
+			<param index="0" name="position" type="Vector3" />
+			<description>
+				Converts a scene position to a [PackedFloat64Array] [code][latitude, longitude, height][/code]: degrees, degrees, metres above the WGS84 ellipsoid.
+			</description>
+		</method>
+		<method name="local_vector_to_ecef" qualifiers="const">
+			<return type="Vector3" />
+			<param index="0" name="vector" type="Vector3" />
+			<description>
+				Converts a direction or velocity [param vector] in scene axes to ECEF axes. Only the rotation is applied, there is no translation.
+			</description>
+		</method>
+		<method name="set_origin_geodetic">
+			<return type="void" />
+			<param index="0" name="latitude" type="float" />
+			<param index="1" name="longitude" type="float" />
+			<param index="2" name="height" type="float" />
+			<description>
+				Sets [member latitude], [member longitude] and [member height] at once. [param latitude] is clamped to the range -90 to 90.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="height" type="float" setter="set_height" getter="get_height" default="0.0">
+			Height of the scene origin in metres above the WGS84 ellipsoid (not above sea level).
+		</member>
+		<member name="latitude" type="float" setter="set_latitude" getter="get_latitude" default="0.0">
+			Latitude of the scene origin in degrees, clamped to -90 to 90.
+		</member>
+		<member name="longitude" type="float" setter="set_longitude" getter="get_longitude" default="0.0">
+			Longitude of the scene origin in degrees (positive east).
+		</member>
+	</members>
+</class>

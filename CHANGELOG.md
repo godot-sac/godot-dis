@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
+## [Unreleased]
+### Added
+- Class reference in the editor: F1 on any `Dis*` class shows its description, methods, properties, signals and
+  constants (`doc_classes/`, built into the debug library). `tools/check_docs.py` and a CI step keep it complete
+  and in step with the API.
+
 ## [0.1.0] - 2026-11-08
 First release.
 

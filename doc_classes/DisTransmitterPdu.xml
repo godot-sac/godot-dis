@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisTransmitterPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Transmitter PDU (type 25): the state of one radio.
+	</brief_description>
+	<description>
+		A Transmitter PDU describes a radio: which entity it belongs to, its type, whether it is on or transmitting, its antenna location, frequency, bandwidth, power and modulation. It is 104 bytes plus the modulation parameters, the antenna pattern and the variable transmitter parameter records, and has protocol family 4 (Radio Communications).
+		godot-dis decodes and encodes Transmitter and [DisSignalPdu] PDUs and [DisRadioMonitor] shows who is on the air; it does not play or record audio. The PDU is encoded with godot-dis's own code because open-dis-cpp has no DIS 7 Transmitter PDU.
+		The variable-length parts ([member modulation_parameters], [member antenna_pattern], [member variable_parameters]) are kept as raw bytes.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisTransmitterPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Transmitter PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Transmitter PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 104 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes]. The records that follow the fixed part must fit inside the length, otherwise the PDU is rejected.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="antenna_location_ecef" type="PackedFloat64Array" setter="set_antenna_location_ecef" getter="get_antenna_location_ecef" default="PackedFloat64Array(0, 0, 0)">
+			Location of the antenna in WGS84 geocentric (ECEF) coordinates, as a [PackedFloat64Array] [code][x, y, z][/code] in metres. Setting an array that does not have exactly 3 values prints an error and leaves the old value.
+		</member>
+		<member name="antenna_pattern" type="PackedByteArray" setter="set_antenna_pattern" getter="get_antenna_pattern" default="PackedByteArray()">
+			The antenna pattern record, kept as raw bytes (at most 65535). Its layout depends on [member antenna_pattern_type]. The size is written as the antenna pattern length.
+		</member>
+		<member name="antenna_pattern_type" type="int" setter="set_antenna_pattern_type" getter="get_antenna_pattern_type" default="0">
+			Antenna pattern type (16-bit, SISO-REF-010 "Transmitter-Antenna Pattern Type").
+		</member>
+		<member name="bandwidth" type="float" setter="set_bandwidth" getter="get_bandwidth" default="0.0">
+			Transmit frequency bandwidth in hertz (32-bit float on the wire).
+		</member>
+		<member name="crypto_key_id" type="int" setter="set_crypto_key_id" getter="get_crypto_key_id" default="0">
+			Crypto key ID (16-bit).
+		</member>
+		<member name="crypto_system" type="int" setter="set_crypto_system" getter="get_crypto_system" default="0">
+			Crypto system (16-bit, SISO-REF-010 "Transmitter-Crypto System").
+		</member>
+		<member name="frequency" type="int" setter="set_frequency" getter="get_frequency" default="0">
+			Transmit frequency in hertz (unsigned 64-bit on the wire).
+		</member>
+		<member name="input_source" type="int" setter="set_input_source" getter="get_input_source" default="0">
+			Input source of the radio (8-bit, SISO-REF-010 "Transmitter-Input Source").
+		</member>
+		<member name="modulation_parameters" type="PackedByteArray" setter="set_modulation_parameters" getter="get_modulation_parameters" default="PackedByteArray()">
+			Raw modulation parameter bytes (at most 255). Their layout depends on the modulation type. The size is written as the modulation parameters length.
+		</member>
+		<member name="modulation_type" type="PackedInt32Array" setter="set_modulation_type" getter="get_modulation_type" default="PackedInt32Array(0, 0, 0, 0)">
+			Modulation type as 4 integers: spread spectrum, major modulation, detail, radio system (each 16-bit). Setting an array that does not have exactly 4 values prints an error and leaves the old value.
+		</member>
+		<member name="power" type="float" setter="set_power" getter="get_power" default="0.0">
+			Transmit power in dBm (32-bit float on the wire).
+		</member>
+		<member name="radio_number" type="int" setter="set_radio_number" getter="get_radio_number" default="0">
+			Radio number (16-bit): distinguishes the radios of one entity or object.
+		</member>
+		<member name="radio_reference_id" type="Vector3i" setter="set_radio_reference_id" getter="get_radio_reference_id" default="Vector3i(0, 0, 0)">
+			ID of the entity (or object) the radio belongs to as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="radio_type" type="PackedInt32Array" setter="set_radio_type" getter="get_radio_type" default="PackedInt32Array(0, 0, 0, 0, 0, 0)">
+			Radio type as 6 integers: kind, domain, country, category, nomenclature version, nomenclature (SISO-REF-010 radio entity type). Setting an array that does not have exactly 6 values prints an error and leaves the old value.
+		</member>
+		<member name="relative_antenna_location" type="Vector3" setter="set_relative_antenna_location" getter="get_relative_antenna_location" default="Vector3(0, 0, 0)">
+			Location of the antenna relative to the radio reference entity, as a [Vector3] in metres in the entity's body coordinates (32-bit floats on the wire).
+		</member>
+		<member name="transmit_state" type="int" setter="set_transmit_state" getter="get_transmit_state" default="0">
+			Transmit state of the radio (8-bit): one of the [enum TransmitState] values.
+		</member>
+		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
+			Variable transmitter parameter records as an [Array] of [PackedByteArray]. Each entry is a whole record: record type (4 bytes), record length in bytes (2 bytes, counting the whole record) and the data. They are written after the antenna pattern; at most 65535 records are allowed. The decoder rejects a record whose length is smaller than 6 or runs past the end of the PDU.
+		</member>
+	</members>
+	<constants>
+		<constant name="TRANSMIT_OFF" value="0" enum="TransmitState">
+			Transmit state 0: the radio is off.
+		</constant>
+		<constant name="TRANSMIT_ON_NOT_TRANSMITTING" value="1" enum="TransmitState">
+			Transmit state 1: the radio is on but not transmitting.
+		</constant>
+		<constant name="TRANSMIT_ON_AND_TRANSMITTING" value="2" enum="TransmitState">
+			Transmit state 2: the radio is on and transmitting.
+		</constant>
+	</constants>
+</class>

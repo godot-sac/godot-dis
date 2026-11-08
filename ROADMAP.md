@@ -18,7 +18,6 @@ recording and playback (pcapng, PDU log), enumerations, release zip. See [CHANGE
 - Typed articulated and attached parts (turret, gun, ...) on top of `variable_parameters`.
 - Timestamps: a choice between absolute and relative time for sent PDUs; an option to use received timestamps
   for dead reckoning in time-synchronised exercises.
-- Class reference in the editor (Godot `doc_classes` XML), so F1 on a `Dis*` node shows its documentation.
 - Networking: receive on a thread (or a larger receive buffer) for exercises with many entities and long frames.
 
 ## Later

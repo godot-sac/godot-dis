@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisStartResumePdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Start/Resume PDU (type 13): asks applications to start or resume the exercise.
+	</brief_description>
+	<description>
+		A Start/Resume PDU asks the receiver to start or resume at the real-world time given by [member real_world_time_hour] and [member real_world_time_past_hour], and to set its simulation clock to the simulation time in [member simulation_time_hour] and [member simulation_time_past_hour]. It is 44 bytes long. The receiver answers with a [DisAcknowledgePdu] carrying the same [member DisSimulationManagementPdu.request_id].
+		Each time is a DIS Clock Time record: a signed 32-bit hour count and a DIS timestamp past the hour (2^31 units per hour, shifted left by one; lowest bit set = absolute time). [method get_real_world_time] and [method get_simulation_time] (and their setters) convert them to and from seconds.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisStartResumePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Start/Resume PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Start/Resume PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 44 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+		<method name="get_real_world_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the real-world start time in seconds since the UNIX epoch (UTC), computed from [member real_world_time_hour] and [member real_world_time_past_hour]. 0 means "now" for [DisExerciseControl].
+			</description>
+		</method>
+		<method name="get_simulation_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the simulation time in seconds, computed from [member simulation_time_hour] and [member simulation_time_past_hour].
+			</description>
+		</method>
+		<method name="set_real_world_time">
+			<return type="void" />
+			<param index="0" name="unix_seconds" type="float" />
+			<description>
+				Sets [member real_world_time_hour] and [member real_world_time_past_hour] from [param unix_seconds], seconds since the UNIX epoch (UTC), marking the time as absolute.
+			</description>
+		</method>
+		<method name="set_simulation_time">
+			<return type="void" />
+			<param index="0" name="seconds" type="float" />
+			<description>
+				Sets [member simulation_time_hour] and [member simulation_time_past_hour] from [param seconds] of simulation time, marking the time as relative.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="real_world_time_hour" type="int" setter="set_real_world_time_hour" getter="get_real_world_time_hour" default="0">
+			Hour part of the real-world time (signed 32-bit). Together with [member real_world_time_past_hour] this is the Clock Time record for the moment to start. See also [method set_real_world_time].
+		</member>
+		<member name="real_world_time_past_hour" type="int" setter="set_real_world_time_past_hour" getter="get_real_world_time_past_hour" default="0">
+			Time past the hour of the real-world time as a DIS timestamp (2^31 units per hour, shifted left by one; lowest bit set = absolute).
+		</member>
+		<member name="simulation_time_hour" type="int" setter="set_simulation_time_hour" getter="get_simulation_time_hour" default="0">
+			Hour part of the simulation time (signed 32-bit). See also [method set_simulation_time].
+		</member>
+		<member name="simulation_time_past_hour" type="int" setter="set_simulation_time_past_hour" getter="get_simulation_time_past_hour" default="0">
+			Time past the hour of the simulation time as a DIS timestamp (2^31 units per hour, shifted left by one; lowest bit set = absolute).
+		</member>
+	</members>
+</class>

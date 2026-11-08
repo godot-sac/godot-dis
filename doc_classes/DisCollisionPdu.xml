@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisCollisionPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Collision PDU (type 4): an entity collided with another entity or object.
+	</brief_description>
+	<description>
+		A Collision PDU is issued by an entity that detects it has collided with another entity (or with something not known as an entity, in which case [member colliding_entity_id] is [code](0, 0, 0)[/code]). It is 60 bytes long and has protocol family 1 (Entity Information).
+		[member velocity] is the issuing entity's velocity in the world (ECEF) frame in metres per second, [member location] is the point of impact in the issuing entity's body coordinates in metres, and [member mass] is the issuing entity's mass in kilograms.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisCollisionPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Collision PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Collision PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 60 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="colliding_entity_id" type="Vector3i" setter="set_colliding_entity_id" getter="get_colliding_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the entity that was hit; (0, 0, 0) if it is not a known entity as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="collision_type" type="int" setter="set_collision_type" getter="get_collision_type" default="0">
+			Collision type (8-bit, SISO-REF-010 "Collision Type"): see [enum CollisionType].
+		</member>
+		<member name="event_id" type="Vector3i" setter="set_event_id" getter="get_event_id" default="Vector3i(0, 0, 0)">
+			Event ID as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = event number), unique per collision event of the issuing application.
+		</member>
+		<member name="issuing_entity_id" type="Vector3i" setter="set_issuing_entity_id" getter="get_issuing_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the entity that issues the PDU, the one that detected the collision as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="location" type="Vector3" setter="set_location" getter="get_location" default="Vector3(0, 0, 0)">
+			Location of the collision as a [Vector3] in metres in the issuing entity's body coordinates (32-bit floats on the wire).
+		</member>
+		<member name="mass" type="float" setter="set_mass" getter="get_mass" default="0.0">
+			Mass of the issuing entity in kilograms (32-bit float on the wire).
+		</member>
+		<member name="padding" type="int" setter="set_padding" getter="get_padding" default="0">
+			The 8-bit padding field after the collision type. Normally 0; kept so that decoded PDUs encode to the same bytes.
+		</member>
+		<member name="velocity" type="Vector3" setter="set_velocity" getter="get_velocity" default="Vector3(0, 0, 0)">
+			Velocity of the issuing entity at the time of the collision, in metres per second in the world (ECEF) frame (32-bit floats on the wire).
+		</member>
+	</members>
+	<constants>
+		<constant name="COLLISION_INELASTIC" value="0" enum="CollisionType">
+			Inelastic collision (value 0): kinetic energy is not conserved.
+		</constant>
+		<constant name="COLLISION_ELASTIC" value="1" enum="CollisionType">
+			Elastic collision (value 1): kinetic energy is conserved.
+		</constant>
+	</constants>
+</class>

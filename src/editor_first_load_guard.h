@@ -12,7 +12,8 @@
 // when the scene tree's root window is freed: after the editor node and its doc data are gone, before the queued
 // call runs. godot-cpp's own unregistration at deinitialization then has nothing left to do.
 
-// Call at MODULE_INITIALIZATION_LEVEL_EDITOR initialization.
-void install_editor_first_load_guard();
+// Call at MODULE_INITIALIZATION_LEVEL_EDITOR initialization. Returns true when the guard is active (the extension was
+// loaded by a headless editor that was already running).
+bool install_editor_first_load_guard();
 // Call at MODULE_INITIALIZATION_LEVEL_EDITOR deinitialization (the extension is unloaded before the root is freed).
 void remove_editor_first_load_guard();

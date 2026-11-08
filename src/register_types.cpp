@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "dis_probe.h"
+#include "class_reference.h"
 #include "editor_first_load_guard.h"
 #include "pdu/dis_entity_state_pdu.h"
 #include "geo/dis_geo.h"
@@ -30,7 +31,10 @@ using namespace godot;
 
 void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
-		install_editor_first_load_guard();
+		// Skipped when the guard is needed: the editor would crash at exit generating docs for it.
+		if (!install_editor_first_load_guard()) {
+			load_class_reference();
+		}
 		return;
 	}
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {

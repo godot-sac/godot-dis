@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisRecorder" inherits="Node" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Records the datagrams of a DisNetwork to a pcapng or pdulog file.
+	</brief_description>
+	<description>
+		Writes every datagram that a [DisNetwork] receives, and with [member record_sent] every datagram it sends, to a file while the game runs. Datagrams are recorded before the network's filters, so other exercises and malformed packets are recorded too (readers skip what is not DIS). Packets injected with [method DisNetwork.inject_packet] are not recorded.
+		The format is [code]pcapng[/code] (readable by Wireshark) or [code]pdulog[/code] (plain text, one datagram per line), chosen by [member format]; with automatic format the file name decides: [code].pdulog[/code] gives pdulog, anything else pcapng. The file is written as it goes and flushed every [member flush_interval] seconds, so a crash loses at most that much. Own PDUs that come back through broadcast or multicast loopback are recorded once: as sent when [member record_sent] is on, as received otherwise.
+		Files are opened with [FileAccess], so [code]user://[/code] paths work; missing folders are created. The recorder finds its network through the group [code]dis_network[/code] unless [member network_path] is set. Recording stops when the node leaves the tree. Nothing runs in the editor.
+		[codeblock]
+		var recorder := DisRecorder.new()
+		add_child(recorder)
+		recorder.start("user://exercise.pcapng")
+		# ...
+		recorder.stop()
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Recording and playback">https://github.com/godot-sac/godot-dis/blob/main/docs/recording.md</link>
+	</tutorials>
+	<methods>
+		<method name="get_elapsed" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the seconds since [method start] while recording, otherwise [code]0.0[/code].
+			</description>
+		</method>
+		<method name="get_packet_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of datagrams written since the last [method start].
+			</description>
+		</method>
+		<method name="get_recording_path" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the path of the current or last recording.
+			</description>
+		</method>
+		<method name="is_recording" qualifiers="const">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] while a file is open for recording.
+			</description>
+		</method>
+		<method name="start">
+			<return type="int" enum="Error" />
+			<param index="0" name="file_path" type="String" default="&quot;&quot;" />
+			<description>
+				Starts writing to [param file_path], or to [member path] if it is empty. A running recording is stopped first. Returns [constant @GlobalScope.ERR_UNCONFIGURED] if there is no [DisNetwork] in the scene, the file error if the file cannot be opened, otherwise [constant @GlobalScope.OK]. Emits [signal started].
+			</description>
+		</method>
+		<method name="stop">
+			<return type="void" />
+			<description>
+				Flushes and closes the file and stops listening to the network. Emits [signal stopped]. Does nothing if not recording.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="autostart" type="bool" setter="set_autostart" getter="get_autostart" default="false">
+			If [code]true[/code], recording starts to [member path] shortly after the node is ready (deferred, so that a [DisNetwork] later in the tree has opened its socket).
+		</member>
+		<member name="flush_interval" type="float" setter="set_flush_interval" getter="get_flush_interval" default="1.0">
+			Time in seconds between writes to disk. Data is also written whenever 256 KiB have accumulated.
+		</member>
+		<member name="format" type="int" setter="set_format" getter="get_format" default="0">
+			File format, as a value of [enum DisRecording.Format]: 0 chooses by the file name extension (automatic), 1 is pcapng, 2 is pdulog.
+		</member>
+		<member name="network_path" type="NodePath" setter="set_network_path" getter="get_network_path" default="NodePath(&quot;&quot;)">
+			Path to the [DisNetwork] to record. If empty, the first node in the group [code]dis_network[/code] is used.
+		</member>
+		<member name="path" type="String" setter="set_path" getter="get_path" default="&quot;user://recording.pcapng&quot;">
+			File that [method start] writes to when called without a path. A [code]user://[/code] path is typical.
+		</member>
+		<member name="record_sent" type="bool" setter="set_record_sent" getter="get_record_sent" default="true">
+			If [code]true[/code], datagrams this application sends are recorded too, with this computer's first routable IPv4 address as source. If [code]false[/code], only received datagrams (including the echo of our own broadcast or multicast) are recorded.
+		</member>
+	</members>
+	<signals>
+		<signal name="started">
+			<param index="0" name="path" type="String" />
+			<description>
+				Emitted when recording has started. [param path] is the file being written.
+			</description>
+		</signal>
+		<signal name="stopped">
+			<param index="0" name="path" type="String" />
+			<param index="1" name="packet_count" type="int" />
+			<description>
+				Emitted when recording has stopped (not when the node is being freed). [param path] is the file that was written and [param packet_count] the number of datagrams in it.
+			</description>
+		</signal>
+	</signals>
+</class>

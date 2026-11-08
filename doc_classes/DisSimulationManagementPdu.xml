@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisSimulationManagementPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base class of the Simulation Management PDUs (protocol family 5).
+	</brief_description>
+	<description>
+		Simulation Management PDUs let a simulation manager control an exercise. Every PDU of the family starts with the IDs of the originating and the receiving simulation, followed by (except for [DisCommentPdu]) a request ID. The subclasses are [DisCreateEntityPdu], [DisRemoveEntityPdu], [DisStartResumePdu], [DisStopFreezePdu], [DisAcknowledgePdu], and, through [DisDatumPdu], [DisSetDataPdu], [DisDataPdu] and [DisCommentPdu].
+		The value [constant ID_ALL] (0xFFFF) in a site, application or entity field means "all"; entity number 0 addresses the application itself. [DisExerciseControl] sends and answers these PDUs for you.
+		It has no PDU type of its own and cannot be encoded or decoded; use one of the subclasses.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="is_addressed_to" qualifiers="const">
+			<return type="bool" />
+			<param index="0" name="site" type="int" />
+			<param index="1" name="application" type="int" />
+			<description>
+				Returns [code]true[/code] if [member receiving_id] names the application [param application] at site [param site]: its site is [param site] or [constant ID_ALL], and its application is [param application] or [constant ID_ALL].
+				The entity number is not checked: entity 0, [constant ID_ALL] and a specific entity number all reach the application.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="originating_id" type="Vector3i" setter="set_originating_id" getter="get_originating_id" default="Vector3i(0, 0, 0)">
+			ID of the sender of the PDU as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="receiving_id" type="Vector3i" setter="set_receiving_id" getter="get_receiving_id" default="Vector3i(0, 0, 0)">
+			ID of the intended receiver as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number). Each part can be [constant ID_ALL]; see [method is_addressed_to].
+		</member>
+		<member name="request_id" type="int" setter="set_request_id" getter="get_request_id" default="0">
+			Request ID (unsigned 32-bit) chosen by the sender of a request. The matching [DisAcknowledgePdu] repeats it. Not used by [DisCommentPdu], where it stays 0 and is not written.
+		</member>
+	</members>
+	<constants>
+		<constant name="ID_ALL" value="65535">
+			Value 0xFFFF (65535) in a site, application or entity field of an ID: "all".
+		</constant>
+	</constants>
+</class>

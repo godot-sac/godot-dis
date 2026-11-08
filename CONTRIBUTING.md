@@ -32,6 +32,9 @@ godot --headless --path . --import
 - Every change in behaviour comes with a test. Bugs get a test that fails before the fix.
 - Update the documentation in `docs/` or `README.md` when behaviour or API changes, and add a line to the
   `[Unreleased]` section of `CHANGELOG.md`.
+- API changes (methods, properties, signals, constants) also update the class reference: regenerate it with
+  `<godot> --headless --path . --doctool . --gdextension-docs`, describe the new entries in `doc_classes/` and run
+  `python tools/check_docs.py`.
 - All tests must pass locally before you open the pull request.
 
 ## Tests

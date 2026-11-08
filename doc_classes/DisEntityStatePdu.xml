@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntityStatePdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Entity State PDU (type 1): the position, motion and appearance of one entity.
+	</brief_description>
+	<description>
+		The Entity State PDU is the DIS message that keeps other applications informed about an entity: who it is, what kind of entity it is, where it is, how it moves and how it looks. It is 144 bytes plus 16 bytes per variable parameter and has protocol family 1 (Entity Information).
+		Units: metres, metres per second and radians. [member location_ecef] is WGS84 geocentric (ECEF) and kept in doubles ([PackedFloat64Array]) because [Vector3] is 32-bit; [DisGeoOrigin] converts it to scene coordinates. Entity IDs and types follow the IEEE 1278.1 and SISO-REF-010 layouts.
+		Receivers extrapolate the entity between PDUs using the dead reckoning fields ([member dr_algorithm], [member dr_parameters], [member dr_linear_acceleration], [member dr_angular_velocity]).
+		[b]Note:[/b] In normal use [DisEntity] publishes these PDUs for you and [DisEntityManager] consumes them; create them by hand for custom senders and tools.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisEntityStatePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Entity State PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Entity State PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 144 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes]. The variable parameter count in the PDU must fit inside the length, otherwise the PDU is rejected.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="alternative_entity_type" type="PackedInt32Array" setter="set_alternative_entity_type" getter="get_alternative_entity_type" default="PackedInt32Array(0, 0, 0, 0, 0, 0, 0)">
+			Alternative entity type, in the same 7-integer layout as [member entity_type]: what other simulations should display for this entity (used for deception). Setting an array that does not have exactly 7 values prints an error and leaves the old value.
+		</member>
+		<member name="appearance" type="int" setter="set_appearance" getter="get_appearance" default="0">
+			Entity appearance, a 32-bit bit field whose meaning depends on the entity's kind and domain (SISO-REF-010 appearance records). Only the lower 32 bits are written.
+		</member>
+		<member name="capabilities" type="int" setter="set_capabilities" getter="get_capabilities" default="0">
+			Entity capabilities, a 32-bit bit field (SISO-REF-010 "Entity Capabilities", for example ammunition supply or repair). Only the lower 32 bits are written.
+		</member>
+		<member name="dr_algorithm" type="int" setter="set_dr_algorithm" getter="get_dr_algorithm" default="0">
+			Dead reckoning algorithm (8-bit, SISO-REF-010 "Dead Reckoning Algorithm"), which tells receivers how to extrapolate position and orientation. 0 is "Other", 1 is "Static".
+		</member>
+		<member name="dr_angular_velocity" type="Vector3" setter="set_dr_angular_velocity" getter="get_dr_angular_velocity" default="Vector3(0, 0, 0)">
+			Angular velocity used for dead reckoning, in radians per second (32-bit floats on the wire). The axes and reference frame depend on [member dr_algorithm].
+		</member>
+		<member name="dr_linear_acceleration" type="Vector3" setter="set_dr_linear_acceleration" getter="get_dr_linear_acceleration" default="Vector3(0, 0, 0)">
+			Linear acceleration used for dead reckoning, in metres per second squared (32-bit floats on the wire). The axes and reference frame depend on [member dr_algorithm].
+		</member>
+		<member name="dr_parameters" type="PackedByteArray" setter="set_dr_parameters" getter="get_dr_parameters" default="PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)">
+			The 15 "other parameters" bytes of the dead reckoning record, kept raw. Their layout depends on [member dr_algorithm]. Setting a shorter array pads it with zeros to 15 bytes; a longer array prints an error and is ignored.
+		</member>
+		<member name="entity_id" type="Vector3i" setter="set_entity_id" getter="get_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the entity this PDU describes as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="entity_type" type="PackedInt32Array" setter="set_entity_type" getter="get_entity_type" default="PackedInt32Array(0, 0, 0, 0, 0, 0, 0)">
+			Entity type as 7 integers: kind, domain, country, category, subcategory, specific, extra (SISO-REF-010 entity type enumeration). Setting an array that does not have exactly 7 values prints an error and leaves the old value.
+		</member>
+		<member name="force_id" type="int" setter="set_force_id" getter="get_force_id" default="0">
+			Force ID (8-bit, SISO-REF-010 "Force ID"): 0 other, 1 friendly, 2 opposing, 3 neutral.
+		</member>
+		<member name="linear_velocity" type="Vector3" setter="set_linear_velocity" getter="get_linear_velocity" default="Vector3(0, 0, 0)">
+			Linear velocity of the entity in metres per second in the world (ECEF) frame (32-bit floats on the wire).
+		</member>
+		<member name="location_ecef" type="PackedFloat64Array" setter="set_location_ecef" getter="get_location_ecef" default="PackedFloat64Array(0, 0, 0)">
+			Location of the entity in WGS84 geocentric (ECEF) coordinates, as a [PackedFloat64Array] [code][x, y, z][/code] in metres. Setting an array that does not have exactly 3 values prints an error and leaves the old value.
+		</member>
+		<member name="marking" type="String" setter="set_marking" getter="get_marking" default="&quot;&quot;">
+			The entity's marking (call sign) as text, at most 11 ASCII characters. This is a view of [member marking_bytes]: setting it truncates to 11 characters and pads with zero bytes; reading it stops at the first zero byte.
+		</member>
+		<member name="marking_bytes" type="PackedByteArray" setter="set_marking_bytes" getter="get_marking_bytes" default="PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)">
+			The 11 raw marking bytes. Setting a shorter array pads it with zeros to 11 bytes; a longer array prints an error and is ignored. See also [member marking].
+		</member>
+		<member name="marking_character_set" type="int" setter="set_marking_character_set" getter="get_marking_character_set" default="1">
+			Character set of the marking (8-bit). 1 is ASCII, the default.
+		</member>
+		<member name="orientation" type="Vector3" setter="set_orientation" getter="get_orientation" default="Vector3(0, 0, 0)">
+			Entity orientation as Euler angles in radians: [code]x[/code] = psi (yaw), [code]y[/code] = theta (pitch), [code]z[/code] = phi (roll), as defined by IEEE 1278.1 for the world (ECEF) frame (32-bit floats on the wire). Use [DisGeoOrigin] or [DisGeo] to convert to and from heading, pitch and roll or a scene basis.
+		</member>
+		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
+			Variable parameter records (for example articulated parts) as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. Entries of any other size are skipped by [method DisPduBase.encode] and an error is printed.
+		</member>
+	</members>
+</class>

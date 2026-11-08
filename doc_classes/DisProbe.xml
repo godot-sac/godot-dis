@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisProbe" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Test helper that checks the bundled open-dis-cpp library.
+	</brief_description>
+	<description>
+		Used by the project's own tests to confirm that the open-dis-cpp library is linked and encodes correctly. It has no use in applications; use [DisEntityStatePdu] and [DisNetwork] instead.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="encode_test_entity_state" qualifiers="static">
+			<return type="PackedByteArray" />
+			<description>
+				Encodes a fixed DIS 7 Entity State PDU (exercise 1, entity 1:2:3, marking [code]"GODOT"[/code]) with open-dis-cpp and returns its bytes in big-endian network order.
+			</description>
+		</method>
+		<method name="get_version" qualifiers="static">
+			<return type="String" />
+			<description>
+				Returns the library version text, for example [code]"godot-dis 0.1.0 (open-dis-cpp 1.2.0, godot-cpp 10.0.0)"[/code]. The string is hard-coded in the source.
+			</description>
+		</method>
+	</methods>
+</class>

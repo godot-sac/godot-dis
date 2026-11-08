@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisFirePdu" inherits="DisWarfarePdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Fire PDU (type 2): a weapon was fired or an expendable was launched.
+	</brief_description>
+	<description>
+		A Fire PDU announces that [member DisWarfarePdu.firing_entity_id] fired a munition at [member DisWarfarePdu.location_ecef]. It is 96 bytes long and has protocol family 2 (Warfare); most fields are inherited from [DisWarfarePdu]. A later [DisDetonationPdu] with the same [member DisWarfarePdu.event_id] reports what happened to the munition.
+		[member DisWarfarePdu.munition_id] is the munition or expendable ID in a Fire PDU, and [member DisWarfarePdu.velocity] is the munition's velocity right after firing (ECEF, m/s).
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisFirePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Fire PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Fire PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 96 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="fire_mission_index" type="int" setter="set_fire_mission_index" getter="get_fire_mission_index" default="0">
+			Index of the fire mission this shot belongs to (unsigned 32-bit).
+		</member>
+		<member name="range" type="float" setter="set_range" getter="get_range" default="0.0">
+			Range to the target in metres (32-bit float on the wire). 0 means unknown.
+		</member>
+	</members>
+</class>

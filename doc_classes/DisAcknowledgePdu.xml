@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisAcknowledgePdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Acknowledge PDU (type 15): the answer to a Simulation Management request.
+	</brief_description>
+	<description>
+		An Acknowledge PDU answers a [DisCreateEntityPdu], [DisRemoveEntityPdu], [DisStartResumePdu] or [DisStopFreezePdu]. [member DisSimulationManagementPdu.request_id] repeats the request's ID, [member acknowledge_flag] says which kind of request is answered and [member response_flag] says whether the receiver can comply. It is 32 bytes long.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisAcknowledgePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Acknowledge PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Acknowledge PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 32 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="acknowledge_flag" type="int" setter="set_acknowledge_flag" getter="get_acknowledge_flag" default="0">
+			Which kind of request this answers (16-bit): one of the [enum AcknowledgeFlag] values or another SISO-REF-010 "Acknowledge Flag" code.
+		</member>
+		<member name="response_flag" type="int" setter="set_response_flag" getter="get_response_flag" default="0">
+			How the receiver responds (16-bit): one of the [enum ResponseFlag] values or another SISO-REF-010 "Response Flag" code.
+		</member>
+	</members>
+	<constants>
+		<constant name="ACKNOWLEDGE_CREATE_ENTITY" value="1" enum="AcknowledgeFlag">
+			Acknowledge flag 1: answers a Create Entity PDU.
+		</constant>
+		<constant name="ACKNOWLEDGE_REMOVE_ENTITY" value="2" enum="AcknowledgeFlag">
+			Acknowledge flag 2: answers a Remove Entity PDU.
+		</constant>
+		<constant name="ACKNOWLEDGE_START_RESUME" value="3" enum="AcknowledgeFlag">
+			Acknowledge flag 3: answers a Start/Resume PDU.
+		</constant>
+		<constant name="ACKNOWLEDGE_STOP_FREEZE" value="4" enum="AcknowledgeFlag">
+			Acknowledge flag 4: answers a Stop/Freeze PDU.
+		</constant>
+		<constant name="ACKNOWLEDGE_TRANSFER_OWNERSHIP" value="5" enum="AcknowledgeFlag">
+			Acknowledge flag 5: answers a Transfer Ownership request.
+		</constant>
+		<constant name="RESPONSE_OTHER" value="0" enum="ResponseFlag">
+			Response flag 0, other.
+		</constant>
+		<constant name="RESPONSE_ABLE_TO_COMPLY" value="1" enum="ResponseFlag">
+			Response flag 1: the receiver is able to comply.
+		</constant>
+		<constant name="RESPONSE_UNABLE_TO_COMPLY" value="2" enum="ResponseFlag">
+			Response flag 2: the receiver is unable to comply.
+		</constant>
+		<constant name="RESPONSE_PENDING_OPERATOR_ACTION" value="3" enum="ResponseFlag">
+			Response flag 3: waiting for an operator to act.
+		</constant>
+		<constant name="RESPONSE_REQUEST_FURTHER_INFORMATION" value="4" enum="ResponseFlag">
+			Response flag 4: the receiver needs more information.
+		</constant>
+	</constants>
+</class>

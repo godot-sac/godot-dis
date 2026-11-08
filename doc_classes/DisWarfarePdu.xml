@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisWarfarePdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Shared base of the Fire and Detonation PDUs (protocol family 2, Warfare).
+	</brief_description>
+	<description>
+		DisWarfarePdu holds the fields [DisFirePdu] and [DisDetonationPdu] have in common: the entity IDs involved, the event ID that ties a Fire PDU to its Detonation PDU, where the event happened, the munition's velocity, and the munition descriptor ([member munition_type], [member warhead], [member fuse], [member quantity], [member rate]). Its protocol family is 2.
+		All positions and velocities are in the world frame: [member location_ecef] is WGS84 geocentric (ECEF) in metres, [member velocity] is in metres per second. [DisGeoOrigin] converts between ECEF and local scene coordinates.
+		It has no PDU type of its own and cannot be encoded or decoded; use [DisFirePdu] or [DisDetonationPdu].
+	</description>
+	<tutorials>
+	</tutorials>
+	<members>
+		<member name="event_id" type="Vector3i" setter="set_event_id" getter="get_event_id" default="Vector3i(0, 0, 0)">
+			Event ID as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = event number). The Fire PDU and the Detonation PDU of the same engagement carry the same event ID.
+		</member>
+		<member name="firing_entity_id" type="Vector3i" setter="set_firing_entity_id" getter="get_firing_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the entity that fired the munition as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="fuse" type="int" setter="set_fuse" getter="get_fuse" default="0">
+			Fuse code of the munition descriptor (16-bit, SISO-REF-010 "Fuse"). 0 is "Other".
+		</member>
+		<member name="location_ecef" type="PackedFloat64Array" setter="set_location_ecef" getter="get_location_ecef" default="PackedFloat64Array(0, 0, 0)">
+			Location of the event in WGS84 geocentric (ECEF) coordinates, as a [PackedFloat64Array] [code][x, y, z][/code] in metres. For a Fire PDU this is where the weapon was fired, for a Detonation PDU where the munition detonated. Kept in doubles because [Vector3] is 32-bit.
+			Setting an array that does not have exactly 3 values prints an error and leaves the old value.
+		</member>
+		<member name="munition_id" type="Vector3i" setter="set_munition_id" getter="get_munition_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the munition. In a [DisFirePdu] this is the munition or expendable ID; in a [DisDetonationPdu] it is the exploding entity ID. The entity ID is a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="munition_type" type="PackedInt32Array" setter="set_munition_type" getter="get_munition_type" default="PackedInt32Array(0, 0, 0, 0, 0, 0, 0)">
+			Entity type of the munition as 7 integers: kind, domain, country, category, subcategory, specific, extra (SISO-REF-010 entity type enumeration). Setting an array that does not have exactly 7 values prints an error and leaves the old value.
+		</member>
+		<member name="quantity" type="int" setter="set_quantity" getter="get_quantity" default="0">
+			Quantity of the munition descriptor: the number of munitions fired or detonated together (16-bit).
+		</member>
+		<member name="rate" type="int" setter="set_rate" getter="get_rate" default="0">
+			Rate of the munition descriptor (16-bit): the rate of fire in rounds per minute.
+		</member>
+		<member name="target_entity_id" type="Vector3i" setter="set_target_entity_id" getter="get_target_entity_id" default="Vector3i(0, 0, 0)">
+			Entity ID of the target, if any as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="velocity" type="Vector3" setter="set_velocity" getter="get_velocity" default="Vector3(0, 0, 0)">
+			Velocity of the munition in metres per second in the world (ECEF) frame. Stored as 32-bit floats on the wire.
+		</member>
+		<member name="warhead" type="int" setter="set_warhead" getter="get_warhead" default="0">
+			Warhead code of the munition descriptor (16-bit, SISO-REF-010 "Warhead"). 0 is "Other".
+		</member>
+	</members>
+</class>

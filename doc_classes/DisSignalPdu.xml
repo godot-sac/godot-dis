@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisSignalPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Signal PDU (type 26): a block of transmitted data from a radio.
+	</brief_description>
+	<description>
+		A Signal PDU carries a block of data sent by a radio: encoded audio, tactical data link messages and similar. It is 32 bytes plus the data, which is padded with zeros to a multiple of 4 bytes, and has protocol family 4 (Radio Communications). The radio is identified by [member radio_reference_id] and [member radio_number], as in the [DisTransmitterPdu].
+		The easiest way to fill the payload is [method set_data_bytes], which sets [member data] and [member data_length] together. Keep the data small enough for one network datagram (about 1400 bytes on Ethernet): fragmented datagrams are not reassembled by many receivers.
+		godot-dis does not play or record audio; [DisRadioMonitor] only tracks who is on the air.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisSignalPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Signal PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Signal PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 32 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes]. The data length must fit inside the PDU, otherwise the PDU is rejected.
+			</description>
+		</method>
+		<method name="set_data_bytes">
+			<return type="void" />
+			<param index="0" name="data" type="PackedByteArray" />
+			<description>
+				Sets [member data] to [param data] and [member data_length] to its size in bits (whole bytes). Prints an error and changes nothing if [param data] is larger than 8191 bytes, the most a Signal PDU can carry because [member data_length] is a 16-bit bit count.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="data" type="PackedByteArray" setter="set_data" getter="get_data" default="PackedByteArray()">
+			The signal data. Only [code]ceil(data_length / 8)[/code] bytes are written, padded with zeros to a multiple of 4 bytes; if [member data] is shorter than that, it is padded with zeros. Setting this property does not update [member data_length]; use [method set_data_bytes] for that.
+		</member>
+		<member name="data_length" type="int" setter="set_data_length" getter="get_data_length" default="0">
+			Length of the data in [i]bits[/i] (16-bit). Decides how many bytes of [member data] are written. See [method set_data_bytes].
+		</member>
+		<member name="encoding_scheme" type="int" setter="set_encoding_scheme" getter="get_encoding_scheme" default="0">
+			Encoding scheme (16-bit): bits 14-15 are the encoding class (for example encoded audio), bits 0-13 the encoding type (SISO-REF-010 "Signal-Encoding Class" and "Encoding Type").
+		</member>
+		<member name="radio_number" type="int" setter="set_radio_number" getter="get_radio_number" default="0">
+			Radio number (16-bit) of the transmitting radio; matches [member DisTransmitterPdu.radio_number].
+		</member>
+		<member name="radio_reference_id" type="Vector3i" setter="set_radio_reference_id" getter="get_radio_reference_id" default="Vector3i(0, 0, 0)">
+			ID of the entity (or object) the radio belongs to; matches [member DisTransmitterPdu.radio_reference_id] as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="sample_rate" type="int" setter="set_sample_rate" getter="get_sample_rate" default="0">
+			Sample rate in samples per second for encoded audio, or the data rate for a tactical data link (unsigned 32-bit).
+		</member>
+		<member name="samples" type="int" setter="set_samples" getter="get_samples" default="0">
+			Number of samples in [member data] (16-bit). Meaningful for encoded audio, 0 for other signal types.
+		</member>
+		<member name="tdl_type" type="int" setter="set_tdl_type" getter="get_tdl_type" default="0">
+			Tactical data link type (16-bit, SISO-REF-010 "Signal-TDL Type"). 0 if the signal is not a tactical data link message.
+		</member>
+	</members>
+</class>

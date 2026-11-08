@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisRecording" inherits="RefCounted" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A DIS recording in memory: datagrams with their times, which can be loaded, saved, inspected and played by a DisPlayer.
+	</brief_description>
+	<description>
+		Holds a list of UDP datagrams, in time order, each with its Unix time and source and destination address. [method load] reads pcapng, pcap and pdulog files (the format is detected from the first bytes); [method save] writes pcapng or pdulog. Only datagrams that start with a plausible DIS header are kept; other traffic in a capture is skipped and counted in [method get_read_statistics]. Several PDUs bundled in one datagram stay together as one packet.
+		Times are Unix times in seconds; [method get_time] and [method find_index] use seconds since the first packet. Recordings are made by [DisRecorder] or built by hand with [method add_packet] and played by [DisPlayer].
+		[codeblock]
+		var recording := DisRecording.new()
+		if recording.load("user://exercise.pcapng") == OK:
+			print(recording.get_summary())
+			recording.save("user://exercise.pdulog")
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Recording and playback">https://github.com/godot-sac/godot-dis/blob/main/docs/recording.md</link>
+	</tutorials>
+	<methods>
+		<method name="add_packet">
+			<return type="void" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<param index="1" name="unix_time" type="float" default="-1.0" />
+			<param index="2" name="source_ip" type="String" default="&quot;127.0.0.1&quot;" />
+			<param index="3" name="source_port" type="int" default="3000" />
+			<param index="4" name="destination_ip" type="String" default="&quot;127.0.0.1&quot;" />
+			<param index="5" name="destination_port" type="int" default="3000" />
+			<description>
+				Adds a datagram. [param unix_time] is its time in seconds since the Unix epoch; a negative value means now. The packet is inserted at its place in time order. The addresses are stored in the file when saved; for replay only [param source_ip] and [param source_port] are used.
+			</description>
+		</method>
+		<method name="clear">
+			<return type="void" />
+			<description>
+				Removes all packets and the read statistics and error message.
+			</description>
+		</method>
+		<method name="find_index" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="time" type="float" />
+			<description>
+				Returns the index of the first packet at or after [param time], in seconds since the first packet. Returns [method get_packet_count] if there is none, and 0 for an empty recording.
+			</description>
+		</method>
+		<method name="get_bytes" qualifiers="const">
+			<return type="PackedByteArray" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the bytes of the datagram at [param index]. Returns an empty array and prints an error if the index is out of range.
+			</description>
+		</method>
+		<method name="get_duration" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the time in seconds between the first and the last packet, [code]0.0[/code] if empty.
+			</description>
+		</method>
+		<method name="get_last_error" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the message of the last failed [method load], or an empty string.
+			</description>
+		</method>
+		<method name="get_packet" qualifiers="const">
+			<return type="Dictionary" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the packet at [param index] as a [Dictionary] with the keys [code]time[/code] (seconds since the first packet), [code]unix_time[/code], [code]bytes[/code] ([PackedByteArray]), [code]source_ip[/code], [code]source_port[/code], [code]destination_ip[/code] and [code]destination_port[/code]. Returns an empty dictionary and prints an error if the index is out of range.
+			</description>
+		</method>
+		<method name="get_packet_count" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the number of packets.
+			</description>
+		</method>
+		<method name="get_read_statistics" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns what the last [method load] read and skipped, as a [Dictionary] with the keys [code]frames[/code], [code]not_udp[/code], [code]fragments[/code] (IPv4 fragments are skipped), [code]not_dis[/code] (UDP datagrams that do not start with a plausible DIS header), [code]filtered[/code] (other port than requested) and [code]truncated[/code].
+			</description>
+		</method>
+		<method name="get_start_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the Unix time in seconds of the first packet, [code]0.0[/code] if empty.
+			</description>
+		</method>
+		<method name="get_summary" qualifiers="const">
+			<return type="Dictionary" />
+			<description>
+				Returns a [Dictionary] describing the contents:
+				- [code]packets[/code]: number of packets.
+				- [code]duration[/code] and [code]start_time[/code]: as [method get_duration] and [method get_start_time].
+				- [code]pdu_types[/code]: a [Dictionary] from PDU type number to how many packets have that type.
+				- [code]exercises[/code]: the exercise IDs seen.
+				- [code]entities[/code]: number of distinct entity IDs in Entity State PDUs.
+				- [code]sites[/code]: the sending applications seen, as strings of the form [code]"site:application"[/code].
+				Only the first PDU of each datagram is examined.
+			</description>
+		</method>
+		<method name="get_time" qualifiers="const">
+			<return type="float" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Returns the time of the packet at [param index] in seconds since the first packet. Returns [code]0.0[/code] and prints an error if the index is out of range.
+			</description>
+		</method>
+		<method name="load">
+			<return type="int" enum="Error" />
+			<param index="0" name="path" type="String" />
+			<param index="1" name="port" type="int" default="0" />
+			<description>
+				Replaces the contents with the file at [param path], using [FileAccess] (so [code]user://[/code] works). The format is detected from the first bytes. If [param port] is greater than 0, only datagrams to or from that UDP port are kept. Packets are sorted by time. Returns [constant @GlobalScope.OK] if the file was read, the file open error or [constant @GlobalScope.ERR_FILE_CORRUPT] if it could not be read or is empty, and [constant @GlobalScope.ERR_FILE_UNRECOGNIZED] if its format is not understood; see [method get_last_error].
+			</description>
+		</method>
+		<method name="save" qualifiers="const">
+			<return type="int" enum="Error" />
+			<param index="0" name="path" type="String" />
+			<param index="1" name="format" type="int" enum="DisRecording.Format" default="0" />
+			<description>
+				Writes the recording to [param path]. [param format] chooses pcapng or pdulog; with [constant FORMAT_AUTO] the extension decides ([code].pdulog[/code] gives pdulog, anything else pcapng). Returns the file error if the file cannot be opened or written, otherwise [constant @GlobalScope.OK].
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="FORMAT_AUTO" value="0" enum="Format">
+			Choose the format from the file name: [code].pdulog[/code] is pdulog, anything else is pcapng.
+		</constant>
+		<constant name="FORMAT_PCAPNG" value="1" enum="Format">
+			The pcapng capture format used by Wireshark.
+		</constant>
+		<constant name="FORMAT_PDULOG" value="2" enum="Format">
+			Plain text with one datagram per line: time since start, source, destination and the PDU as hex.
+		</constant>
+	</constants>
+</class>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisRemoteEntity" inherits="Node3D" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		A remote entity created and moved by a [DisEntityManager].
+	</brief_description>
+	<description>
+		A [Node3D] that represents one entity published by another simulation. [DisEntityManager] creates it when the first Entity State PDU of a new entity ID arrives, moves it every frame, and frees it when the entity is deactivated or times out. The scene chosen by the manager's [DisEntityTypeMap] is its child.
+		The node's global transform follows the dead-reckoned (and smoothed, possibly ground-clamped) pose in scene coordinates. The values below come from the last Entity State PDU received. Do not create this class yourself.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_appearance" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the entity appearance bit field from the last PDU (see SISO-REF-010), or 0 if there is none.
+			</description>
+		</method>
+		<method name="get_dr_algorithm" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the dead reckoning algorithm in use (0 to 9). It is 1 (static) when the manager's [member DisEntityManager.dead_reckoning] is off.
+			</description>
+		</method>
+		<method name="get_geodetic" qualifiers="const">
+			<return type="PackedFloat64Array" />
+			<description>
+				Returns the dead-reckoned position as a [PackedFloat64Array] [code][latitude, longitude, height][/code]: latitude and longitude in degrees, height in metres above the WGS84 ellipsoid. It does not include smoothing or ground clamping.
+			</description>
+		</method>
+		<method name="get_last_pdu" qualifiers="const">
+			<return type="DisEntityStatePdu" />
+			<description>
+				Returns the last [DisEntityStatePdu] received for this entity.
+			</description>
+		</method>
+		<method name="get_last_update_time" qualifiers="const">
+			<return type="float" />
+			<description>
+				Returns the time in seconds, on the manager's clock ([method DisEntityManager.get_clock]), at which the last PDU was applied.
+			</description>
+		</method>
+		<method name="get_location_ecef" qualifiers="const">
+			<return type="PackedFloat64Array" />
+			<description>
+				Returns the dead-reckoned position as a [PackedFloat64Array] [code][x, y, z][/code] in geocentric (ECEF) coordinates, in metres, as of the last frame update. It does not include smoothing or ground clamping.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="entity_id" type="Vector3i" setter="" getter="get_entity_id" default="Vector3i(0, 0, 0)">
+			The entity ID as (site, application, entity number). Read-only.
+		</member>
+		<member name="entity_type" type="PackedInt32Array" setter="" getter="get_entity_type" default="PackedInt32Array()">
+			The 7-field entity type (kind, domain, country, category, subcategory, specific, extra) from the last PDU. Read-only.
+		</member>
+		<member name="force_id" type="int" setter="" getter="get_force_id" default="0">
+			The force ID from the last PDU: 0 Other, 1 Friendly, 2 Opposing, 3 Neutral. Read-only.
+		</member>
+		<member name="marking" type="String" setter="" getter="get_marking" default="&quot;&quot;">
+			The text marking from the last PDU. Read-only.
+		</member>
+	</members>
+</class>

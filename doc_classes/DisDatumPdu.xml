@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisDatumPdu" inherits="DisSimulationManagementPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Base class of the Simulation Management PDUs that carry datum records: Comment, Set Data and Data.
+	</brief_description>
+	<description>
+		DisDatumPdu holds the datum lists shared by [DisCommentPdu], [DisSetDataPdu] and [DisDataPdu].
+		A [i]fixed datum[/i] is a [Dictionary] [code]{"id": int, "value": int}[/code]: a 32-bit datum ID and 32 raw bits of value. A [i]variable datum[/i] is a [Dictionary] [code]{"id": int, "length": int, "data": PackedByteArray}[/code]: a 32-bit ID, the length in [i]bits[/i], and [code]ceil(length / 8)[/code] bytes of data; on the wire the data is padded with zeros to a multiple of 8 bytes. Datum IDs are SISO-REF-010 "Variable Record Types" or agreed within the exercise.
+		Use [method add_fixed_datum], [method add_variable_datum] and [method add_text] to fill the lists, and [method get_text] to read text back.
+		[codeblock]
+		var comment := DisCommentPdu.new()
+		comment.originating_id = Vector3i(1, 1, 0)
+		comment.receiving_id = Vector3i(DisSimulationManagementPdu.ID_ALL, DisSimulationManagementPdu.ID_ALL, DisSimulationManagementPdu.ID_ALL)
+		comment.add_text(1, "Phase line ALPHA crossed")
+		var bytes := comment.encode()
+		[/codeblock]
+		These PDUs are encoded with godot-dis's own code rather than open-dis-cpp, which rounds variable datum bit lengths down to whole bytes. A datum list that does not fit in the PDU makes the decoder return [code]null[/code].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_fixed_datum">
+			<return type="void" />
+			<param index="0" name="id" type="int" />
+			<param index="1" name="value" type="int" />
+			<description>
+				Appends a fixed datum with the 32-bit datum [param id] and 32 raw bits of [param value] to [member fixed_datums].
+			</description>
+		</method>
+		<method name="add_text">
+			<return type="void" />
+			<param index="0" name="id" type="int" />
+			<param index="1" name="text" type="String" />
+			<description>
+				Appends a variable datum with the given [param id] holding [param text] as UTF-8 to [member variable_datums]. Its length is the number of bits in the UTF-8 bytes.
+			</description>
+		</method>
+		<method name="add_variable_datum">
+			<return type="void" />
+			<param index="0" name="id" type="int" />
+			<param index="1" name="data" type="PackedByteArray" />
+			<param index="2" name="length_bits" type="int" default="-1" />
+			<description>
+				Appends a variable datum with the given [param id] and [param data] to [member variable_datums]. [param length_bits] is the length of the data in bits; if it is negative (the default), the whole of [param data] is used. When encoding, [param data] must hold at least [code]ceil(length_bits / 8)[/code] bytes; a datum with less is skipped and an error is printed.
+			</description>
+		</method>
+		<method name="get_text" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="id" type="int" />
+			<description>
+				Returns the data of the first variable datum whose ID is [param id], decoded as UTF-8 text. Returns an empty string if there is no such datum.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="fixed_datums" type="Array" setter="set_fixed_datums" getter="get_fixed_datums" default="[]">
+			Fixed datum records as an [Array] of [Dictionary] [code]{"id": int, "value": int}[/code] (32-bit ID, 32 raw bits of value). See [method add_fixed_datum].
+		</member>
+		<member name="padding" type="int" setter="set_padding" getter="get_padding" default="0">
+			The 32-bit padding field that follows the request ID in Set Data and Data PDUs. Normally 0; kept so that decoded PDUs encode to the same bytes. Not used by [DisCommentPdu], which has no such field.
+		</member>
+		<member name="variable_datums" type="Array" setter="set_variable_datums" getter="get_variable_datums" default="[]">
+			Variable datum records as an [Array] of [Dictionary] [code]{"id": int, "length": int, "data": PackedByteArray}[/code], where [code]length[/code] is in bits. See [method add_variable_datum] and [method add_text].
+		</member>
+	</members>
+</class>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisSetDataPdu" inherits="DisDatumPdu" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Set Data PDU (type 19): asks the receiver to set the given values.
+	</brief_description>
+	<description>
+		A Set Data PDU asks the receiver to set the values in its datum records, identified by datum ID. [member DisSimulationManagementPdu.request_id] identifies the request. [DisExerciseControl] does not act on Set Data PDUs; handle the network signal yourself.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisSetDataPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Set Data PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Set Data PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], fewer than 40 bytes, or datum counts and datum records that do not fit in the length). A length field of 0 is replaced by the datagram size. Bytes after the last datum, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+</class>
