@@ -1,0 +1,91 @@
+{
+  "class": "DisElectromagneticEmissionPdu",
+  "length": 172,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 250,
+    "timestamp": 1427708592,
+    "pdu_status": 158,
+    "emitting_entity_id": [
+      64023,
+      45441,
+      29813
+    ],
+    "event_id": [
+      57452,
+      53278,
+      10168
+    ],
+    "state_update_indicator": 55,
+    "systems": {
+      "ee_systems": [
+        {
+          "emitter_name": 27583,
+          "emitter_function": 136,
+          "emitter_number": 55,
+          "location": [
+            -18.904050827026367,
+            12.570475578308105,
+            0.21358495950698853
+          ],
+          "beams": [
+            {
+              "beam_id": 15,
+              "parameter_index": 13319,
+              "floats": [
+                "41f4140c40000000",
+                "41e44c8860000000",
+                "41f4f1f2a0000000",
+                "41f0634960000000",
+                "41f800c7c0000000",
+                "41f4c89bc0000000",
+                "41dacf80c0000000",
+                "420222eaa0000000",
+                "41d0b930c0000000",
+                "41ddefb420000000"
+              ],
+              "function": 255,
+              "high_density_track_jam": 87,
+              "status": 0,
+              "jamming_technique": 3708903721,
+              "track_jam": []
+            }
+          ]
+        },
+        {
+          "emitter_name": 14872,
+          "emitter_function": 79,
+          "emitter_number": 160,
+          "location": [
+            -9.38428783416748,
+            4.880336284637451,
+            1.5770305395126343
+          ],
+          "beams": [
+            {
+              "beam_id": 218,
+              "parameter_index": 17467,
+              "floats": [
+                "41faa93b00000000",
+                "41faf3eaa0000000",
+                "42028778e0000000",
+                "41fa2aac20000000",
+                "420037dc60000000",
+                "4200e73040000000",
+                "41a8198cc0000000",
+                "42000738a0000000",
+                "41f33a4900000000",
+                "41e2905520000000"
+              ],
+              "function": 140,
+              "high_density_track_jam": 117,
+              "status": 0,
+              "jamming_technique": 2875114449,
+              "track_jam": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

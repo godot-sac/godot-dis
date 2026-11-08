@@ -182,10 +182,22 @@
 				Emitted after [signal pdu_received] for every received [DisDataPdu]. [param pdu] is the decoded PDU.
 			</description>
 		</signal>
+		<signal name="designator_received">
+			<param index="0" name="pdu" type="DisDesignatorPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisDesignatorPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
 		<signal name="detonation_received">
 			<param index="0" name="pdu" type="DisDetonationPdu" />
 			<description>
 				Emitted after [signal pdu_received] for every received [DisDetonationPdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="electromagnetic_emission_received">
+			<param index="0" name="pdu" type="DisElectromagneticEmissionPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisElectromagneticEmissionPdu]. [param pdu] is the decoded PDU.
 			</description>
 		</signal>
 		<signal name="entity_state_received">
@@ -194,10 +206,22 @@
 				Emitted after [signal pdu_received] for every received [DisEntityStatePdu]. [param pdu] is the decoded PDU.
 			</description>
 		</signal>
+		<signal name="entity_state_update_received">
+			<param index="0" name="pdu" type="DisEntityStateUpdatePdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisEntityStateUpdatePdu]. [param pdu] is the decoded PDU. [DisEntityManager] listens to it and applies the update to a known entity.
+			</description>
+		</signal>
 		<signal name="fire_received">
 			<param index="0" name="pdu" type="DisFirePdu" />
 			<description>
 				Emitted after [signal pdu_received] for every received [DisFirePdu]. [param pdu] is the decoded PDU.
+			</description>
+		</signal>
+		<signal name="iff_received">
+			<param index="0" name="pdu" type="DisIffPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisIffPdu]. [param pdu] is the decoded PDU.
 			</description>
 		</signal>
 		<signal name="packet_rejected">
@@ -213,6 +237,12 @@
 			<param index="2" name="sender_port" type="int" />
 			<description>
 				Emitted for every PDU that passes the filters and decodes, before the PDU-specific signal. [param pdu] is the [DisPduBase] subclass matching the PDU type. [param sender_ip] and [param sender_port] identify the UDP sender (for injected packets, the values given to [method inject_packet]).
+			</description>
+		</signal>
+		<signal name="receiver_received">
+			<param index="0" name="pdu" type="DisReceiverPdu" />
+			<description>
+				Emitted after [signal pdu_received] for every received [DisReceiverPdu]. [param pdu] is the decoded PDU.
 			</description>
 		</signal>
 		<signal name="remove_entity_received">

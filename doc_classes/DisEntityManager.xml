@@ -64,6 +64,15 @@
 				Applies one Entity State PDU as if it had just been received from the network: creates or updates the entity, or removes it if the PDU is a deactivation. Use it to feed PDUs from another source. [param now] is the time on the manager's clock ([method get_clock]) at which the PDU counts as received; a negative value, the default, means now.
 			</description>
 		</method>
+		<method name="handle_entity_state_update">
+			<return type="void" />
+			<param index="0" name="pdu" type="DisEntityStateUpdatePdu" />
+			<param index="1" name="now" type="float" default="-1.0" />
+			<description>
+				Applies one Entity State Update PDU as if it had just been received from the network. The manager is connected to [signal DisNetwork.entity_state_update_received] automatically, so you only call this to feed PDUs from another source. [param now] is the time on the manager's clock ([method get_clock]) at which the PDU counts as received; a negative value, the default, means now.
+				The update is applied only to an entity already announced by an Entity State PDU: the entity keeps its type, marking and dead reckoning parameters from that PDU, and velocity, location, orientation, appearance and variable parameters come from the update. If the new appearance is deactivated, the entity is removed. An update for an unknown entity is ignored.
+			</description>
+		</method>
 		<method name="is_ground_clamped" qualifiers="const">
 			<return type="bool" />
 			<param index="0" name="entity" type="Object" />

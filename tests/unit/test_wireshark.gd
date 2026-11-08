@@ -117,3 +117,74 @@ func test_wireshark_reads_entity_state_fields() -> void:
 	assert_string_contains(rows[0]["dis.country"], "218")
 	assert_string_contains(rows[1]["dis.event_number"], "42")
 	assert_string_contains(rows[1]["dis.range"], "2500")
+
+
+## Receiver and IFF have no Open-DIS Python oracle (tools/golden_pdus.py packs them from the standard), so check
+## Wireshark's reading of their fields; Designator and Electromagnetic Emission too.
+func test_wireshark_reads_emission_and_receiver_fields() -> void:
+	var tshark := _tshark()
+	if tshark.is_empty():
+		pending("tshark not found (Wireshark not installed)")
+		return
+	var receiver := DisReceiverPdu.new()
+	receiver.radio_reference_id = Vector3i(1, 1, 4)
+	receiver.radio_number = 3
+	receiver.receiver_state = DisReceiverPdu.RECEIVER_ON_AND_RECEIVING
+	receiver.received_power = -72.5
+	receiver.transmitter_entity_id = Vector3i(2, 1, 6)
+	receiver.transmitter_radio_number = 5
+	var iff := DisIffPdu.new()
+	iff.emitting_entity_id = Vector3i(1, 1, 4)
+	iff.system_type = 1
+	iff.system_name = 2
+	iff.system_mode = 2
+	iff.system_designator = 7
+	iff.system_specific_data = 9
+	iff.data_field_1 = 3
+	iff.information_layers = 1
+	iff.parameters = PackedInt32Array([11, 22, 33, 44, 55, 66])
+	var designator := DisDesignatorPdu.new()
+	designator.code_name = 5
+	designator.designator_code = 1
+	designator.power = 10.5
+	designator.wavelength = 1.064
+	var emission := DisElectromagneticEmissionPdu.new()
+	var system := DisElectromagneticEmissionPdu.make_system()
+	var beam := DisElectromagneticEmissionPdu.make_beam()
+	beam.frequency = 9.5e9
+	beam.parameter_index = 77
+	beam.jamming_technique = 0x01020304
+	beam.track_jam = [{"entity_id": Vector3i(2, 1, 6), "emitter_number": 1, "beam_number": 2}]
+	system.beams = [beam]
+	emission.systems = [system]
+	var recording := DisRecording.new()
+	for pdu: DisPduBase in [receiver, iff, designator, emission]:
+		recording.add_packet(pdu.encode(), 1793534400.0 + recording.get_packet_count())
+	recording.save("user://wireshark_emission_fields.pcapng")
+	var rows := _tshark_fields(tshark, "user://wireshark_emission_fields.pcapng", ["dis.radio.receive_state",
+			"dis.receive_power", "dis.radio.transmitter_radio_id", "dis.iff.system_type", "dis.iff.system_name",
+			"dis.iff.system_mode", "dis.iff.system_designator", "dis.iff.system_specific_data",
+			"dis.iff.alternate_parameter_4", "dis.iff.parameter_1", "dis.iff.parameter_6", "dis.designator_code_name",
+			"dis.designator_power", "dis.designator_wavelength", "dis.em.fund.frequency", "dis.em.beam.parameter_index",
+			"dis.jamming_mode_seq", "_ws.malformed"])
+	assert_eq(rows.size(), 4)
+	if rows.size() != 4:
+		return
+	assert_eq(rows[0]["dis.radio.receive_state"], "2")
+	assert_eq(rows[0]["dis.receive_power"], "-72.5")
+	assert_eq(rows[0]["dis.radio.transmitter_radio_id"], "5")
+	for field: String in ["dis.iff.system_type", "dis.iff.system_name", "dis.iff.system_mode"]:
+		assert_ne(rows[1][field], "", field)
+	assert_eq(rows[1]["dis.iff.system_designator"], "7")
+	assert_eq(rows[1]["dis.iff.system_specific_data"], "9")
+	assert_eq(rows[1]["dis.iff.alternate_parameter_4"], "3")
+	assert_eq(rows[1]["dis.iff.parameter_1"], "11")
+	assert_eq(rows[1]["dis.iff.parameter_6"], "66")
+	assert_eq(rows[2]["dis.designator_code_name"], "5")
+	assert_eq(rows[2]["dis.designator_power"], "10.5")
+	assert_string_contains(rows[2]["dis.designator_wavelength"], "1.064")
+	assert_eq(rows[3]["dis.em.beam.parameter_index"], "77")
+	assert_almost_eq(float(rows[3]["dis.em.fund.frequency"]), 9.5e9, 1000.0, "float32 on the wire")
+	assert_eq(rows[3]["dis.jamming_mode_seq"], str(0x01020304))
+	for row: Dictionary in rows:
+		assert_eq(row["_ws.malformed"], "")

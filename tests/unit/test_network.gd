@@ -258,7 +258,9 @@ func test_receives_every_pdu_type_from_open_dis_python() -> void:
 	var typed := {}
 	var signal_names := ["fire_received", "detonation_received", "remove_entity_received", "start_resume_received",
 			"stop_freeze_received", "acknowledge_received", "collision_received", "create_entity_received",
-			"comment_received", "set_data_received", "data_received", "transmitter_received", "signal_received"]
+			"comment_received", "set_data_received", "data_received", "transmitter_received", "signal_received",
+			"receiver_received", "electromagnetic_emission_received", "designator_received", "iff_received",
+			"entity_state_update_received"]
 	for signal_name in signal_names:
 		network.connect(signal_name, func(pdu): typed[signal_name] = typed.get(signal_name, 0) + 1)
 	var pid := OS.create_process(python, [ProjectSettings.globalize_path("res://tools/oracle_sender.py"),
@@ -276,6 +278,10 @@ func test_receives_every_pdu_type_from_open_dis_python() -> void:
 	assert_eq(_rejected, [], "nothing rejected")
 
 
+## godot-dis class names that differ from Open-DIS Python's (after "Dis").
+const OPEN_DIS_NAMES := {"ElectromagneticEmissionPdu": "ElectromagneticEmissionsPdu"}
+
+
 ## The golden PDUs re-encoded by Godot and sent to Python, which must decode
 ## each one as the right class and serialize it back to the same bytes.
 func test_sends_every_pdu_type_to_open_dis_python() -> void:
@@ -283,7 +289,10 @@ func test_sends_every_pdu_type_to_open_dis_python() -> void:
 	if python.is_empty():
 		pending("Python oracle venv not found (tools/.venv)")
 		return
-	var golden := _golden_pdus()
+	# Open-DIS Python has no IFF PDU and its Receiver PDU leaves out the radio reference ID and radio number
+	# (tools/golden_pdus.py packs those two from the standard; test_wireshark.gd checks them).
+	var golden := _golden_pdus().filter(func(bytes: PackedByteArray) -> bool:
+		return bytes[2] != DisPdu.PDU_TYPE_IFF and bytes[2] != DisPdu.PDU_TYPE_RECEIVER)
 	var out := OS.get_user_data_dir().path_join("oracle_received_pdus.jsonl")
 	for path in [out, out + ".ready", out + ".done"]:
 		if FileAccess.file_exists(path):
@@ -306,7 +315,8 @@ func test_sends_every_pdu_type_to_open_dis_python() -> void:
 	var problems := PackedStringArray()
 	for i in mini(lines.size(), golden.size()):
 		var row: Dictionary = JSON.parse_string(lines[i])
-		if row.get("type") != classes[i].trim_prefix("Dis"):
+		var expected_type: String = classes[i].trim_prefix("Dis")
+		if row.get("type") != OPEN_DIS_NAMES.get(expected_type, expected_type):
 			problems.append("#%d: %s decoded as %s" % [i, classes[i], row.get("type", row.get("error"))])
 		elif row.reencoded != row.hex:
 			problems.append("#%d %s: Python re-encoded\n   %s\n   %s" % [i, classes[i], row.reencoded, row.hex])

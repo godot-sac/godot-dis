@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Versions follow [semver
 
 ## [Unreleased]
 ### Added
+- Five PDU types (19 in all): Entity State Update (`DisEntityStateUpdatePdu`; `DisEntityManager` applies it to known
+  entities), Receiver (`DisReceiverPdu`), Electromagnetic Emission (`DisElectromagneticEmissionPdu`, systems and
+  beams as Dictionaries), Designator (`DisDesignatorPdu`) and IFF (`DisIffPdu`, layer 1 decoded, further layers
+  raw), with a `DisNetwork` signal each. Checked against Open-DIS Python (Entity State Update, Electromagnetic
+  Emission, Designator), the IEEE 1278.1-2012 layout (Receiver, IFF), the opendis7-java capture and Wireshark;
+  [docs/emissions.md](docs/emissions.md). The own-packet filter now covers the Distributed Emission family too.
 - Class reference in the editor: F1 on any `Dis*` class shows its description, methods, properties, signals and
   constants (`doc_classes/`, built into the debug library). `tools/check_docs.py` and a CI step keep it complete
   and in step with the API.

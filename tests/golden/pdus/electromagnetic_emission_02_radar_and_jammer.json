@@ -1,0 +1,141 @@
+{
+  "class": "DisElectromagneticEmissionPdu",
+  "length": 248,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "emitting_entity_id": [
+      2,
+      1,
+      9
+    ],
+    "event_id": [
+      2,
+      1,
+      77
+    ],
+    "state_update_indicator": 0,
+    "systems": {
+      "ee_systems": [
+        {
+          "emitter_name": 2000,
+          "emitter_function": 1,
+          "emitter_number": 1,
+          "location": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "beams": [
+            {
+              "beam_id": 1,
+              "parameter_index": 0,
+              "floats": [
+                "4201824500000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000"
+              ],
+              "function": 1,
+              "high_density_track_jam": 0,
+              "status": 0,
+              "jamming_technique": 0,
+              "track_jam": [
+                [
+                  [
+                    1,
+                    1,
+                    20
+                  ],
+                  1,
+                  1
+                ],
+                [
+                  [
+                    1,
+                    1,
+                    21
+                  ],
+                  1,
+                  1
+                ]
+              ]
+            },
+            {
+              "beam_id": 2,
+              "parameter_index": 0,
+              "floats": [
+                "4201b1f400000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000"
+              ],
+              "function": 4,
+              "high_density_track_jam": 1,
+              "status": 0,
+              "jamming_technique": 0,
+              "track_jam": []
+            }
+          ]
+        },
+        {
+          "emitter_name": 3000,
+          "emitter_function": 11,
+          "emitter_number": 2,
+          "location": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "beams": [
+            {
+              "beam_id": 1,
+              "parameter_index": 0,
+              "floats": [
+                "41d1e1a300000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000",
+                "0000000000000000"
+              ],
+              "function": 3,
+              "high_density_track_jam": 0,
+              "status": 0,
+              "jamming_technique": 16909060,
+              "track_jam": [
+                [
+                  [
+                    1,
+                    1,
+                    20
+                  ],
+                  1,
+                  1
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

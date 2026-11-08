@@ -10,8 +10,8 @@
 
 #include "dis_pdu_base.h"
 
-// Radio Communications family (protocol family 4): who transmits on which frequency (Transmitter) and the
-// transmitted data (Signal). Encoded with our own code (open-dis-cpp has no DIS 7 Transmitter PDU). godot-dis
+// Radio Communications family (protocol family 4): who transmits on which frequency (Transmitter), the
+// transmitted data (Signal) and who receives it (Receiver). Encoded with our own code (open-dis-cpp has no DIS 7 Transmitter PDU). godot-dis
 // decodes them and shows who is on the air; it does not play or record audio. Layouts: docs/radio.md.
 
 // Transmitter PDU (type 25): the state of one radio. 104 bytes plus the variable-length records.
@@ -140,4 +140,49 @@ public:
 	godot::PackedByteArray get_data() const { return data; }
 };
 
+// Receiver PDU (type 27): the state of one radio receiver and the transmitter it last heard. 36 bytes.
+class DisReceiverPdu : public DisPduBase {
+	GDCLASS(DisReceiverPdu, DisPduBase)
+
+	godot::Vector3i radio_reference_id; // the entity (or object) the receiver belongs to
+	int radio_number = 0;
+	int receiver_state = 0;
+	double received_power = 0.0; // dBm
+	godot::Vector3i transmitter_entity_id;
+	int transmitter_radio_number = 0;
+
+protected:
+	static void _bind_methods();
+
+public:
+	static constexpr int BASE_SIZE = 36;
+
+	// SISO-REF-010 "Receiver-Receiver State" (UID 179).
+	enum ReceiverState {
+		RECEIVER_OFF = 0,
+		RECEIVER_ON_NOT_RECEIVING = 1,
+		RECEIVER_ON_AND_RECEIVING = 2,
+	};
+
+	godot::PackedByteArray encode() const override;
+	static godot::Ref<DisReceiverPdu> decode(const godot::PackedByteArray &bytes);
+	int get_pdu_type() const override { return 27; }
+	int get_protocol_family() const override { return 4; }
+	int get_body_length() const override { return BASE_SIZE; }
+
+	void set_radio_reference_id(const godot::Vector3i &value) { radio_reference_id = value; }
+	godot::Vector3i get_radio_reference_id() const { return radio_reference_id; }
+	void set_radio_number(int value) { radio_number = value; }
+	int get_radio_number() const { return radio_number; }
+	void set_receiver_state(int value) { receiver_state = value; }
+	int get_receiver_state() const { return receiver_state; }
+	void set_received_power(double value) { received_power = value; }
+	double get_received_power() const { return received_power; }
+	void set_transmitter_entity_id(const godot::Vector3i &value) { transmitter_entity_id = value; }
+	godot::Vector3i get_transmitter_entity_id() const { return transmitter_entity_id; }
+	void set_transmitter_radio_number(int value) { transmitter_radio_number = value; }
+	int get_transmitter_radio_number() const { return transmitter_radio_number; }
+};
+
 VARIANT_ENUM_CAST(DisTransmitterPdu::TransmitState);
+VARIANT_ENUM_CAST(DisReceiverPdu::ReceiverState);

@@ -7,7 +7,9 @@
 
 #include "dis_collision_pdu.h"
 #include "dis_datum_pdus.h"
+#include "dis_emission_pdus.h"
 #include "dis_entity_state_pdu.h"
+#include "dis_entity_state_update_pdu.h"
 #include "dis_radio_pdus.h"
 #include "dis_simulation_management_pdus.h"
 #include "dis_warfare_pdus.h"
@@ -57,8 +59,13 @@ void DisPdu::_bind_methods() {
 	BIND_ENUM_CONSTANT(PDU_TYPE_SET_DATA);
 	BIND_ENUM_CONSTANT(PDU_TYPE_DATA);
 	BIND_ENUM_CONSTANT(PDU_TYPE_COMMENT);
+	BIND_ENUM_CONSTANT(PDU_TYPE_ELECTROMAGNETIC_EMISSION);
+	BIND_ENUM_CONSTANT(PDU_TYPE_DESIGNATOR);
 	BIND_ENUM_CONSTANT(PDU_TYPE_TRANSMITTER);
 	BIND_ENUM_CONSTANT(PDU_TYPE_SIGNAL);
+	BIND_ENUM_CONSTANT(PDU_TYPE_RECEIVER);
+	BIND_ENUM_CONSTANT(PDU_TYPE_IFF);
+	BIND_ENUM_CONSTANT(PDU_TYPE_ENTITY_STATE_UPDATE);
 }
 
 Dictionary DisPdu::peek_header(const PackedByteArray &bytes) {
@@ -110,6 +117,16 @@ Ref<DisPduBase> DisPdu::decode(const PackedByteArray &bytes) {
 			return DisTransmitterPdu::decode(bytes);
 		case PDU_TYPE_SIGNAL:
 			return DisSignalPdu::decode(bytes);
+		case PDU_TYPE_RECEIVER:
+			return DisReceiverPdu::decode(bytes);
+		case PDU_TYPE_ELECTROMAGNETIC_EMISSION:
+			return DisElectromagneticEmissionPdu::decode(bytes);
+		case PDU_TYPE_DESIGNATOR:
+			return DisDesignatorPdu::decode(bytes);
+		case PDU_TYPE_IFF:
+			return DisIffPdu::decode(bytes);
+		case PDU_TYPE_ENTITY_STATE_UPDATE:
+			return DisEntityStateUpdatePdu::decode(bytes);
 		default:
 			set_last_error(vformat("unsupported PDU type %d", bytes[2]));
 			return Ref<DisPduBase>();
@@ -132,6 +149,11 @@ bool DisPdu::is_supported(int type) {
 		case PDU_TYPE_COMMENT:
 		case PDU_TYPE_TRANSMITTER:
 		case PDU_TYPE_SIGNAL:
+		case PDU_TYPE_RECEIVER:
+		case PDU_TYPE_ELECTROMAGNETIC_EMISSION:
+		case PDU_TYPE_DESIGNATOR:
+		case PDU_TYPE_IFF:
+		case PDU_TYPE_ENTITY_STATE_UPDATE:
 			return true;
 		default:
 			return false;

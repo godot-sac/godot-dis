@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisIffPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		IFF PDU (type 28): an IFF or secondary surveillance radar transponder or interrogator.
+	</brief_description>
+	<description>
+		An IFF PDU reports the state of an identification system carried by an entity: system type, name and mode, its status and the code of each mode (Mode 1, 2, 3/A, 4, C and 5/S). It is 60 bytes for layer 1 plus any further layers, and has protocol family 6 (Distributed Emission Regeneration).
+		Layer 1 is decoded into properties: the System ID record ([member system_type], [member system_name], [member system_mode], [member change_options]), [member system_designator], [member system_specific_data] and the fundamental operational data ([member system_status], [member data_field_1], [member information_layers], [member data_field_2], [member parameters]). Layers 2 and up (Mode 5, Mode S and others) are kept raw in [member layers].
+		godot-dis encodes and decodes the PDU; it does not model IFF interrogation. The PDU is encoded with godot-dis's own code.
+	</description>
+	<tutorials>
+		<link title="Emissions: radars, jammers, designators and IFF">https://github.com/godot-sac/godot-dis/blob/main/docs/emissions.md</link>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisIffPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as an IFF PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid IFF PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], fewer than 60 bytes, or a further layer whose length field is smaller than 4 or runs past the PDU length). A length field of 0 is replaced by the datagram size.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="change_options" type="int" setter="set_change_options" getter="get_change_options" default="0">
+			Change/Options bit field of the System ID record (8-bit).
+		</member>
+		<member name="data_field_1" type="int" setter="set_data_field_1" getter="get_data_field_1" default="0">
+			Alternate parameter 4 of the fundamental operational data (8-bit).
+		</member>
+		<member name="data_field_2" type="int" setter="set_data_field_2" getter="get_data_field_2" default="0">
+			Modifier of the fundamental operational data (8-bit).
+		</member>
+		<member name="emitting_entity_id" type="Vector3i" setter="set_emitting_entity_id" getter="get_emitting_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity that carries the IFF system, as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="event_id" type="Vector3i" setter="set_event_id" getter="get_event_id" default="Vector3i(0, 0, 0)">
+			Event ID as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = event number).
+		</member>
+		<member name="information_layers" type="int" setter="set_information_layers" getter="get_information_layers" default="0">
+			Bit field of the information layers that are present or active (8-bit), part of the fundamental operational data.
+		</member>
+		<member name="layers" type="Array" setter="set_layers" getter="get_layers" default="[]">
+			Further layers (layer 2 and up) as an [Array] of [PackedByteArray], kept raw. Each entry is a whole layer including its 4-byte layer header: layer number (1 byte), layer specific information (1 byte) and the layer length in bytes (16-bit, header included). Each entry must be at least 4 and at most 65535 bytes for [method DisPduBase.encode].
+		</member>
+		<member name="parameters" type="PackedInt32Array" setter="set_parameters" getter="get_parameters" default="PackedInt32Array(0, 0, 0, 0, 0, 0)">
+			The six 16-bit parameters of the fundamental operational data, in order: Mode 1, Mode 2, Mode 3/A, Mode 4, Mode C, Mode 5 / S. Setting an array that does not have exactly 6 values prints an error and leaves the old value.
+		</member>
+		<member name="relative_antenna_location" type="Vector3" setter="set_relative_antenna_location" getter="get_relative_antenna_location" default="Vector3(0, 0, 0)">
+			Location of the antenna relative to the entity, as a [Vector3] in metres in the entity's body axes (32-bit floats on the wire).
+		</member>
+		<member name="system_designator" type="int" setter="set_system_designator" getter="get_system_designator" default="0">
+			System designator (8-bit): tells apart several IFF systems of the same type on one entity.
+		</member>
+		<member name="system_mode" type="int" setter="set_system_mode" getter="get_system_mode" default="0">
+			Operating mode of the system (8-bit, SISO-REF-010 "IFF System Mode"), part of the System ID record.
+		</member>
+		<member name="system_name" type="int" setter="set_system_name" getter="get_system_name" default="0">
+			System name (16-bit, SISO-REF-010 "IFF System Name"), part of the System ID record.
+		</member>
+		<member name="system_specific_data" type="int" setter="set_system_specific_data" getter="get_system_specific_data" default="0">
+			System specific data (8-bit).
+		</member>
+		<member name="system_status" type="int" setter="set_system_status" getter="get_system_status" default="0">
+			System status bit field (8-bit), part of the fundamental operational data: operational flag, system on/off, parameters 1-6 available or not.
+		</member>
+		<member name="system_type" type="int" setter="set_system_type" getter="get_system_type" default="0">
+			System type (16-bit, SISO-REF-010 "IFF System Type": transponder, interrogator, ...), part of the System ID record.
+		</member>
+	</members>
+</class>

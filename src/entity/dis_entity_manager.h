@@ -17,6 +17,7 @@
 
 #include "entity/dead_reckoning.h"
 #include "entity/dis_entity_type_map.h"
+#include "pdu/dis_entity_state_update_pdu.h"
 #include "pdu/dis_entity_state_pdu.h"
 
 class DisGeoOrigin;
@@ -112,6 +113,7 @@ private:
 	void connect_network();
 	void disconnect_network();
 	void on_entity_state(const godot::Ref<DisEntityStatePdu> &pdu);
+	void on_entity_state_update(const godot::Ref<DisEntityStateUpdatePdu> &pdu);
 	// Places the node for time `now`; returns false if there is no origin.
 	void place(DisRemoteEntity *entity, DisGeoOrigin *origin, double now, bool smooth);
 	void remove(uint64_t key, DisRemoteEntity *entity, const godot::String &reason);
@@ -130,6 +132,10 @@ public:
 	// The same with `now` taken as it is, also when negative (DisPlayer restores entities whose last PDU is older
 	// than the manager's clock).
 	void apply_entity_state(const godot::Ref<DisEntityStatePdu> &pdu, double now);
+	// Applies an Entity State Update PDU to a known entity: location, velocity, orientation, appearance and variable
+	// parameters change, type, marking and dead reckoning parameters stay those of its last Entity State PDU.
+	// Ignored for an entity no Entity State PDU has announced (its type is unknown).
+	void handle_entity_state_update(const godot::Ref<DisEntityStateUpdatePdu> &pdu, double now = -1.0);
 	// Dead reckons every entity to `now` and removes timed-out ones. Called every frame when auto_update is on.
 	void process_entities(double now);
 	// Seconds on the manager's clock (what `now` defaults to above).

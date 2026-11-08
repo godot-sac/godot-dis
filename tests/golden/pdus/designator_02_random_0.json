@@ -1,0 +1,46 @@
+{
+  "class": "DisDesignatorPdu",
+  "length": 88,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 217,
+    "timestamp": 1029178122,
+    "pdu_status": 230,
+    "designating_entity_id": [
+      18971,
+      56784,
+      8618
+    ],
+    "code_name": 43066,
+    "designated_entity_id": [
+      39711,
+      13488,
+      26587
+    ],
+    "designator_code": 32034,
+    "power": {
+      "f64": "40b64bcb60000000"
+    },
+    "wavelength": {
+      "f64": "402d1b21e0000000"
+    },
+    "spot_offset": [
+      19.031164169311523,
+      10.442808151245117,
+      31.806882858276367
+    ],
+    "spot_location_ecef": {
+      "f64_list": [
+        "c13c9ac6b45f4560",
+        "c13d6c2e7f2d0d10",
+        "c151cff680e5c406"
+      ]
+    },
+    "dr_algorithm": 75,
+    "spot_linear_acceleration": [
+      -1.1691474914550781,
+      -6.656454563140869,
+      -1.0312002897262573
+    ]
+  }
+}

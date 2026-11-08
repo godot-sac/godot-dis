@@ -86,6 +86,11 @@ void DisNetwork::_bind_methods() {
 														   "DisTransmitterPdu")));
 	ADD_SIGNAL(MethodInfo("signal_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE,
 													  "DisSignalPdu")));
+	ADD_SIGNAL(MethodInfo("receiver_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisReceiverPdu")));
+	ADD_SIGNAL(MethodInfo("electromagnetic_emission_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisElectromagneticEmissionPdu")));
+	ADD_SIGNAL(MethodInfo("designator_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisDesignatorPdu")));
+	ADD_SIGNAL(MethodInfo("iff_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisIffPdu")));
+	ADD_SIGNAL(MethodInfo("entity_state_update_received", PropertyInfo(Variant::OBJECT, "pdu", PROPERTY_HINT_RESOURCE_TYPE, "DisEntityStateUpdatePdu")));
 	ADD_SIGNAL(MethodInfo("packet_rejected", PropertyInfo(Variant::STRING, "reason"), PropertyInfo(Variant::STRING, "sender_ip")));
 
 	BIND_ENUM_CONSTANT(MODE_BROADCAST);
@@ -237,7 +242,7 @@ Error DisNetwork::send_bytes(const PackedByteArray &bytes) {
 // and its reliable variant (10).
 bool DisNetwork::starts_with_sender_id(int protocol_family) {
 	return protocol_family == 1 || protocol_family == 2 || protocol_family == 4 || protocol_family == 5 ||
-			protocol_family == 10;
+			protocol_family == 6 || protocol_family == 10;
 }
 
 const char *DisNetwork::typed_signal_of(int pdu_type) {
@@ -270,6 +275,16 @@ const char *DisNetwork::typed_signal_of(int pdu_type) {
 			return "transmitter_received";
 		case DisPdu::PDU_TYPE_SIGNAL:
 			return "signal_received";
+		case DisPdu::PDU_TYPE_RECEIVER:
+			return "receiver_received";
+		case DisPdu::PDU_TYPE_ELECTROMAGNETIC_EMISSION:
+			return "electromagnetic_emission_received";
+		case DisPdu::PDU_TYPE_DESIGNATOR:
+			return "designator_received";
+		case DisPdu::PDU_TYPE_IFF:
+			return "iff_received";
+		case DisPdu::PDU_TYPE_ENTITY_STATE_UPDATE:
+			return "entity_state_update_received";
 		default:
 			return nullptr;
 	}

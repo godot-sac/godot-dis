@@ -1,0 +1,98 @@
+{
+  "class": "DisElectromagneticEmissionPdu",
+  "length": 168,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 254,
+    "timestamp": 3212852828,
+    "pdu_status": 164,
+    "emitting_entity_id": [
+      35804,
+      38838,
+      32885
+    ],
+    "event_id": [
+      38379,
+      49928,
+      65292
+    ],
+    "state_update_indicator": 60,
+    "systems": {
+      "ee_systems": [
+        {
+          "emitter_name": 65186,
+          "emitter_function": 74,
+          "emitter_number": 112,
+          "location": [
+            -6.673960208892822,
+            2.59948992729187,
+            -19.361085891723633
+          ],
+          "beams": [
+            {
+              "beam_id": 152,
+              "parameter_index": 6921,
+              "floats": [
+                "41fc8c3720000000",
+                "41f126b160000000",
+                "42029bc2c0000000",
+                "41b301dc80000000",
+                "41f7e986c0000000",
+                "41fc79c440000000",
+                "41cdaab360000000",
+                "41e9e55440000000",
+                "41f51bcb60000000",
+                "41f00d0fa0000000"
+              ],
+              "function": 82,
+              "high_density_track_jam": 53,
+              "status": 0,
+              "jamming_technique": 572837092,
+              "track_jam": []
+            },
+            {
+              "beam_id": 15,
+              "parameter_index": 3280,
+              "floats": [
+                "41bcc7b8a0000000",
+                "41f34ac180000000",
+                "41eeb05c80000000",
+                "41d7307680000000",
+                "4201aa6c80000000",
+                "41f1eaf7c0000000",
+                "41fac332e0000000",
+                "41ee862e60000000",
+                "41f6ab4720000000",
+                "41f6203900000000"
+              ],
+              "function": 75,
+              "high_density_track_jam": 125,
+              "status": 0,
+              "jamming_technique": 2977925489,
+              "track_jam": [
+                [
+                  [
+                    6514,
+                    51221,
+                    63840
+                  ],
+                  133,
+                  89
+                ],
+                [
+                  [
+                    10311,
+                    60934,
+                    5510
+                  ],
+                  101,
+                  63
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

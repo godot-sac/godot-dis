@@ -124,11 +124,26 @@
 		<constant name="PDU_TYPE_COMMENT" value="22" enum="PduType">
 			Comment PDU ([DisCommentPdu]), protocol family 5 (Simulation Management).
 		</constant>
+		<constant name="PDU_TYPE_ELECTROMAGNETIC_EMISSION" value="23" enum="PduType">
+			Electromagnetic Emission PDU ([DisElectromagneticEmissionPdu]), protocol family 6 (Distributed Emission Regeneration).
+		</constant>
+		<constant name="PDU_TYPE_DESIGNATOR" value="24" enum="PduType">
+			Designator PDU ([DisDesignatorPdu]), protocol family 6 (Distributed Emission Regeneration).
+		</constant>
 		<constant name="PDU_TYPE_TRANSMITTER" value="25" enum="PduType">
 			Transmitter PDU ([DisTransmitterPdu]), protocol family 4 (Radio Communications).
 		</constant>
 		<constant name="PDU_TYPE_SIGNAL" value="26" enum="PduType">
 			Signal PDU ([DisSignalPdu]), protocol family 4 (Radio Communications).
+		</constant>
+		<constant name="PDU_TYPE_RECEIVER" value="27" enum="PduType">
+			Receiver PDU ([DisReceiverPdu]), protocol family 4 (Radio Communications).
+		</constant>
+		<constant name="PDU_TYPE_IFF" value="28" enum="PduType">
+			IFF PDU ([DisIffPdu]), protocol family 6 (Distributed Emission Regeneration).
+		</constant>
+		<constant name="PDU_TYPE_ENTITY_STATE_UPDATE" value="67" enum="PduType">
+			Entity State Update PDU ([DisEntityStateUpdatePdu]), protocol family 1 (Entity Information).
 		</constant>
 	</constants>
 </class>

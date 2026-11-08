@@ -1,0 +1,24 @@
+{
+  "class": "DisElectromagneticEmissionPdu",
+  "length": 28,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "emitting_entity_id": [
+      0,
+      0,
+      0
+    ],
+    "event_id": [
+      0,
+      0,
+      0
+    ],
+    "state_update_indicator": 0,
+    "systems": {
+      "ee_systems": []
+    }
+  }
+}

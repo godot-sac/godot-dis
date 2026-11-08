@@ -1,0 +1,26 @@
+{
+  "class": "DisReceiverPdu",
+  "length": 36,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 197,
+    "timestamp": 511169347,
+    "pdu_status": 88,
+    "radio_reference_id": [
+      11365,
+      58715,
+      62225
+    ],
+    "radio_number": 16892,
+    "receiver_state": 4592,
+    "received_power": {
+      "f64": "4042157c00000000"
+    },
+    "transmitter_entity_id": [
+      30208,
+      29608,
+      48687
+    ],
+    "transmitter_radio_number": 10558
+  }
+}

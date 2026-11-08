@@ -266,3 +266,54 @@ Ref<DisSignalPdu> DisSignalPdu::decode(const PackedByteArray &bytes) {
 	out->keep_trailing(bytes);
 	return out;
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Receiver
+
+void DisReceiverPdu::_bind_methods() {
+	ClassDB::bind_static_method("DisReceiverPdu", D_METHOD("decode", "bytes"), &DisReceiverPdu::decode);
+	ADD_GROUP("Receiver", "");
+	DIS_BIND_PROPERTY(DisReceiverPdu, VECTOR3I, radio_reference_id);
+	DIS_BIND_PROPERTY(DisReceiverPdu, INT, radio_number);
+	DIS_BIND_PROPERTY(DisReceiverPdu, INT, receiver_state);
+	DIS_BIND_PROPERTY(DisReceiverPdu, FLOAT, received_power);
+	DIS_BIND_PROPERTY(DisReceiverPdu, VECTOR3I, transmitter_entity_id);
+	DIS_BIND_PROPERTY(DisReceiverPdu, INT, transmitter_radio_number);
+	ADD_GROUP("", "");
+
+	BIND_ENUM_CONSTANT(RECEIVER_OFF);
+	BIND_ENUM_CONSTANT(RECEIVER_ON_NOT_RECEIVING);
+	BIND_ENUM_CONSTANT(RECEIVER_ON_AND_RECEIVING);
+}
+
+PackedByteArray DisReceiverPdu::encode() const {
+	byte_io::Writer out;
+	write_header(out);
+	write_id(out, radio_reference_id);
+	out.u16(radio_number);
+	out.u16(receiver_state);
+	out.u16(0); // padding
+	out.f32(received_power);
+	write_id(out, transmitter_entity_id);
+	out.u16(transmitter_radio_number);
+	return finish(out);
+}
+
+Ref<DisReceiverPdu> DisReceiverPdu::decode(const PackedByteArray &bytes) {
+	if (!DisPdu::validate(bytes, DisPdu::PDU_TYPE_RECEIVER, BASE_SIZE)) {
+		return Ref<DisReceiverPdu>();
+	}
+	byte_io::Reader in(bytes, 0, DisPdu::get_effective_length(bytes));
+	Ref<DisReceiverPdu> out;
+	out.instantiate();
+	out->read_header(in);
+	out->radio_reference_id = read_id(in);
+	out->radio_number = static_cast<int>(in.u16());
+	out->receiver_state = static_cast<int>(in.u16());
+	in.skip(2);
+	out->received_power = in.f32();
+	out->transmitter_entity_id = read_id(in);
+	out->transmitter_radio_number = static_cast<int>(in.u16());
+	out->keep_trailing(bytes);
+	return out;
+}

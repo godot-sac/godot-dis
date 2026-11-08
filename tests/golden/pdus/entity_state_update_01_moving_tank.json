@@ -1,0 +1,36 @@
+{
+  "class": "DisEntityStateUpdatePdu",
+  "length": 72,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 1,
+    "timestamp": 0,
+    "pdu_status": 0,
+    "entity_id": [
+      1,
+      1,
+      7
+    ],
+    "linear_velocity": [
+      3.5,
+      -1.25,
+      0.0
+    ],
+    "location_ecef": {
+      "f64_list": [
+        "41501227c6863a70",
+        "4141da6b23a3f747",
+        "414fc50ebc4d4489"
+      ]
+    },
+    "orientation": [
+      1.2000000476837158,
+      -0.05000000074505806,
+      0.009999999776482582
+    ],
+    "appearance": 4194304,
+    "variable_parameters": {
+      "raw_hex": []
+    }
+  }
+}

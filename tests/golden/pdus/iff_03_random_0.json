@@ -1,0 +1,48 @@
+{
+  "class": "DisIffPdu",
+  "length": 80,
+  "fields": {
+    "protocol_version": 7,
+    "exercise_id": 97,
+    "timestamp": 1499752354,
+    "pdu_status": 165,
+    "emitting_entity_id": [
+      20729,
+      37304,
+      32753
+    ],
+    "event_id": [
+      11050,
+      63312,
+      44076
+    ],
+    "relative_antenna_location": [
+      8.373437881469727,
+      -9.817217826843262,
+      1.386772871017456
+    ],
+    "parameters": [
+      50949,
+      42712,
+      15390,
+      31767,
+      9703,
+      38985
+    ],
+    "layers": {
+      "raw_hex": [
+        "02880014d3a44b6b5621a930d94b93e1fb6d7e93"
+      ]
+    },
+    "system_type": 46052,
+    "system_name": 34087,
+    "system_mode": 105,
+    "change_options": 149,
+    "system_designator": 52,
+    "system_specific_data": 125,
+    "system_status": 106,
+    "data_field_1": 240,
+    "information_layers": 183,
+    "data_field_2": 47
+  }
+}

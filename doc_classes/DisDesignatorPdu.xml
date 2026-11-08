@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisDesignatorPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Designator PDU (type 24): a laser designator spot.
+	</brief_description>
+	<description>
+		A Designator PDU describes a laser designator: which entity designates, which entity is designated, the laser code, power and wavelength, and where the spot is, both as an offset from the designated entity and as a geocentric location. The spot's motion is given by a dead reckoning algorithm and a linear acceleration. It is 88 bytes and has protocol family 6 (Distributed Emission Regeneration).
+		godot-dis encodes and decodes the PDU; it does not model the laser or its detection. The PDU is encoded with godot-dis's own code.
+	</description>
+	<tutorials>
+		<link title="Emissions: radars, jammers, designators and IFF">https://github.com/godot-sac/godot-dis/blob/main/docs/emissions.md</link>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisDesignatorPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Designator PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Designator PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 88 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="code_name" type="int" setter="set_code_name" getter="get_code_name" default="0">
+			Designator code name (16-bit, SISO-REF-010 "Designator System Name").
+		</member>
+		<member name="designated_entity_id" type="Vector3i" setter="set_designated_entity_id" getter="get_designated_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity the laser spot is on, as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number). [member spot_offset] is relative to this entity.
+		</member>
+		<member name="designating_entity_id" type="Vector3i" setter="set_designating_entity_id" getter="get_designating_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity that holds the designator, as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="designator_code" type="int" setter="set_designator_code" getter="get_designator_code" default="0">
+			Laser code (16-bit): the pulse code a seeker has to match.
+		</member>
+		<member name="dr_algorithm" type="int" setter="set_dr_algorithm" getter="get_dr_algorithm" default="0">
+			Dead reckoning algorithm used for the spot (8-bit, SISO-REF-010 "Dead Reckoning Algorithm"), with [member spot_linear_acceleration].
+		</member>
+		<member name="power" type="float" setter="set_power" getter="get_power" default="0.0">
+			Laser power in watts (32-bit float on the wire).
+		</member>
+		<member name="spot_linear_acceleration" type="Vector3" setter="set_spot_linear_acceleration" getter="get_spot_linear_acceleration" default="Vector3(0, 0, 0)">
+			Linear acceleration of the spot in metres per second squared, used by the dead reckoning algorithm (32-bit floats on the wire).
+		</member>
+		<member name="spot_location_ecef" type="PackedFloat64Array" setter="set_spot_location_ecef" getter="get_spot_location_ecef" default="PackedFloat64Array(0, 0, 0)">
+			Location of the spot in WGS84 geocentric (ECEF) coordinates, as a [PackedFloat64Array] [code][x, y, z][/code] in metres. Setting an array that does not have exactly 3 values prints an error and leaves the old value.
+		</member>
+		<member name="spot_offset" type="Vector3" setter="set_spot_offset" getter="get_spot_offset" default="Vector3(0, 0, 0)">
+			Position of the spot in metres relative to the designated entity, in that entity's body axes (32-bit floats on the wire).
+		</member>
+		<member name="wavelength" type="float" setter="set_wavelength" getter="get_wavelength" default="0.0">
+			Laser wavelength in micrometres (32-bit float on the wire).
+		</member>
+	</members>
+</class>

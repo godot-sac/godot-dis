@@ -1,5 +1,9 @@
 """Generates golden PDUs of every type except Entity State (see golden.py) with the Open-DIS Python oracle.
 
+Receiver and IFF are packed here with struct from the IEEE 1278.1-2012 layouts: Open-DIS Python 1.1.0 has no IFF PDU
+and its Receiver PDU leaves out the radio reference ID and radio number. tests/unit/test_captures.gd checks both
+against the opendis7-java capture and tshark.
+
 Usage: tools/.venv/Scripts/python tools/golden_pdus.py
 Writes tests/golden/pdus/<type>_<NN>_<name>.{bin,json} and tests/golden/pdus/index.json.
 
@@ -18,10 +22,13 @@ import random
 import struct
 from pathlib import Path
 
-from opendis.dis7 import (AcknowledgePdu, ClockTime, CollisionPdu, CommentPdu, CreateEntityPdu, DataPdu,
-                          DetonationPdu, EntityIdentifier, EntityType, FirePdu, FixedDatum, MunitionDescriptor,
+from opendis.dis7 import (AcknowledgePdu, BeamStatus, ClockTime, CollisionPdu, CommentPdu, CreateEntityPdu, DataPdu,
+                          DesignatorPdu, DetonationPdu, EEFundamentalParameterData, ElectromagneticEmissionsPdu,
+                          EmissionSystemBeamRecord, EmissionSystemRecord, EmitterSystem, EntityIdentifier,
+                          EntityStateUpdatePdu, EntityType, EulerAngles, FirePdu, FixedDatum, MunitionDescriptor,
                           RemoveEntityPdu, SetDataPdu, SignalPdu, SimulationAddress, StartResumePdu, StopFreezePdu,
-                          TransmitterPdu, VariableDatum, VariableParameter, Vector3Float, WorldCoordinates)
+                          TrackJamData, TransmitterPdu, VariableDatum, VariableParameter, Vector3Float,
+                          WorldCoordinates)
 from opendis.record.radio import ModulationType, SpreadSpectrum
 from opendis.PduFactory import createPdu
 from opendis.record.common import EventIdentifier
@@ -446,6 +453,233 @@ def rand_bytes(n):
     return bytes(rng2.randrange(256) for _ in range(n))
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# Entity State Update, Receiver, Distributed Emission Regeneration
+
+def entity_state_update(c):
+    vps = c.get("variable_parameters", [])
+    p = EntityStateUpdatePdu(
+        entityID=eid(c.get("entity_id", [0, 0, 0])),
+        entityLinearVelocity=Vector3Float(*[f32(v) for v in c.get("linear_velocity", [0.0] * 3)]),
+        entityLocation=WorldCoordinates(*c.get("location_ecef", [0.0] * 3)),
+        entityOrientation=EulerAngles(*[f32(v) for v in c.get("orientation", [0.0] * 3)]),
+        entityAppearance=c.get("appearance", 0))
+    for raw in vps:
+        vp = VariableParameter()
+        vp.parse(__import__("opendis.stream", fromlist=["DataInputStream"]).DataInputStream(io.BytesIO(raw)))
+        p.variableParameters.append(vp)
+    header(p, c)
+    data = serialize(p, 72 + 16 * len(vps))
+    fields = header_fields(c) | {
+        "entity_id": c.get("entity_id", [0, 0, 0]),
+        "linear_velocity": [f32(v) for v in c.get("linear_velocity", [0.0] * 3)],
+        "location_ecef": f64_list(c.get("location_ecef", [0.0] * 3)),
+        "orientation": [f32(v) for v in c.get("orientation", [0.0] * 3)],
+        "appearance": c.get("appearance", 0), "variable_parameters": {"raw_hex": [v.hex() for v in vps]}}
+    return "DisEntityStateUpdatePdu", data, fields
+
+
+def receiver(c):
+    """IEEE 1278.1-2012 7.7.4, packed here (see the module docstring)."""
+    data = struct.pack(">BBBBIHBB", c.get("protocol_version", 7), c.get("exercise_id", 1), 27, 4,
+                       c.get("timestamp", 0), 36, c.get("pdu_status", 0), 0)
+    rid, tid = c.get("radio_reference_id", [0, 0, 0]), c.get("transmitter_entity_id", [0, 0, 0])
+    data += struct.pack(">HHHHHHfHHHH", *rid, c.get("radio_number", 0), c.get("receiver_state", 0), 0,
+                        c.get("received_power", 0.0), *tid, c.get("transmitter_radio_number", 0))
+    fields = header_fields(c) | {
+        "radio_reference_id": rid, "radio_number": c.get("radio_number", 0),
+        "receiver_state": c.get("receiver_state", 0), "received_power": f64(f32(c.get("received_power", 0.0))),
+        "transmitter_entity_id": tid, "transmitter_radio_number": c.get("transmitter_radio_number", 0)}
+    return "DisReceiverPdu", data, fields
+
+
+BEAM_FLOATS = ["frequency", "frequency_range", "effective_radiated_power", "pulse_repetition_frequency",
+               "pulse_width", "azimuth_center", "azimuth_sweep", "elevation_center", "elevation_sweep", "sweep_sync"]
+
+
+def electromagnetic_emission(c):
+    systems, json_systems, length = [], [], 28
+    for sc in c.get("systems", []):
+        beams, json_beams, system_bytes = [], [], 20
+        for bc in sc.get("beams", []):
+            targets = bc.get("track_jam", [])
+            floats = [f32(bc.get(k, 0.0)) for k in BEAM_FLOATS]
+            beam_bytes = 52 + 8 * len(targets)
+            beams.append(EmissionSystemBeamRecord(
+                beamDataLength=beam_bytes // 4, beamIDNumber=bc.get("beam_id", 0),
+                beamParameterIndex=bc.get("parameter_index", 0),
+                fundamentalParameterData=EEFundamentalParameterData(*floats),
+                beamFunction=bc.get("function", 0), highDensityTrackJam=bc.get("high_density_track_jam", 0),
+                beamStatus=BeamStatus(bc.get("status", 0)), jammingModeSequence=bc.get("jamming_technique", 0),
+                trackJamRecords=[TrackJamData(eid(t[0]), t[1], t[2]) for t in targets]))
+            json_beams.append({"beam_id": bc.get("beam_id", 0), "parameter_index": bc.get("parameter_index", 0),
+                               "floats": [struct.pack(">d", v).hex() for v in floats],
+                               "function": bc.get("function", 0),
+                               "high_density_track_jam": bc.get("high_density_track_jam", 0),
+                               "status": bc.get("status", 0), "jamming_technique": bc.get("jamming_technique", 0),
+                               "track_jam": targets})
+            system_bytes += beam_bytes
+        location = [f32(v) for v in sc.get("location", [0.0] * 3)]
+        systems.append(EmissionSystemRecord(
+            systemDataLength=system_bytes // 4 if system_bytes // 4 <= 255 else 0,
+            emitterSystem=EmitterSystem(sc.get("emitter_name", 0), sc.get("emitter_function", 0),
+                                        sc.get("emitter_number", 0)),
+            location=Vector3Float(*location), beamRecords=beams))
+        json_systems.append({"emitter_name": sc.get("emitter_name", 0),
+                             "emitter_function": sc.get("emitter_function", 0),
+                             "emitter_number": sc.get("emitter_number", 0), "location": location,
+                             "beams": json_beams})
+        length += system_bytes
+    p = ElectromagneticEmissionsPdu(emittingEntityID=eid(c.get("emitting_entity_id", [0, 0, 0])),
+                                    eventID=evid(c.get("event_id", [0, 0, 0])),
+                                    stateUpdateIndicator=c.get("state_update_indicator", 0), systems=systems)
+    header(p, c)
+    fields = header_fields(c) | {
+        "emitting_entity_id": c.get("emitting_entity_id", [0, 0, 0]), "event_id": c.get("event_id", [0, 0, 0]),
+        "state_update_indicator": c.get("state_update_indicator", 0), "systems": {"ee_systems": json_systems}}
+    return "DisElectromagneticEmissionPdu", serialize(p, length), fields
+
+
+def designator(c):
+    p = DesignatorPdu(
+        designatingEntityID=eid(c.get("designating_entity_id", [0, 0, 0])), codeName=c.get("code_name", 0),
+        designatedEntityID=eid(c.get("designated_entity_id", [0, 0, 0])),
+        designatorCode=c.get("designator_code", 0), designatorPower=f32(c.get("power", 0.0)),
+        designatorWavelength=f32(c.get("wavelength", 0.0)),
+        designatorSpotWrtDesignated=Vector3Float(*[f32(v) for v in c.get("spot_offset", [0.0] * 3)]),
+        designatorSpotLocation=WorldCoordinates(*c.get("spot_location_ecef", [0.0] * 3)),
+        # opendis writes this byte as signed
+        deadReckoningAlgorithm=c.get("dr_algorithm", 0) - (256 if c.get("dr_algorithm", 0) >= 128 else 0),
+        entityLinearAcceleration=Vector3Float(*[f32(v) for v in c.get("spot_linear_acceleration", [0.0] * 3)]))
+    header(p, c)
+    fields = header_fields(c) | {
+        "designating_entity_id": c.get("designating_entity_id", [0, 0, 0]), "code_name": c.get("code_name", 0),
+        "designated_entity_id": c.get("designated_entity_id", [0, 0, 0]),
+        "designator_code": c.get("designator_code", 0), "power": f64(f32(c.get("power", 0.0))),
+        "wavelength": f64(f32(c.get("wavelength", 0.0))),
+        "spot_offset": [f32(v) for v in c.get("spot_offset", [0.0] * 3)],
+        "spot_location_ecef": f64_list(c.get("spot_location_ecef", [0.0] * 3)),
+        "dr_algorithm": c.get("dr_algorithm", 0),
+        "spot_linear_acceleration": [f32(v) for v in c.get("spot_linear_acceleration", [0.0] * 3)]}
+    return "DisDesignatorPdu", serialize(p, 88), fields
+
+
+IFF_INTS = ["system_type", "system_name", "system_mode", "change_options", "system_designator",
+            "system_specific_data", "system_status", "data_field_1", "information_layers", "data_field_2"]
+
+
+def iff(c):
+    """IEEE 1278.1-2012 7.6.5, layer 1 plus raw further layers, packed here (see the module docstring)."""
+    layers = c.get("layers", [])
+    length = 60 + sum(len(x) for x in layers)
+    data = struct.pack(">BBBBIHBB", c.get("protocol_version", 7), c.get("exercise_id", 1), 28, 6,
+                       c.get("timestamp", 0), length, c.get("pdu_status", 0), 0)
+    rel = [f32(v) for v in c.get("relative_antenna_location", [0.0] * 3)]
+    v = {k: c.get(k, 0) for k in IFF_INTS}
+    params = c.get("parameters", [0] * 6)
+    data += struct.pack(">HHHHHHfffHHBBBBBBBB6H", *c.get("emitting_entity_id", [0, 0, 0]),
+                        *c.get("event_id", [0, 0, 0]), *rel, *[v[k] for k in IFF_INTS], *params)
+    data += b"".join(layers)
+    assert len(data) == length
+    fields = header_fields(c) | {
+        "emitting_entity_id": c.get("emitting_entity_id", [0, 0, 0]), "event_id": c.get("event_id", [0, 0, 0]),
+        "relative_antenna_location": rel, "parameters": params, "layers": {"raw_hex": [x.hex() for x in layers]}} | v
+    return "DisIffPdu", data, fields
+
+
+def iff_layer(number, info, payload):
+    return struct.pack(">BBH", number, info, 4 + len(payload)) + payload
+
+
+rng3 = random.Random(1278 + 4)
+
+
+def emission_cases():
+    out = []
+    add = lambda kind, name, **kw: out.append((kind, name, kw))  # noqa: E731
+    ids = lambda: [rng3.getrandbits(16) for _ in range(3)]  # noqa: E731
+    head = lambda: dict(exercise_id=rng3.randrange(256), timestamp=rng3.getrandbits(32),  # noqa: E731
+                        pdu_status=rng3.randrange(256))
+    vec = lambda r: [rng3.uniform(-r, r) for _ in range(3)]  # noqa: E731
+
+    add(entity_state_update, "default")
+    add(entity_state_update, "moving_tank", entity_id=[1, 1, 7], linear_velocity=[3.5, -1.25, 0.0],
+        location_ecef=geodetic_to_ecef(41.02, 29.05, 40.0), orientation=[1.2, -0.05, 0.01], appearance=0x00400000)
+    add(entity_state_update, "with_articulated_parts", entity_id=[2, 1, 3],
+        location_ecef=geodetic_to_ecef(39.93, 32.86, 900.0), orientation=[0.3, 0.0, 0.0],
+        variable_parameters=[vp_bytes(0, 0.75, 4096 + 11, 0, 0), vp_bytes(1, 1.5, 3, 7, 0)])
+    for i in range(2):
+        add(entity_state_update, f"random_{i}", entity_id=ids(), linear_velocity=vec(300),
+            location_ecef=vec(7e6), orientation=vec(3.1), appearance=rng3.getrandbits(32),
+            variable_parameters=[vp_bytes(rng3.randrange(256), rng3.uniform(-1e3, 1e3), rng3.getrandbits(32),
+                                          rng3.getrandbits(16), rng3.randrange(256))
+                                 for _ in range(rng3.randrange(3))], **head())
+
+    add(receiver, "default")
+    add(receiver, "receiving_vhf", radio_reference_id=[1, 1, 4], radio_number=1, receiver_state=2,
+        received_power=-72.5, transmitter_entity_id=[2, 1, 6], transmitter_radio_number=2)
+    for i in range(2):
+        add(receiver, f"random_{i}", radio_reference_id=ids(), radio_number=rng3.getrandbits(16),
+            receiver_state=rng3.getrandbits(16), received_power=rng3.uniform(-150, 50), transmitter_entity_id=ids(),
+            transmitter_radio_number=rng3.getrandbits(16), **head())
+
+    add(electromagnetic_emission, "no_systems")
+    add(electromagnetic_emission, "search_radar", emitting_entity_id=[1, 1, 20], event_id=[1, 1, 5],
+        state_update_indicator=1,
+        systems=[{"emitter_name": 1000, "emitter_function": 2, "emitter_number": 1, "location": [0.0, 0.0, -6.5],
+                  "beams": [{"beam_id": 1, "parameter_index": 3, "frequency": 3.0e9, "frequency_range": 1.0e8,
+                             "effective_radiated_power": 80.0, "pulse_repetition_frequency": 1000.0,
+                             "pulse_width": 1.5, "azimuth_center": 0.0, "azimuth_sweep": 3.14159,
+                             "elevation_center": 0.1, "elevation_sweep": 0.35, "sweep_sync": 0.25,
+                             "function": 2, "status": 0, "track_jam": [[[2, 1, 6], 0, 0]]}]}])
+    add(electromagnetic_emission, "radar_and_jammer", emitting_entity_id=[2, 1, 9], event_id=[2, 1, 77],
+        systems=[{"emitter_name": 2000, "emitter_function": 1, "emitter_number": 1,
+                  "beams": [{"beam_id": 1, "frequency": 9.4e9, "function": 1,
+                             "track_jam": [[[1, 1, 20], 1, 1], [[1, 1, 21], 1, 1]]},
+                            {"beam_id": 2, "frequency": 9.5e9, "function": 4, "high_density_track_jam": 1}]},
+                 {"emitter_name": 3000, "emitter_function": 11, "emitter_number": 2, "location": [1.0, 0.0, 0.0],
+                  "beams": [{"beam_id": 1, "frequency": 1.2e9, "function": 3, "jamming_technique": 0x01020304,
+                             "track_jam": [[[1, 1, 20], 1, 1]]}]}])
+    for i in range(2):
+        add(electromagnetic_emission, f"random_{i}", emitting_entity_id=ids(), event_id=ids(),
+            state_update_indicator=rng3.randrange(256),
+            systems=[{"emitter_name": rng3.getrandbits(16), "emitter_function": rng3.randrange(256),
+                      "emitter_number": rng3.randrange(256), "location": vec(20),
+                      "beams": [{**{k: rng3.uniform(0, 1e10) for k in BEAM_FLOATS},
+                                 "beam_id": rng3.randrange(256), "parameter_index": rng3.getrandbits(16),
+                                 "function": rng3.randrange(256), "high_density_track_jam": rng3.randrange(256),
+                                 "status": rng3.randrange(2), "jamming_technique": rng3.getrandbits(32),
+                                 "track_jam": [[ids(), rng3.randrange(256), rng3.randrange(256)]
+                                               for _ in range(rng3.randrange(3))]}
+                                for _ in range(rng3.randrange(1, 3))]}
+                     for _ in range(rng3.randrange(1, 3))], **head())
+
+    add(designator, "default")
+    add(designator, "laser_on_tank", designating_entity_id=[1, 1, 30], code_name=5, designated_entity_id=[2, 1, 6],
+        designator_code=1, power=10.0, wavelength=1.064, spot_offset=[0.5, 0.0, -1.0],
+        spot_location_ecef=geodetic_to_ecef(41.03, 29.06, 15.0), dr_algorithm=2,
+        spot_linear_acceleration=[0.0, 0.1, 0.0])
+    for i in range(2):
+        add(designator, f"random_{i}", designating_entity_id=ids(), code_name=rng3.getrandbits(16),
+            designated_entity_id=ids(), designator_code=rng3.getrandbits(16), power=rng3.uniform(0, 1e4),
+            wavelength=rng3.uniform(0, 20), spot_offset=vec(50), spot_location_ecef=vec(7e6),
+            dr_algorithm=rng3.randrange(256), spot_linear_acceleration=vec(10), **head())
+
+    add(iff, "default")
+    add(iff, "transponder_modes_1_3_c", emitting_entity_id=[1, 1, 4], event_id=[1, 1, 12],
+        relative_antenna_location=[0.0, 0.0, 0.8], system_type=1, system_name=2, system_mode=2, change_options=0,
+        system_status=0x0f, parameters=[0x2034, 0, 0x2777, 0, 0x2190, 0])
+    add(iff, "with_layer_2", emitting_entity_id=[2, 1, 6], event_id=[2, 1, 3], system_type=2, system_name=5,
+        information_layers=0x06, layers=[iff_layer(2, 0, bytes(range(24)))])
+    for i in range(2):
+        add(iff, f"random_{i}", emitting_entity_id=ids(), event_id=ids(), relative_antenna_location=vec(10),
+            parameters=[rng3.getrandbits(16) for _ in range(6)],
+            layers=[iff_layer(rng3.randrange(2, 6), rng3.randrange(256), rand_bytes(4 * rng3.randrange(8)))
+                    for _ in range(rng3.randrange(3))],
+            **{k: rng3.getrandbits(16 if k in ("system_type", "system_name") else 8) for k in IFF_INTS}, **head())
+    return out
+
+
 def more_cases():
     out = []
     add = lambda kind, name, **kw: out.append((kind, name, kw))  # noqa: E731
@@ -523,6 +757,8 @@ def more_cases():
 
 def self_check(stem, data, fields):
     """Decodes the bytes with opendis again and compares a few fields that are easy to read back."""
+    if stem.startswith("iff_"):
+        return  # Open-DIS Python has no IFF PDU
     pdu = createPdu(data)
     assert pdu is not None, stem
     assert pdu.exerciseID == fields["exercise_id"] and pdu.timestamp == fields["timestamp"], stem
@@ -545,7 +781,7 @@ def main():
         f.unlink()
     names = []
     counters = {}
-    for kind, name, c in sim_cases() + warfare_cases() + more_cases():
+    for kind, name, c in sim_cases() + warfare_cases() + more_cases() + emission_cases():
         cls, data, fields = kind(c)
         prefix = kind.__name__
         n = counters.get(prefix, 0)

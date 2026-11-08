@@ -82,6 +82,8 @@ PackedFloat64Array DisRemoteEntity::get_geodetic() const {
 void DisEntityManager::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("handle_entity_state", "pdu", "now"), &DisEntityManager::handle_entity_state,
 			DEFVAL(-1.0));
+	ClassDB::bind_method(D_METHOD("handle_entity_state_update", "pdu", "now"),
+			&DisEntityManager::handle_entity_state_update, DEFVAL(-1.0));
 	ClassDB::bind_method(D_METHOD("process_entities", "now"), &DisEntityManager::process_entities);
 	ClassDB::bind_method(D_METHOD("get_clock"), &DisEntityManager::get_clock);
 	ClassDB::bind_method(D_METHOD("set_time_scale", "value"), &DisEntityManager::set_time_scale);
@@ -173,6 +175,7 @@ void DisEntityManager::connect_network() {
 		return; // PDUs can still be fed with handle_entity_state()
 	}
 	network->connect("entity_state_received", callable_mp(this, &DisEntityManager::on_entity_state));
+	network->connect("entity_state_update_received", callable_mp(this, &DisEntityManager::on_entity_state_update));
 	connected_network = ObjectID(network->get_instance_id());
 }
 
@@ -182,11 +185,40 @@ void DisEntityManager::disconnect_network() {
 	if (network != nullptr && network->is_connected("entity_state_received", callable)) {
 		network->disconnect("entity_state_received", callable);
 	}
+	const Callable update_callable = callable_mp(this, &DisEntityManager::on_entity_state_update);
+	if (network != nullptr && network->is_connected("entity_state_update_received", update_callable)) {
+		network->disconnect("entity_state_update_received", update_callable);
+	}
 	connected_network = ObjectID();
 }
 
 void DisEntityManager::on_entity_state(const Ref<DisEntityStatePdu> &pdu) {
 	handle_entity_state(pdu, get_clock());
+}
+
+void DisEntityManager::on_entity_state_update(const Ref<DisEntityStateUpdatePdu> &pdu) {
+	handle_entity_state_update(pdu, get_clock());
+}
+
+void DisEntityManager::handle_entity_state_update(const Ref<DisEntityStateUpdatePdu> &pdu, double now) {
+	ERR_FAIL_COND(pdu.is_null());
+	DisRemoteEntity *entity = find_entity(pdu->get_entity_id());
+	if (entity == nullptr || entity->last_pdu.is_null()) {
+		return;
+	}
+	// The last full state with the changing fields replaced: a copy, so get_last_pdu() of earlier signals keeps
+	// what it showed.
+	Ref<DisEntityStatePdu> merged = DisEntityStatePdu::decode(entity->last_pdu->encode());
+	ERR_FAIL_COND(merged.is_null());
+	merged->set_exercise_id(pdu->get_exercise_id());
+	merged->set_timestamp(pdu->get_timestamp());
+	merged->set_pdu_status(pdu->get_pdu_status());
+	merged->set_linear_velocity(pdu->get_linear_velocity());
+	merged->set_location_ecef(pdu->get_location_ecef());
+	merged->set_orientation(pdu->get_orientation());
+	merged->set_appearance(pdu->get_appearance());
+	merged->set_variable_parameters(pdu->get_variable_parameters());
+	apply_entity_state(merged, now < 0.0 ? get_clock() : now);
 }
 
 void DisEntityManager::place(DisRemoteEntity *entity, DisGeoOrigin *origin, double now, bool smooth) {

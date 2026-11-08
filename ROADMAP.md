@@ -12,7 +12,6 @@ recording and playback (pcapng, PDU log), enumerations, release zip. See [CHANGE
   templates) and two computers on a LAN.
 
 ## Next (0.2)
-- PDUs: Entity State Update, Receiver, Electromagnetic Emission, Designator, IFF.
 - Dead reckoning: the body-axis algorithms DRM 6–9 exactly (they are approximated by their world-axis
   counterparts 2–5 today).
 - Typed articulated and attached parts (turret, gun, ...) on top of `variable_parameters`.

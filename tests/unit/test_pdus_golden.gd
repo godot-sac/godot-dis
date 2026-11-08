@@ -5,7 +5,10 @@ extends GutTest
 const GOLDEN_DIR := "res://tests/golden/pdus/"
 const CLASSES := ["DisFirePdu", "DisDetonationPdu", "DisRemoveEntityPdu", "DisStartResumePdu", "DisStopFreezePdu",
 		"DisAcknowledgePdu", "DisCollisionPdu", "DisCreateEntityPdu", "DisCommentPdu", "DisSetDataPdu", "DisDataPdu",
-		"DisTransmitterPdu", "DisSignalPdu"]
+		"DisTransmitterPdu", "DisSignalPdu", "DisReceiverPdu", "DisEntityStateUpdatePdu", "DisElectromagneticEmissionPdu",
+		"DisDesignatorPdu", "DisIffPdu"]
+const BEAM_FLOATS := ["frequency", "frequency_range", "effective_radiated_power", "pulse_repetition_frequency",
+		"pulse_width", "azimuth_center", "azimuth_sweep", "elevation_center", "elevation_sweep", "sweep_sync"]
 
 var _cases: Array = []
 
@@ -50,6 +53,8 @@ static func _to_godot(json_value: Variant, like: Variant) -> Variant:
 			for pair: Array in json_value.fixed:
 				out.append({"id": int(pair[0]), "value": int(pair[1])})
 			return out
+		if json_value.has("ee_systems"):
+			return _ee_systems(json_value.ee_systems)
 		if json_value.has("variable"):
 			var out := []
 			for record: Array in json_value.variable:
@@ -67,6 +72,27 @@ static func _to_godot(json_value: Variant, like: Variant) -> Variant:
 		TYPE_PACKED_BYTE_ARRAY:
 			return PackedByteArray(json_value)
 	return json_value
+
+
+## Electromagnetic Emission systems as DisElectromagneticEmissionPdu.decode() returns them.
+static func _ee_systems(systems: Array) -> Array:
+	var out := []
+	for s: Dictionary in systems:
+		var beams := []
+		for b: Dictionary in s.beams:
+			var beam := {"beam_id": int(b.beam_id), "parameter_index": int(b.parameter_index),
+				"function": int(b.function), "high_density_track_jam": int(b.high_density_track_jam),
+				"status": int(b.status), "jamming_technique": int(b.jamming_technique), "track_jam": []}
+			for i in BEAM_FLOATS.size():
+				beam[BEAM_FLOATS[i]] = _f64(b.floats[i])
+			for t: Array in b.track_jam:
+				beam.track_jam.append({"entity_id": Vector3i(t[0][0], t[0][1], t[0][2]), "emitter_number": int(t[1]),
+					"beam_number": int(t[2])})
+			beams.append(beam)
+		out.append({"emitter_name": int(s.emitter_name), "emitter_function": int(s.emitter_function),
+			"emitter_number": int(s.emitter_number),
+			"location": Vector3(s.location[0], s.location[1], s.location[2]), "beams": beams})
+	return out
 
 
 func _diff(pdu: Object, fields: Dictionary) -> PackedStringArray:

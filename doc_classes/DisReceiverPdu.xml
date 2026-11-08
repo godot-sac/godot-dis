@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisReceiverPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Receiver PDU (type 27): the state of one radio receiver and the transmitter it hears.
+	</brief_description>
+	<description>
+		A Receiver PDU describes one radio receiver: which entity and radio it is, whether it is off, on or actually receiving, the received power and, while receiving, which transmitter it hears. It is 36 bytes and has protocol family 4 (Radio Communications).
+		It pairs with [DisTransmitterPdu] (the sending side) and [DisSignalPdu] (the transmitted data). [DisRadioMonitor] shows who is on the air; godot-dis does not play or record audio. The PDU is encoded with godot-dis's own code because open-dis-cpp has no DIS 7 Receiver PDU.
+		[b]Note:[/b] godot-dis follows IEEE 1278.1-2012, where the PDU starts with the receiving radio's [member radio_reference_id] and [member radio_number]. Open-DIS Python 1.1.0 lays this PDU out without those two fields, so the two libraries do not read each other's Receiver PDUs correctly.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisReceiverPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as a Receiver PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Receiver PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 36 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="radio_number" type="int" setter="set_radio_number" getter="get_radio_number" default="0">
+			Radio number (16-bit) of this receiver: distinguishes the radios of one entity or object. Together with [member radio_reference_id] it names this receiver.
+		</member>
+		<member name="radio_reference_id" type="Vector3i" setter="set_radio_reference_id" getter="get_radio_reference_id" default="Vector3i(0, 0, 0)">
+			ID of the entity (or object) this receiver belongs to as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="received_power" type="float" setter="set_received_power" getter="get_received_power" default="0.0">
+			Power of the received signal in dBm (32-bit float on the wire). Meaningful when [member receiver_state] is [constant RECEIVER_ON_AND_RECEIVING].
+		</member>
+		<member name="receiver_state" type="int" setter="set_receiver_state" getter="get_receiver_state" default="0">
+			State of the receiver (16-bit): one of the [enum ReceiverState] values.
+		</member>
+		<member name="transmitter_entity_id" type="Vector3i" setter="set_transmitter_entity_id" getter="get_transmitter_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity (or object) that owns the transmitter this receiver hears, as a [Vector3i]. Together with [member transmitter_radio_number] it names that transmitter. Meaningful when [member receiver_state] is [constant RECEIVER_ON_AND_RECEIVING].
+		</member>
+		<member name="transmitter_radio_number" type="int" setter="set_transmitter_radio_number" getter="get_transmitter_radio_number" default="0">
+			Radio number (16-bit) of the transmitter this receiver hears, on the entity [member transmitter_entity_id].
+		</member>
+	</members>
+	<constants>
+		<constant name="RECEIVER_OFF" value="0" enum="ReceiverState">
+			Receiver state 0: the receiver is off.
+		</constant>
+		<constant name="RECEIVER_ON_NOT_RECEIVING" value="1" enum="ReceiverState">
+			Receiver state 1: the receiver is on but not receiving a signal.
+		</constant>
+		<constant name="RECEIVER_ON_AND_RECEIVING" value="2" enum="ReceiverState">
+			Receiver state 2: the receiver is on and receiving a signal.
+		</constant>
+	</constants>
+</class>

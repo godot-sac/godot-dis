@@ -5,14 +5,15 @@ other in practice: byte-for-byte against independent implementations, against re
 DIS dissector as a neutral decoder. Every check below is an automated test that runs with the GUT suite (checks
 that need a tool or a download are *pending* when it is missing).
 
-## Results (2026-11-01, godot-dis 0.1.0-dev, Windows 11 and Ubuntu 24.04)
+## Results (2026-11-08, godot-dis 0.2.0-dev, Windows 11 and Ubuntu 24.04)
 
 | Against | Version | What | PDU types | Result | Test |
 |---|---|---|---|---|---|
-| Open-DIS Python | `opendis` 1.1.0 | Golden PDUs written by Open-DIS: our `encode()` gives identical bytes, our `decode()` gives every field | Entity State (31 cases), Fire (9), Detonation (17), Collision (6), Create Entity (3), Remove Entity (6), Start/Resume (8), Stop/Freeze (15), Acknowledge (30), Set Data (3), Data (3), Comment (5), Transmitter (5), Signal (5) | ✔ 146 / 146 | `test_entity_state_pdu.gd`, `test_pdus_golden.gd` |
-| Open-DIS Python | 1.1.0 | Over UDP, Python → Godot: all golden PDUs arrive, decode and re-encode identically; Godot → Python: Open-DIS decodes each as the right class and serializes it back to the same bytes | all 14 | ✔ | `test_network.gd` |
-| opendis7-java | as captured on 2021-08-14 | NPS MV3500 `AllPduSenderWiresharkCapture.pcapng` (one PDU of each of the 72 DIS 7 types): every type we support decodes and re-encodes to the same bytes | all 14 | ✔ 14 / 14 (see note 1) | `test_captures.gd` |
-| Wireshark DIS dissector | tshark 4.6.9 | A pcapng written by `DisRecording` with all 146 golden PDUs: right PDU type and length for every frame, no malformed packets (one known exception, note 4), no expert warnings; field values (marking, IDs, country, event number, range) as written | all 14 | ✔ | `test_wireshark.gd` |
+| Open-DIS Python | `opendis` 1.1.0 | Golden PDUs written by Open-DIS: our `encode()` gives identical bytes, our `decode()` gives every field | Entity State (31 cases), Fire (9), Detonation (17), Collision (6), Create Entity (3), Remove Entity (6), Start/Resume (8), Stop/Freeze (15), Acknowledge (30), Set Data (3), Data (3), Comment (5), Transmitter (5), Signal (5), Entity State Update (5), Electromagnetic Emission (5), Designator (4) | ✔ 160 / 160 | `test_entity_state_pdu.gd`, `test_pdus_golden.gd` |
+| IEEE 1278.1-2012 layout | packed with Python `struct` | Receiver and IFF, which Open-DIS Python lacks or lays out differently (note 7): same encode / decode checks | Receiver (4), IFF (5) | ✔ 9 / 9 | `test_pdus_golden.gd` |
+| Open-DIS Python | 1.1.0 | Over UDP, Python → Godot: all golden PDUs arrive, decode and re-encode identically; Godot → Python: Open-DIS decodes each as the right class and serializes it back to the same bytes | all 19 (Godot → Python: 17, note 7) | ✔ | `test_network.gd` |
+| opendis7-java | as captured on 2021-08-14 | NPS MV3500 `AllPduSenderWiresharkCapture.pcapng` (one PDU of each of the 72 DIS 7 types): every type we support decodes and re-encodes to the same bytes | all 19 | ✔ 19 / 19 (see note 1) | `test_captures.gd` |
+| Wireshark DIS dissector | tshark 4.6.9 | A pcapng written by `DisRecording` with all 169 golden PDUs: right PDU type and length for every frame, no malformed packets (one known exception, note 4), no expert warnings beyond notes about values; field values (marking, IDs, country, event number, range; receiver state and power, IFF system and parameters, designator code and power, emission frequency, beam index and jamming technique) as written | all 19 | ✔ | `test_wireshark.gd` |
 | Wireshark SampleCaptures | wiki files, SHA-256 pinned | Captures from other DIS senders decode and re-encode identically, including a DIS 5 radio capture; Environmental Process is read and replayed (a type we don't decode) | Entity State 289, Signal 801, Transmitter 10 | ✔ | `test_captures.gd`, `test_radio.gd` |
 | Open-DIS Python application | demo traffic | Live: a Godot manager stops, resumes and removes entities of an Open-DIS Python application, which answers with Open-DIS Acknowledge PDUs; its radio (Transmitter, Signal) shows on the Godot map; Godot ↔ Godot the same, plus Comment | Start/Resume, Stop/Freeze, Remove Entity, Acknowledge, Comment, Transmitter, Signal | ✔ (manual run) | `docs/demo.md` |
 | GRILL DIS for Unreal / Unity | — | not tested (no Unreal / Unity setup) | | — | |
@@ -33,6 +34,14 @@ Notes
 6. Open-DIS Python does not pad Signal data to 32 bits; the golden Signal cases use data sizes that need no
    padding. open-dis-cpp has no DIS 7 Transmitter and rounds variable datum lengths down to whole bytes, so
    these PDUs use godot-dis's own codec.
+7. Open-DIS Python 1.1.0 has no IFF PDU, and its Receiver PDU leaves out the radio reference ID and radio number
+   that IEEE 1278.1-2012 puts after the header (it writes 28 bytes, the standard 36). The golden Receiver and IFF
+   PDUs are packed from the standard's layout (`tools/golden_pdus.py`), so their independent checks are the
+   opendis7-java capture and Wireshark reading their fields; they are left out of the Godot → Python UDP test.
+   Open-DIS Python writes only the beam state bit of the beam status byte and the Designator dead reckoning byte
+   as a signed number; the golden cases keep within those.
+8. Wireshark notes that an Entity State Update refers to an entity it has not seen an Entity State PDU for (the
+   golden file has none); that is a note about the capture, not the PDU.
 
 ## PDU support
 
@@ -52,6 +61,11 @@ Notes
 | Comment (22) | Simulation Management | ✔ | ✔ | `DisCommentPdu` | Open-DIS Python, opendis7-java, Wireshark |
 | Transmitter (25) | Radio Communications | ✔ | ✔ | `DisTransmitterPdu`, `DisRadioMonitor` | Open-DIS Python, opendis7-java, Wireshark, Wireshark samples (DIS 5) |
 | Signal (26) | Radio Communications | ✔ | ✔ | `DisSignalPdu`, `DisRadioMonitor` | Open-DIS Python, opendis7-java, Wireshark, Wireshark samples (DIS 5) |
+| Receiver (27) | Radio Communications | ✔ | ✔ | `DisReceiverPdu` | IEEE 1278.1 layout, opendis7-java, Wireshark fields |
+| Electromagnetic Emission (23) | Distributed Emission Regeneration | ✔ | ✔ | `DisElectromagneticEmissionPdu` | Open-DIS Python, opendis7-java, Wireshark |
+| Designator (24) | Distributed Emission Regeneration | ✔ | ✔ | `DisDesignatorPdu` | Open-DIS Python, opendis7-java, Wireshark |
+| IFF (28) | Distributed Emission Regeneration | ✔ | ✔ | `DisIffPdu` (layer 1; further layers raw) | IEEE 1278.1 layout, opendis7-java, Wireshark fields |
+| Entity State Update (67) | Entity Information | ✔ | ✔ | `DisEntityStateUpdatePdu`, `DisEntityManager` | Open-DIS Python, opendis7-java, Wireshark |
 | all other types | | raw bytes | raw bytes | `DisNetwork.send_bytes()`, `DisRecorder`, `DisPlayer` | recorded and replayed unchanged |
 
 ## Reproducing

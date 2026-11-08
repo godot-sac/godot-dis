@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisElectromagneticEmissionPdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Electromagnetic Emission PDU (type 23): the emitter systems of one entity, their beams and what the beams track or jam.
+	</brief_description>
+	<description>
+		An Electromagnetic Emission PDU announces what an entity radiates: radars, jammers and similar emitters. Each emitter system has beams, and each beam has frequency, power, pulse and scan parameters and may name the targets it tracks or jams. It is 28 bytes plus 20 per system, 52 per beam and 8 per tracked or jammed target, and has protocol family 6 (Distributed Emission Regeneration).
+		[member systems] is an [Array] of [Dictionary] systems; each system holds a [code]beams[/code] array of [Dictionary] beams. Create them with [method make_system] and [method make_beam] so that every key has a default.
+		System keys:
+		- [code]emitter_name[/code], [code]emitter_function[/code], [code]emitter_number[/code]: [int], emitter identification (SISO-REF-010 "Electromagnetic Emitter Name" and "Emitter System Function"); the number distinguishes systems of one entity.
+		- [code]location[/code]: [Vector3], emitter location in metres in the entity's body axes.
+		- [code]beams[/code]: [Array] of beam [Dictionary] values.
+		Beam keys:
+		- [code]beam_id[/code], [code]parameter_index[/code]: [int], beam number and index into the emitter's parameter table.
+		- [code]frequency[/code], [code]frequency_range[/code]: [float], centre frequency and range in hertz.
+		- [code]effective_radiated_power[/code]: [float], in dBm.
+		- [code]pulse_repetition_frequency[/code]: [float], in hertz. [code]pulse_width[/code]: [float], in microseconds.
+		- [code]azimuth_center[/code], [code]azimuth_sweep[/code], [code]elevation_center[/code], [code]elevation_sweep[/code]: [float], beam direction and sweep in radians, relative to the entity.
+		- [code]sweep_sync[/code]: [float], percent (0 to 100).
+		- [code]function[/code], [code]high_density_track_jam[/code], [code]status[/code]: [int], beam function, high density track/jam flag and beam status (SISO-REF-010).
+		- [code]jamming_technique[/code]: [int], 32 bits: kind, category, subcategory and specific, one byte each.
+		- [code]track_jam[/code]: [Array] of [Dictionary] with [code]entity_id[/code] ([Vector3i]), [code]emitter_number[/code] and [code]beam_number[/code] ([int]) of each target.
+		The length fields on the wire (in 32-bit words, 0 if the record is longer than 255 words) are computed by [method DisPduBase.encode]; [method decode] uses the counts. Floating point values travel as 32-bit floats. godot-dis encodes and decodes these PDUs; it does not model what the emissions detect.
+		[codeblock]
+		var beam := DisElectromagneticEmissionPdu.make_beam()
+		beam["beam_id"] = 1
+		beam["frequency"] = 9.4e9
+		beam["frequency_range"] = 20.0e6
+		beam["effective_radiated_power"] = 80.0
+		beam["pulse_repetition_frequency"] = 2000.0
+		beam["pulse_width"] = 1.5
+		beam["azimuth_sweep"] = deg_to_rad(120.0)
+		beam["status"] = 1 # active
+
+		var system := DisElectromagneticEmissionPdu.make_system()
+		system["emitter_number"] = 1
+		system["location"] = Vector3(0.0, 2.5, 0.0)
+		system["beams"] = [beam]
+
+		var pdu := DisElectromagneticEmissionPdu.new()
+		pdu.emitting_entity_id = Vector3i(1, 1, 42)
+		pdu.systems = [system]
+		network.send_pdu(pdu)
+		[/codeblock]
+	</description>
+	<tutorials>
+		<link title="Emissions: radars, jammers, designators and IFF">https://github.com/godot-sac/godot-dis/blob/main/docs/emissions.md</link>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisElectromagneticEmissionPdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as an Electromagnetic Emission PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Electromagnetic Emission PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], fewer than 28 bytes, or system, beam and target counts that run past the length). The counts drive the parsing; the length fields inside the records are not used. A length field of 0 in the header is replaced by the datagram size. Bytes after the last record, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+		<method name="make_beam" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+				Returns a beam [Dictionary] with every key set to its default ([code]0[/code] or [code]0.0[/code]) and an empty [code]track_jam[/code] array. See the class description for the keys.
+			</description>
+		</method>
+		<method name="make_system" qualifiers="static">
+			<return type="Dictionary" />
+			<description>
+				Returns a system [Dictionary] with every key set to its default ([code]0[/code], [code]Vector3(0, 0, 0)[/code] for [code]location[/code]) and an empty [code]beams[/code] array. See the class description for the keys.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="emitting_entity_id" type="Vector3i" setter="set_emitting_entity_id" getter="get_emitting_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity that carries the emitters, as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="event_id" type="Vector3i" setter="set_event_id" getter="get_event_id" default="Vector3i(0, 0, 0)">
+			Event ID as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = event number): links the emission to the event that caused it.
+		</member>
+		<member name="state_update_indicator" type="int" setter="set_state_update_indicator" getter="get_state_update_indicator" default="0">
+			Why the PDU was sent (8-bit): one of the [enum StateUpdateIndicator] values (SISO-REF-010 "EEPDU State Update Indicator").
+		</member>
+		<member name="systems" type="Array" setter="set_systems" getter="get_systems" default="[]">
+			The emitter systems as an [Array] of [Dictionary]; see the class description for the keys. At most 255 systems, each with at most 255 beams, each with at most 255 targets; [method DisPduBase.encode] prints an error and returns an empty array otherwise, or if an entry is not a [Dictionary].
+		</member>
+	</members>
+	<constants>
+		<constant name="STATE_HEARTBEAT" value="0" enum="StateUpdateIndicator">
+			State update indicator 0: a periodic refresh with no change in the emission.
+		</constant>
+		<constant name="STATE_CHANGED_DATA" value="1" enum="StateUpdateIndicator">
+			State update indicator 1: the PDU carries only the data that changed since the last one.
+		</constant>
+	</constants>
+</class>

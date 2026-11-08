@@ -11,10 +11,11 @@ Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terra
 ![Demo: two Godot simulations and Open-DIS Python on one tactical map — fire, detonations, a radio call, stop and resume (2.5x speed)](docs/images/demo.gif)
 
 ## Features
-- **14 PDU types:** Entity State, Fire, Detonation, Collision, the simulation management set (Create / Remove
-  Entity, Start/Resume, Stop/Freeze, Acknowledge, Set Data, Data, Comment) and radio (Transmitter, Signal), DIS 7
-  (older versions are read too), each verified byte for byte against Open-DIS Python, a capture from opendis7-java
-  and Wireshark's DIS dissector — see the [PDU support](#pdu-support) table and
+- **19 PDU types:** Entity State and Entity State Update, Fire, Detonation, Collision, the simulation management
+  set (Create / Remove Entity, Start/Resume, Stop/Freeze, Acknowledge, Set Data, Data, Comment), radio (Transmitter,
+  Signal, Receiver) and emissions (Electromagnetic Emission, Designator, IFF), DIS 7 (older versions are read too),
+  each verified byte for byte against Open-DIS Python or the standard's layout, a capture from opendis7-java and
+  Wireshark's DIS dissector — see the [PDU support](#pdu-support) table and
   [docs/interoperability.md](docs/interoperability.md)
 - `DisNetwork`: UDP broadcast / unicast / multicast, exercise and own-packet filters, several DIS applications
   sharing one port, a signal per PDU type — [docs/networking.md](docs/networking.md)
@@ -27,6 +28,8 @@ Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terra
   acknowledge) or be one (requests with retries) — [docs/simulation-management.md](docs/simulation-management.md)
 - `DisRadioMonitor`: which entity has which radio on which frequency, and who is on the air right now (no audio)
   — [docs/radio.md](docs/radio.md)
+- Emissions: radars and jammers with their beams and targets, laser designator spots and IFF transponders
+  (Electromagnetic Emission, Designator, IFF PDUs; the PDUs only, no sensor model) — [docs/emissions.md](docs/emissions.md)
 - `DisRecorder`, `DisPlayer`, `DisRecording`: record to **pcapng** (opens in Wireshark) or a plain-text PDU log, play
   back into the scene or onto the network with speed, pause and seek; reads Wireshark / tcpdump captures; command
   line tool — [docs/recording.md](docs/recording.md)
@@ -51,10 +54,14 @@ Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terra
 | Comment (22) | ✔ | ✔ | `DisCommentPdu` | Open-DIS Python, opendis7-java, Wireshark |
 | Transmitter (25) | ✔ | ✔ | `DisTransmitterPdu`, `DisRadioMonitor` | Open-DIS Python, opendis7-java, Wireshark, Wireshark samples (DIS 5) |
 | Signal (26) | ✔ | ✔ | `DisSignalPdu`, `DisRadioMonitor` | Open-DIS Python, opendis7-java, Wireshark, Wireshark samples (DIS 5) |
+| Receiver (27) | ✔ | ✔ | `DisReceiverPdu` | IEEE 1278.1 layout, opendis7-java, Wireshark fields |
+| Electromagnetic Emission (23) | ✔ | ✔ | `DisElectromagneticEmissionPdu` | Open-DIS Python, opendis7-java, Wireshark |
+| Designator (24) | ✔ | ✔ | `DisDesignatorPdu` | Open-DIS Python, opendis7-java, Wireshark |
+| IFF (28) | ✔ | ✔ | `DisIffPdu` (layer 1; further layers raw) | IEEE 1278.1 layout, opendis7-java, Wireshark fields |
+| Entity State Update (67) | ✔ | ✔ | `DisEntityStateUpdatePdu`, `DisEntityManager` | Open-DIS Python, opendis7-java, Wireshark |
 | any other | raw bytes | raw bytes | `DisNetwork.send_bytes()`, recorded and replayed unchanged | |
 
 PDUs a sender extends or pads beyond the fields above keep those bytes (`trailing_bytes`) and go back out unchanged.
-Planned next ([roadmap](ROADMAP.md)): Entity State Update, Receiver, Electromagnetic Emission, Designator, IFF.
 HLA is out of scope for now: it needs an RTI (the free ones, such as Portico, are Java / C++ libraries), and the
 RPR FOM mirrors the DIS PDUs, so a DIS–HLA gateway can join this addon to an HLA federation.
 

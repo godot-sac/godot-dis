@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisEntityStateUpdatePdu" inherits="DisPduBase" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Entity State Update PDU (type 67): the changing part of an Entity State PDU.
+	</brief_description>
+	<description>
+		An Entity State Update PDU carries only the fields of an entity that change often: linear velocity, location, orientation, appearance and variable parameters. Entity type, marking and dead reckoning parameters are left out; the receiver knows them from an earlier [DisEntityStatePdu]. It is 72 bytes plus 16 per variable parameter and has protocol family 1 (Entity Information).
+		[DisEntityManager] applies it through [method DisEntityManager.handle_entity_state_update], which is connected to [signal DisNetwork.entity_state_update_received] automatically. The PDU is encoded with godot-dis's own code.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="decode" qualifiers="static">
+			<return type="DisEntityStateUpdatePdu" />
+			<param index="0" name="bytes" type="PackedByteArray" />
+			<description>
+				Parses [param bytes] as an Entity State Update PDU and returns it. Returns [code]null[/code] and sets [method DisPdu.get_last_error] if [param bytes] is not a valid Entity State Update PDU (header shorter than 12 bytes, wrong PDU type, protocol version outside 1-7, length field larger than [code]bytes.size()[/code], or fewer than 72 bytes). A length field of 0 is replaced by the datagram size. Bytes after the last known field, up to the length field, are kept in [member DisPduBase.trailing_bytes].
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="appearance" type="int" setter="set_appearance" getter="get_appearance" default="0">
+			Appearance bit field (32-bit, entity-type specific, see SISO-REF-010). A deactivated appearance makes [DisEntityManager] remove the entity.
+		</member>
+		<member name="entity_id" type="Vector3i" setter="set_entity_id" getter="get_entity_id" default="Vector3i(0, 0, 0)">
+			ID of the entity the update is for, as a [Vector3i] ([code]x[/code] = site, [code]y[/code] = application, [code]z[/code] = entity number).
+		</member>
+		<member name="linear_velocity" type="Vector3" setter="set_linear_velocity" getter="get_linear_velocity" default="Vector3(0, 0, 0)">
+			Velocity of the entity in metres per second, in geocentric (ECEF) axes (32-bit floats on the wire).
+		</member>
+		<member name="location_ecef" type="PackedFloat64Array" setter="set_location_ecef" getter="get_location_ecef" default="PackedFloat64Array(0, 0, 0)">
+			Location of the entity in WGS84 geocentric (ECEF) coordinates, as a [PackedFloat64Array] [code][x, y, z][/code] in metres. Setting an array that does not have exactly 3 values prints an error and leaves the old value.
+		</member>
+		<member name="orientation" type="Vector3" setter="set_orientation" getter="get_orientation" default="Vector3(0, 0, 0)">
+			Orientation of the entity as DIS Euler angles in radians: [code]x[/code] = psi (heading), [code]y[/code] = theta (pitch), [code]z[/code] = phi (roll) (32-bit floats on the wire).
+		</member>
+		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
+			Variable parameter records as an [Array] of [PackedByteArray]. Each entry is exactly 16 bytes (articulation or attached part records) and is kept raw. At most 255 records are allowed.
+		</member>
+	</members>
+</class>
