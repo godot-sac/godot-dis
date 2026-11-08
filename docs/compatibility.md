@@ -3,7 +3,7 @@
 What each godot-dis version was actually tried with. "Declared" means the extension says it loads there
 (`compatibility_minimum` in `dis.gdextension`), not that it was run.
 
-## godot-dis 0.1.0 (not released yet)
+## godot-dis 0.1.0
 godot-cpp 10 built against the Godot 4.3 extension API, open-dis-cpp (DIS 7), DIS versions 5–7 read.
 
 | Godot | Platform | Build | Status | What was run |

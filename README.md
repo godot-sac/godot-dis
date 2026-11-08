@@ -4,8 +4,9 @@ DIS (IEEE 1278.1, Distributed Interactive Simulation) for Godot 4: connect a God
 exercise — entities, weapon fire and detonations, exercise control (start / stop / remove), recording and playback.
 A C++ GDExtension built on [Open-DIS](https://github.com/open-dis/open-dis-cpp) (BSD-2-Clause) and godot-cpp.
 
-**Status:** v0.1.0 in preparation, not released yet. Tested on Windows and Linux with Godot 4.7.2; macOS is built
-by CI only — see [compatibility](docs/compatibility.md).
+**Status:** 0.1.0, the first release. Tested with Godot 4.7.2 on Windows and Linux; macOS is built by CI only — see
+[compatibility](docs/compatibility.md). Plans in [ROADMAP.md](ROADMAP.md).
+Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terrain, military symbology, DIS and flight dynamics that also work together.
 
 ![Demo: two Godot simulations and Open-DIS Python on one tactical map — fire, detonations, a radio call, stop and resume (2.5x speed)](docs/images/demo.gif)
 
@@ -64,7 +65,7 @@ RPR FOM mirrors the DIS PDUs, so a DIS–HLA gateway can join this addon to an H
 - To build from source: Python 3.10+, SCons, and MSVC 2022 / GCC 11+ / Clang 14+ — [docs/building.md](docs/building.md)
 
 ## Installation
-1. Download `godot-dis-<version>.zip` from the [releases page](https://github.com/OWNER/godot-dis/releases). It has
+1. Download `godot-dis-<version>.zip` from the [releases page](https://github.com/godot-sac/godot-dis/releases). It has
    the compiled libraries for Windows and Linux (and macOS, built by CI but untested); no C++ build is needed.
 2. Extract it into your project folder, so that `addons/dis/dis.gdextension` exists.
 3. Open (or restart) the editor; the `Dis*` nodes appear in *Create New Node*.

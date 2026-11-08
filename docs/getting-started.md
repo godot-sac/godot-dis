@@ -9,7 +9,7 @@ About 15 minutes; no C++ build, only the release zip. Everything is in one GDScr
 - **Godot 4.3 or newer**, standard (not .NET) build; tested with 4.7.2 ([download](https://godotengine.org/download)).
 - **Windows x86_64** or **Linux x86_64**. macOS libraries come from CI and have not been tried yet.
 - The release zip **`godot-dis-<version>.zip`** from the
-  [releases page](https://github.com/OWNER/godot-dis/releases) (or the `godot-dis-*` artifact of a CI run).
+  [releases page](https://github.com/godot-sac/godot-dis/releases) (or the `godot-dis-*` artifact of a CI run).
 - Optional: [Wireshark](https://www.wireshark.org/) to look at the packets (step 6).
 
 ## 1. Create a project (2 min)
