@@ -76,7 +76,7 @@ jobs:
       - name: Download Godot
         if: matrix.godot_zip != ''
         run: |
-          curl -sSfL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${{ matrix.godot_zip }}"
+          Z="${{ matrix.godot_zip }}"; R="--retry 5 --retry-all-errors --retry-delay 10"; curl -sSfL $R -o godot.zip "https://downloads.godotengine.org/?version=${GODOT_VERSION}&flavor=stable&slug=${Z#Godot_v${GODOT_VERSION}-stable_}" || curl -sSfL $R -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/$Z"
           "$PY" -m zipfile -e godot.zip godot_bin
           chmod +x "godot_bin/${{ matrix.godot_exe }}"
           echo "GODOT=$PWD/godot_bin/${{ matrix.godot_exe }}" >> "$GITHUB_ENV"
@@ -128,7 +128,7 @@ jobs:
           python3 -m zipfile -l "build/package/godot-dis-$VERSION.zip"
       - name: Check the package in a new project (Linux)
         run: |
-          curl -sSfL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/${GODOT_ZIP}"
+          Z="${GODOT_ZIP}"; R="--retry 5 --retry-all-errors --retry-delay 10"; curl -sSfL $R -o godot.zip "https://downloads.godotengine.org/?version=${GODOT_VERSION}&flavor=stable&slug=${Z#Godot_v${GODOT_VERSION}-stable_}" || curl -sSfL $R -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/$Z"
           unzip -q godot.zip -d godot_bin
           python3 tools/check_package.py "build/package/godot-dis-$VERSION.zip" --godot "$PWD/godot_bin/${GODOT_ZIP%.zip}"
       - uses: actions/upload-artifact@v4
