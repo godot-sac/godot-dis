@@ -39,11 +39,11 @@ jobs:
         shell: bash
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -93,7 +93,7 @@ jobs:
           "$GODOT" --headless --path . -s addons/gut/gut_cmdln.gd
           "$PY" tools/check_first_import.py --godot "$GODOT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.platform }}
           path: addons/dis/bin/${{ matrix.platform }}
@@ -107,8 +107,8 @@ jobs:
     env:
       GODOT_ZIP: Godot_v4.7.2-stable_linux.x86_64.zip
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: bin-*
           path: artifacts
@@ -127,7 +127,7 @@ jobs:
           Z="${GODOT_ZIP}"; R="--retry 5 --retry-all-errors --retry-delay 10"; curl -sSfL $R -o godot.zip "https://downloads.godotengine.org/?version=${GODOT_VERSION}&flavor=stable&slug=${Z#Godot_v${GODOT_VERSION}-stable_}" || curl -sSfL $R -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/$Z"
           unzip -q godot.zip -d godot_bin
           python3 tools/check_package.py "build/package/godot-dis-$VERSION.zip" --godot "$PWD/godot_bin/${GODOT_ZIP%.zip}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: godot-dis-${{ env.VERSION }}
           path: build/package/godot-dis-${{ env.VERSION }}.zip
@@ -143,8 +143,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: godot-dis-*
           path: dist
