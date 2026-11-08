@@ -11,7 +11,7 @@ godot-cpp 10 built against the Godot 4.3 extension API, open-dis-cpp (DIS 7), DI
 | 4.7.2 | Windows 11 x86_64 | MSVC 2022 | ✅ tested | GUT 113/113, doctest 24/24, two-sided demo and replay demo, release zip in an empty project (`check_package.py`, also next to godot-jsbsim 0.1.0), [getting-started](getting-started.md) project, interop with Open-DIS Python, opendis7-java captures and tshark |
 | 4.7.2 | Linux x86_64: Ubuntu 24.04 (WSL 2), glibc 2.39 | GCC 13 | ✅ tested | GUT 111 + 2 pending (no tshark), doctest, the same release zip in an empty project (alone and next to godot-jsbsim 0.1.0), exported symbols (`check_exports.py`), getting-started followed step by step in a clean directory |
 | 4.7.2 | Linux x86_64: Ubuntu 22.04 (CI) | GCC 11 | ⏳ not run yet | CI job written (build, symbols, doctest, GUT, package check); runs after the first push |
-| 4.7.2 | macOS universal (arm64 + x86_64) | Apple Clang (CI) | ⏳ not run yet | CI job written (build, doctest); never built or run |
+| 4.7.2 | macOS universal (arm64 + x86_64) | Apple Clang (CI) | ⏳ not in 0.1 | Built once by CI (2026-11-08), never run; removed from CI and the zip until it can be tested |
 | 4.3 – 4.6 | any | — | ❔ declared | not tried |
 | 4.7.2 .NET (C#) build | any | — | ❔ untested | not tried |
 
