@@ -78,5 +78,5 @@ PackedByteArray DisProbe::encode_test_entity_state() {
 }
 
 String DisProbe::get_version() {
-	return "godot-dis 0.1.0 (open-dis-cpp 1.2.0, godot-cpp 10.0.0)";
+	return "godot-dis 0.2.0 (open-dis-cpp 1.2.0, godot-cpp 10.0.0)";
 }

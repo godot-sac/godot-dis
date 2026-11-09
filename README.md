@@ -4,7 +4,7 @@ DIS (IEEE 1278.1, Distributed Interactive Simulation) for Godot 4: connect a God
 exercise — entities, weapon fire and detonations, exercise control (start / stop / remove), recording and playback.
 A C++ GDExtension built on [Open-DIS](https://github.com/open-dis/open-dis-cpp) (BSD-2-Clause) and godot-cpp.
 
-**Status:** 0.1.0, the first release. Tested with Godot 4.7.2 on Windows and Linux; macOS is not supported yet — see
+**Status:** 0.2.0. Tested with Godot 4.7.2 on Windows and Linux; macOS is not supported yet — see
 [compatibility](docs/compatibility.md). Plans in [ROADMAP.md](ROADMAP.md).
 Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terrain, military symbology, DIS and flight dynamics that also work together.
 

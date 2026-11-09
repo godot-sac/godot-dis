@@ -3,14 +3,15 @@
 What each godot-dis version was actually tried with. "Declared" means the extension says it loads there
 (`compatibility_minimum` in `dis.gdextension`), not that it was run.
 
-## godot-dis 0.1.0
+## godot-dis 0.2.0 and 0.1.0
 godot-cpp 10 built against the Godot 4.3 extension API, open-dis-cpp (DIS 7), DIS versions 5–7 read.
 
 | Godot | Platform | Build | Status | What was run |
 |---|---|---|---|---|
 | 4.7.2 | Windows 11 x86_64 | MSVC 2022 | ✅ tested | GUT 113/113, doctest 24/24, two-sided demo and replay demo, release zip in an empty project (`check_package.py`, also next to godot-jsbsim 0.1.0), [getting-started](getting-started.md) project, interop with Open-DIS Python, opendis7-java captures and tshark |
 | 4.7.2 | Linux x86_64: Ubuntu 24.04 (WSL 2), glibc 2.39 | GCC 13 | ✅ tested | GUT 111 + 2 pending (no tshark), doctest, the same release zip in an empty project (alone and next to godot-jsbsim 0.1.0), exported symbols (`check_exports.py`), getting-started followed step by step in a clean directory |
-| 4.7.2 | Linux x86_64: Ubuntu 22.04 (CI) | GCC 11 | ⏳ not run yet | CI job written (build, symbols, doctest, GUT, package check); runs after the first push |
+| 4.7.2 | Windows 11 x86_64 | MSVC 2022 | ✅ tested (0.2.0) | GUT 133/133, golden PDUs of the five new types, opendis7-java capture 19/19 types |
+| 4.7.2 | Windows Server 2022, Linux x86_64: Ubuntu 22.04 (CI) | MSVC 2022, GCC 11 | ✅ tested (0.1.0, 0.2.0) | build, exported symbols, doctest, GUT, class reference check, release zip in an empty project |
 | 4.7.2 | macOS universal (arm64 + x86_64) | Apple Clang (CI) | ⏳ not in 0.1 | Built once by CI (2026-11-08), never run; removed from CI and the zip until it can be tested |
 | 4.3 – 4.6 | any | — | ❔ declared | not tried |
 | 4.7.2 .NET (C#) build | any | — | ❔ untested | not tried |

@@ -3,6 +3,8 @@
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-11-09
 ### Added
 - Five PDU types (19 in all): Entity State Update (`DisEntityStateUpdatePdu`; `DisEntityManager` applies it to known
   entities), Receiver (`DisReceiverPdu`), Electromagnetic Emission (`DisElectromagneticEmissionPdu`, systems and
