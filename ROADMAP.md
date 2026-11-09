@@ -8,8 +8,7 @@ recording and playback (pcapng, PDU log), enumerations, class reference in the e
 [compatibility](docs/compatibility.md).
 
 ## Not tried yet
-- The macOS libraries on a Mac (CI builds Windows and Linux only), an exported game (export templates) and two
-  computers on a LAN.
+- The macOS libraries on a Mac (CI builds Windows and Linux only) and two computers on a LAN.
 
 ## Next
 - Dead reckoning: the body-axis algorithms DRM 6–9 exactly (they are approximated by their world-axis

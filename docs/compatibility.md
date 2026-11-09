@@ -33,7 +33,9 @@ Notes:
 - **Windows** needs the Microsoft Visual C++ Redistributable 2015–2022 (x64), usually already installed.
 - **Networking** was tested on one computer (loopback, broadcast and multicast loop back), not between computers
   of a real exercise network. Multicast in WSL 2 works between programs inside WSL.
-- **Exported games** have not been tried yet with Godot's export templates.
+- **Exported games:** tested with Godot 4.7.2 release templates on Windows and Linux (2026-11-09, release zip
+  0.1.0, in godot-sim-demo with godot-jsbsim and godot-geo; see godot-sim-demo's [export guide](https://github.com/godot-sac/godot-sim-demo/blob/main/docs/export.md)). Add `*.json` to the export's include
+  filter: the enumeration tables in `addons/dis/data/` are read as files.
 - Only x86_64 on Windows and Linux; no ARM64 Linux / Windows, Android, iOS or Web builds.
 
 Tried something not in this table? Please open an issue with the Godot version, the platform and what happened.
