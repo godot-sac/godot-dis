@@ -42,6 +42,8 @@ private:
 	godot::String marking;
 	int64_t appearance = 0;
 	int64_t capabilities = 0;
+	// Variable parameter records sent with every PDU (articulated / attached parts, DisVariableParameter).
+	godot::Array variable_parameters;
 	int dr_algorithm = dis::dr::ALGORITHM_FPW;
 	double heartbeat_interval = 5.0;
 	double position_threshold = 1.0;
@@ -128,6 +130,8 @@ public:
 	int64_t get_appearance() const { return appearance; }
 	void set_capabilities(int64_t value);
 	int64_t get_capabilities() const { return capabilities; }
+	void set_variable_parameters(const godot::Array &value);
+	godot::Array get_variable_parameters() const { return variable_parameters; }
 	void set_dr_algorithm(int value);
 	int get_dr_algorithm() const { return dr_algorithm; }
 	void set_heartbeat_interval(double value) { heartbeat_interval = value; }

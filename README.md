@@ -25,7 +25,8 @@ Part of [Godot SAC](https://github.com/godot-sac): stand-alone add-ons for terra
   — [docs/coordinates.md](docs/coordinates.md)
 - `DisEntity` (publish a node: thresholds, heartbeat; `fire()` / `detonate()`), `DisEntityManager` (remote entities:
   dead reckoning DRM 1–9 (body-axis algorithms exact), smoothing, timeouts, ground clamping on any terrain with
-  `height_at`), entity type → scene mapping — [docs/entities.md](docs/entities.md), [docs/warfare.md](docs/warfare.md)
+  `height_at`), articulated and attached parts (`DisVariableParameter`: turrets, guns, rotors, stores), entity type
+  → scene mapping — [docs/entities.md](docs/entities.md), [docs/warfare.md](docs/warfare.md)
 - `DisExerciseControl`: obey a simulation manager (start, freeze at a given time, resume, remove entities,
   acknowledge) or be one (requests with retries) — [docs/simulation-management.md](docs/simulation-management.md)
 - `DisRadioMonitor`: which entity has which radio on which frequency, and who is on the air right now (no audio)

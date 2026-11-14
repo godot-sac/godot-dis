@@ -18,6 +18,7 @@ const TABLES: PackedStringArray = [
 	"force_id", "entity_kind", "platform_domain", "platform_land_category", "platform_air_category",
 	"platform_surface_category", "platform_subsurface_category", "platform_space_category",
 	"munition_domain", "munition_category", "country", "dead_reckoning_algorithm",
+	"variable_parameter_record_type", "articulated_part_class", "articulated_part_metric", "attached_part",
 ]
 
 const _PLATFORM_CATEGORY_TABLES := {

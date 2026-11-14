@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DisVariableParameter" inherits="Object" api_type="extension" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Builds and reads the articulated and attached part records of entity PDUs.
+	</brief_description>
+	<description>
+		Builds and reads the 16-byte variable parameter records that [DisEntityStatePdu], [DisEntityStateUpdatePdu] and [DisDetonationPdu] carry in [code]variable_parameters[/code] (IEEE 1278.1-2012 6.2.94). The two common kinds are articulated parts, the moving parts of an entity such as a turret's azimuth, a gun's elevation or a rotor's rotation, and attached parts, the stores on a station such as a missile under a wing.
+		An articulated part's parameter type is a type class from SISO-REF-010 (a multiple of 32, for example 4096 [i]Primary Turret Number 1[/i], 4416 [i]Primary Gun Number 1[/i], 1184 [i]Main Rotor[/i]) plus a metric ([constant METRIC_AZIMUTH], [constant METRIC_ELEVATION], ...). Angles are radians, positions and extensions metres, and rates per second; the value is a 32-bit float on the wire. Names of classes, metrics and stations come from [code]DisEnums.get_enum_name()[/code] with the tables [code]articulated_part_class[/code], [code]articulated_part_metric[/code] and [code]attached_part[/code].
+		[codeblock]
+		# Publish a turret and its gun with a DisEntity (a change is sent at once):
+		entity.variable_parameters = [
+		    DisVariableParameter.articulated_part(4096, DisVariableParameter.METRIC_AZIMUTH, turret_yaw),
+		    DisVariableParameter.articulated_part(4416, DisVariableParameter.METRIC_ELEVATION, gun_pitch, 1),
+		]
+		# Read them from a remote entity:
+		for part in DisVariableParameter.decode_all(remote.get_last_pdu().variable_parameters):
+		    if part.record_type == DisVariableParameter.RECORD_ARTICULATED_PART and part.type_class == 4096:
+		        turret.rotation.y = -part.value  # DIS azimuth is clockwise seen from above
+		[/codeblock]
+		The layouts are checked against records packed from the standard ([code]tools/vp_golden.py[/code]) and Wireshark's DIS dissector.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="articulated_part" qualifiers="static">
+			<return type="PackedByteArray" />
+			<param index="0" name="type_class" type="int" />
+			<param index="1" name="metric" type="int" />
+			<param index="2" name="value" type="float" />
+			<param index="3" name="attached_to" type="int" default="0" />
+			<param index="4" name="change" type="int" default="0" />
+			<description>
+				Returns an articulated part record: parameter type [param type_class] + [param metric], value [param value] (32-bit float), on the part [param attached_to] (0 is the entity itself), with the change indicator [param change] (0-255; count it up whenever the part changes, receivers use it to see new values). Pushes an error and returns an empty array if [param type_class] is not a non-negative multiple of 32 or [param metric] is outside 0-31.
+			</description>
+		</method>
+		<method name="attached_part" qualifiers="static">
+			<return type="PackedByteArray" />
+			<param index="0" name="station" type="int" />
+			<param index="1" name="entity_type" type="PackedInt32Array" />
+			<param index="2" name="attached_to" type="int" default="0" />
+			<param index="3" name="detached" type="bool" default="false" />
+			<description>
+				Returns an attached part record: the part of type [param entity_type] (seven values as in [member DisEntityStatePdu.entity_type]) on station [param station] (SISO-REF-010 [i]Attached Parts[/i], for example 512 and up for fuselage stations), on the part [param attached_to], with the detached indicator [param detached]. Pushes an error and returns an empty array if [param entity_type] does not have seven values.
+			</description>
+		</method>
+		<method name="decode" qualifiers="static">
+			<return type="Dictionary" />
+			<param index="0" name="record" type="PackedByteArray" />
+			<description>
+				Returns [param record] as a [Dictionary] with [code]record_type[/code]. Articulated parts add [code]change[/code], [code]attached_to[/code], [code]parameter_type[/code], [code]type_class[/code], [code]metric[/code] and [code]value[/code]; attached parts add [code]detached[/code] ([bool]), [code]attached_to[/code], [code]station[/code] and [code]entity_type[/code] ([PackedInt32Array]); other record types keep the 15 bytes after the type in [code]data[/code]. Pushes an error and returns an empty dictionary if [param record] is not 16 bytes.
+			</description>
+		</method>
+		<method name="decode_all" qualifiers="static">
+			<return type="Array" />
+			<param index="0" name="records" type="Array" />
+			<description>
+				Returns [method decode] of every record in [param records] (a PDU's [code]variable_parameters[/code]). Entries that are not [PackedByteArray] are skipped with an error.
+			</description>
+		</method>
+	</methods>
+	<constants>
+		<constant name="RECORD_ARTICULATED_PART" value="0" enum="RecordType">
+			Record type of an articulated part (a moving part of the entity).
+		</constant>
+		<constant name="RECORD_ATTACHED_PART" value="1" enum="RecordType">
+			Record type of an attached part (a store on a station).
+		</constant>
+		<constant name="RECORD_SEPARATION" value="2" enum="RecordType">
+			Record type of a separation record (an entity that separated from another).
+		</constant>
+		<constant name="RECORD_ENTITY_TYPE" value="3" enum="RecordType">
+			Record type of an entity type record (a changed entity type).
+		</constant>
+		<constant name="RECORD_ENTITY_ASSOCIATION" value="4" enum="RecordType">
+			Record type of an entity association record.
+		</constant>
+		<constant name="METRIC_NOT_SPECIFIED" value="0" enum="Metric">
+			Metric not specified.
+		</constant>
+		<constant name="METRIC_POSITION" value="1" enum="Metric">
+			Position along the part's travel, metres (for example a landing gear).
+		</constant>
+		<constant name="METRIC_POSITION_RATE" value="2" enum="Metric">
+			Rate of [constant METRIC_POSITION], metres per second.
+		</constant>
+		<constant name="METRIC_EXTENSION" value="3" enum="Metric">
+			Extension, metres (for example a telescoping mast).
+		</constant>
+		<constant name="METRIC_EXTENSION_RATE" value="4" enum="Metric">
+			Rate of [constant METRIC_EXTENSION], metres per second.
+		</constant>
+		<constant name="METRIC_X" value="5" enum="Metric">
+			X offset in the entity's body axes, metres.
+		</constant>
+		<constant name="METRIC_X_RATE" value="6" enum="Metric">
+			Rate of [constant METRIC_X], metres per second.
+		</constant>
+		<constant name="METRIC_Y" value="7" enum="Metric">
+			Y offset in the entity's body axes, metres.
+		</constant>
+		<constant name="METRIC_Y_RATE" value="8" enum="Metric">
+			Rate of [constant METRIC_Y], metres per second.
+		</constant>
+		<constant name="METRIC_Z" value="9" enum="Metric">
+			Z offset in the entity's body axes, metres.
+		</constant>
+		<constant name="METRIC_Z_RATE" value="10" enum="Metric">
+			Rate of [constant METRIC_Z], metres per second.
+		</constant>
+		<constant name="METRIC_AZIMUTH" value="11" enum="Metric">
+			Azimuth, radians, clockwise seen from above (a turret's traverse).
+		</constant>
+		<constant name="METRIC_AZIMUTH_RATE" value="12" enum="Metric">
+			Rate of [constant METRIC_AZIMUTH], radians per second.
+		</constant>
+		<constant name="METRIC_ELEVATION" value="13" enum="Metric">
+			Elevation, radians, positive up (a gun's elevation).
+		</constant>
+		<constant name="METRIC_ELEVATION_RATE" value="14" enum="Metric">
+			Rate of [constant METRIC_ELEVATION], radians per second.
+		</constant>
+		<constant name="METRIC_ROTATION" value="15" enum="Metric">
+			Rotation about the part's own axis, radians (a rotor or a radar antenna).
+		</constant>
+		<constant name="METRIC_ROTATION_RATE" value="16" enum="Metric">
+			Rate of [constant METRIC_ROTATION], radians per second.
+		</constant>
+	</constants>
+</class>

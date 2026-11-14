@@ -149,6 +149,9 @@
 		<member name="publishing" type="bool" setter="set_publishing" getter="is_publishing" default="true">
 			If [code]false[/code], [method process_entity] samples the motion but sends nothing. [method send_now] still sends.
 		</member>
+		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
+			Variable parameter records sent with every PDU, as an [Array] of 16-byte [PackedByteArray]s, typically articulated and attached parts made with [DisVariableParameter]. Setting a different value sends a PDU at once (like [member appearance]), so update it when a turret turns or a store is released; the array is copied. Each record adds 16 bytes to the PDU.
+		</member>
 		<member name="velocity_source" type="int" setter="set_velocity_source" getter="get_velocity_source" default="0">
 			Where [member linear_velocity], [member linear_acceleration] and [member angular_velocity] come from. See [enum VelocitySource].
 		</member>

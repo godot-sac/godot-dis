@@ -410,3 +410,12 @@ confirmed the cause.
 - **Testing a formula without an oracle:** Open-DIS Python's body-axis functions do not rotate the velocity, so they
   cannot check ours. The test integrates the motion numerically instead (Simpson's rule over 2000 steps): a
   different method that must give the same answer, which catches a wrong sign or coefficient.
+
+## Articulated parts: `DisVariableParameter` (2026-11-14)
+- **A class with only static methods** (`GDREGISTER_ABSTRACT_CLASS(DisVariableParameter)`, like `DisGeo`): GDScript
+  calls `DisVariableParameter.articulated_part(...)` without creating an object; "abstract" stops `new()`.
+- **`VARIANT_ENUM_CAST` needs `<godot_cpp/core/binder_common.hpp>`**: the macro specialises templates declared
+  there. Without the include, MSVC reports "missing type specifier" at the macro line, an error that does not point
+  at the cause. Headers that already include a Godot class header (`node3d.hpp`) get it indirectly.
+- **Building a record without a PDU header**: `byte_io::Writer::data()` returns the bytes written so far;
+  `finish()` would write a PDU length into bytes 8–9, which belong to the record here.

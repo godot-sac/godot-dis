@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Articulated and attached parts: `DisVariableParameter` builds and reads the 16-byte variable parameter records
+  (turret azimuth, gun elevation, rotor rotation, stores on stations; record types, metrics), `DisEntity`
+  `variable_parameters` are sent with every PDU and at once when they change. SISO tables
+  `articulated_part_class`, `articulated_part_metric`, `attached_part` and `variable_parameter_record_type` in
+  `DisEnums`. Checked against the standard's layout (`tools/vp_golden.py`) and Wireshark.
+
 ### Fixed
 - Entity State and Detonation: a variable parameter that is not 16 bytes now fails the encode with an error (like
   Entity State Update) instead of being left out, which made `get_length()` larger than the encoded PDU.

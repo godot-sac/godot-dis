@@ -84,6 +84,7 @@ void DisEntity::_bind_methods() {
 	DIS_PROPERTY(STRING, marking);
 	DIS_PROPERTY(INT, appearance);
 	DIS_PROPERTY(INT, capabilities);
+	DIS_PROPERTY(ARRAY, variable_parameters);
 	ADD_GROUP("Publishing", "");
 	ClassDB::bind_method(D_METHOD("set_publishing", "value"), &DisEntity::set_publishing);
 	ClassDB::bind_method(D_METHOD("is_publishing"), &DisEntity::is_publishing);
@@ -231,6 +232,7 @@ Ref<DisEntityStatePdu> DisEntity::make_pdu(const dis::dr::State &state, int64_t 
 	pdu->set_entity_type(entity_type);
 	pdu->set_marking(marking);
 	pdu->set_appearance(pdu_appearance);
+	pdu->set_variable_parameters(variable_parameters.duplicate());
 	pdu->set_capabilities(capabilities);
 	pdu->set_location_ecef(dis::geo::packed_from_vec3(state.position));
 	pdu->set_orientation(dis::geo::vector3_from_euler(dis::geo::matrix_to_euler(state.orientation)));
@@ -318,6 +320,12 @@ void DisEntity::set_entity_type(const PackedInt32Array &value) {
 void DisEntity::set_marking(const String &value) {
 	marking = value;
 	dirty = true;
+}
+
+void DisEntity::set_variable_parameters(const Array &value) {
+	// A changed part (a turret turning) goes out at once, like a changed appearance.
+	dirty = dirty || value != variable_parameters;
+	variable_parameters = value.duplicate();
 }
 
 void DisEntity::set_appearance(int64_t value) {

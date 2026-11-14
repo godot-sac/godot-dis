@@ -88,6 +88,37 @@ whether the clamp applies to an entity. godot-dis does not depend on godot-geo: 
 For your own units, place the node on the ground yourself (e.g. `position.y = terrain.height_at(x, z)`); `DisEntity`
 publishes wherever the node is, so other simulations see the unit on our terrain.
 
+## Articulated and attached parts
+Moving parts (a turret, a gun, a rotor, landing gear) and stores on stations travel as 16-byte variable parameter
+records after the Entity State PDU's fixed part. `DisVariableParameter` builds and reads them; `DisEntity` sends
+`variable_parameters` with every PDU and sends at once when they change; a remote entity's records are in
+`remote.get_last_pdu().variable_parameters`.
+
+```gdscript
+entity.variable_parameters = [
+	DisVariableParameter.articulated_part(4096, DisVariableParameter.METRIC_AZIMUTH, turret_yaw, 0, change),
+	DisVariableParameter.articulated_part(4416, DisVariableParameter.METRIC_ELEVATION, gun_pitch, 1, change),
+	DisVariableParameter.attached_part(512, PackedInt32Array([2, 2, 225, 1, 2, 3, 0])),  # a store on station 512
+]
+for part in DisVariableParameter.decode_all(remote.get_last_pdu().variable_parameters):
+	print(DisEnums.get_enum_name("articulated_part_class", part.get("type_class", 0)), part)
+```
+
+| Bytes | Articulated part (record type 0) | Attached part (record type 1) |
+|---|---|---|
+| 0 | record type | record type |
+| 1 | change indicator (count up on a change) | detached indicator |
+| 2–3 | part attached to (0 = the entity) | part attached to |
+| 4–7 | parameter type = type class (multiple of 32) + metric (0–31) | station (SISO "Attached Parts") |
+| 8–11 | value, 32-bit float (radians, metres, or per second) | part's entity type (8 bytes) |
+| 12–15 | padding | |
+
+Type classes, metrics and stations are SISO-REF-010 tables (`articulated_part_class`, 287 entries;
+`articulated_part_metric`; `attached_part`). Azimuth is clockwise seen from above (about the body's down axis),
+elevation positive up. Records are checked against ones packed from the standard with Python `struct`
+(`tools/vp_golden.py`) and against Wireshark's DIS dissector (`test_wireshark.gd`). Open-DIS Python 1.1.0 writes an
+articulated part's value as a 64-bit integer and is no reference here.
+
 ## Type map
 `DisEntityTypeMap` is a resource with a list of `DisEntityTypeMapping` (pattern + scene) and a `default_scene`.
 Patterns are the 7 entity type fields `kind:domain:country:category:subcategory:specific:extra`; `*` matches

@@ -210,3 +210,42 @@ func test_wireshark_reads_emission_and_receiver_fields() -> void:
 	assert_eq(rows[3]["dis.jamming_mode_seq"], str(0x01020304))
 	for row: Dictionary in rows:
 		assert_eq(row["_ws.malformed"], "")
+
+
+## Articulated and attached part records (DisVariableParameter, packed from the standard's layout): Wireshark must
+## read the same parameter type, value, change indicator and attached part.
+func test_wireshark_reads_variable_parameters() -> void:
+	var tshark := _tshark()
+	if tshark.is_empty():
+		pending("tshark not found (Wireshark not installed)")
+		return
+	var fields := PackedStringArray(["dis.num_articulation_params", "dis.variable_parameter_type",
+			"dis.vp.change", "dis.vp.part_attached_to_id", "dis.vp.artic_param_type",
+			"dis.vp.parameter_value"])
+	var missing := _missing_fields(tshark, fields)
+	if not missing.is_empty():
+		pending("this tshark lacks %s" % ", ".join(missing))
+		return
+	var pdu := DisEntityStatePdu.new()
+	pdu.entity_id = Vector3i(1, 2, 3)
+	pdu.entity_type = PackedInt32Array([1, 1, 218, 1, 2, 0, 0])
+	pdu.location_ecef = PackedFloat64Array([4208000.0, 2335000.0, 4170000.0])
+	pdu.variable_parameters = [
+		DisVariableParameter.articulated_part(4096, DisVariableParameter.METRIC_AZIMUTH, 0.5, 0, 7),
+		DisVariableParameter.articulated_part(4416, DisVariableParameter.METRIC_ELEVATION, -0.125, 1, 2),
+		DisVariableParameter.attached_part(512, PackedInt32Array([2, 2, 225, 1, 2, 3, 0])),
+	]
+	var recording := DisRecording.new()
+	recording.add_packet(pdu.encode(), 1793534400.0)
+	recording.save("user://wireshark_vp.pcapng")
+	var rows := _tshark_fields(tshark, "user://wireshark_vp.pcapng", fields)
+	assert_eq(rows.size(), 1)
+	var row: Dictionary = rows[0]
+	assert_eq(row["dis.num_articulation_params"], "3")
+	assert_eq(Array(row["dis.variable_parameter_type"].split(",")), ["0", "0", "1"], "record types")
+	assert_eq(Array(row["dis.vp.change"].split(",")), ["7", "2"], "change indicators")
+	assert_string_contains(row["dis.vp.artic_param_type"], "4107")
+	assert_string_contains(row["dis.vp.artic_param_type"], "4429")
+	var values := Array(row["dis.vp.parameter_value"].split(",")).map(func(v: String) -> float: return float(v))
+	assert_almost_eq(values[0], 0.5, 1e-6)
+	assert_almost_eq(values[1], -0.125, 1e-6)

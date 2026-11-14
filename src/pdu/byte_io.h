@@ -51,6 +51,8 @@ public:
 		}
 	}
 	int64_t size() const { return bytes.size(); }
+	// The bytes written so far (records that are not whole PDUs).
+	godot::PackedByteArray data() const { return bytes; }
 	// Writes the total length into the header (bytes 8-9) and returns the bytes.
 	godot::PackedByteArray finish() {
 		const int64_t length = bytes.size();

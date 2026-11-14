@@ -20,6 +20,7 @@
 #include "pdu/dis_datum_pdus.h"
 #include "pdu/dis_emission_pdus.h"
 #include "pdu/dis_entity_state_update_pdu.h"
+#include "pdu/dis_variable_parameter.h"
 #include "pdu/dis_pdu_base.h"
 #include "pdu/dis_radio_pdus.h"
 #include "pdu/dis_simulation_management_pdus.h"
@@ -67,6 +68,7 @@ void initialize_godot_dis(ModuleInitializationLevel p_level) {
 	GDREGISTER_CLASS(DisDesignatorPdu);
 	GDREGISTER_CLASS(DisIffPdu);
 	GDREGISTER_CLASS(DisEntityStateUpdatePdu);
+	GDREGISTER_ABSTRACT_CLASS(DisVariableParameter);
 	GDREGISTER_CLASS(DisNetwork);
 	GDREGISTER_ABSTRACT_CLASS(DisGeo);
 	GDREGISTER_CLASS(DisGeoOrigin);

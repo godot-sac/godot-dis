@@ -15,7 +15,7 @@ func _on_entity_appeared(entity: DisRemoteEntity) -> void:
 ## Names
 | Method | |
 |---|---|
-| `get_enum_name(table, value)` | name in a table, `""` if unknown. Tables: `DisEnums.TABLES` (`force_id`, `entity_kind`, `platform_domain`, `platform_<land/air/surface/subsurface/space>_category`, `munition_domain`, `munition_category`, `country`, `dead_reckoning_algorithm`) |
+| `get_enum_name(table, value)` | name in a table, `""` if unknown. Tables: `DisEnums.TABLES` (`force_id`, `entity_kind`, `platform_domain`, `platform_<land/air/surface/subsurface/space>_category`, `munition_domain`, `munition_category`, `country`, `dead_reckoning_algorithm`, `variable_parameter_record_type`, `articulated_part_class`, `articulated_part_metric`, `attached_part`) |
 | `get_entity_type_name(entity_type)` | most specific known name: the country-specific entry (category → subcategory → specific → extra), else the generic category, else the domain or kind |
 | `describe_entity_type(entity_type)` | every field as `{value, name}`, plus `name` |
 | `get_source()` | version, date, SHA-256 and attribution of the data |
