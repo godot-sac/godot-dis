@@ -84,6 +84,7 @@ Dictionary DisPdu::peek_header(const PackedByteArray &bytes) {
 }
 
 Ref<DisPduBase> DisPdu::decode(const PackedByteArray &bytes) {
+	set_last_error(""); // an error from an earlier call must not stick to this one
 	if (bytes.size() < HEADER_SIZE) {
 		set_last_error(vformat("packet too short for a PDU header: %d bytes", bytes.size()));
 		return Ref<DisPduBase>();
@@ -169,6 +170,7 @@ void DisPdu::set_last_error(const String &message) {
 }
 
 bool DisPdu::validate(const PackedByteArray &bytes, int expected_type, int minimum_size) {
+	set_last_error("");
 	if (bytes.size() < HEADER_SIZE) {
 		set_last_error(vformat("packet too short for a PDU header: %d bytes", bytes.size()));
 		return false;

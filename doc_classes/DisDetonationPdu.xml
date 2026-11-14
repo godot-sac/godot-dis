@@ -30,7 +30,7 @@
 			The 16-bit padding field that follows the variable parameter count. Normally 0; kept so that decoded PDUs encode to the same bytes.
 		</member>
 		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
-			Variable parameter records as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. Entries of any other size are skipped by [method DisPduBase.encode] and an error is printed.
+			Variable parameter records as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. If an entry has any other size, [method DisPduBase.encode] prints an error and returns an empty array.
 		</member>
 	</members>
 	<constants>

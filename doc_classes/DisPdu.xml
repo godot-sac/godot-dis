@@ -42,7 +42,7 @@
 		<method name="get_last_error" qualifiers="static">
 			<return type="String" />
 			<description>
-				Returns the reason the last failed decode on the calling thread was rejected, such as [code]"unsupported PDU type 99"[/code]. The message is kept per thread, so a receive thread and the main thread do not overwrite each other. It is set to an empty string when a later decode gets through header validation.
+				Returns the reason the last failed decode on the calling thread was rejected, such as [code]"unsupported PDU type 99"[/code]. The message is kept per thread, so a receive thread and the main thread do not overwrite each other. Every decode starts by clearing it, so it is empty after a successful decode.
 			</description>
 		</method>
 		<method name="is_supported" qualifiers="static">

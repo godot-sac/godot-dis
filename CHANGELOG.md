@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- Entity State and Detonation: a variable parameter that is not 16 bytes now fails the encode with an error (like
+  Entity State Update) instead of being left out, which made `get_length()` larger than the encoded PDU.
+- Signal: a `data_length` that does not fit the 16-bit field fails the encode instead of being cut silently.
+- `DisPdu.get_last_error()` is cleared by every decode, also when the next packet fails before header validation.
+- Comment PDU: the inherited `request_id` and `padding` (it has neither) are hidden in the Inspector.
 ### Changed
 - Dead reckoning: the body-axis algorithms DRM 6–9 are now exact (IEEE 1278.1 Annex E): the velocity and the
   body-axis acceleration turn with the entity (R₁ / R₂ closed forms), so a steady turn is predicted as a circle.

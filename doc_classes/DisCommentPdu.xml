@@ -4,7 +4,7 @@
 		Comment PDU (type 22): free text and other data for loggers and operators.
 	</brief_description>
 	<description>
-		A Comment PDU carries datum records meant to be logged or shown to people, typically text added with [method DisDatumPdu.add_text]. Unlike [DisSetDataPdu] and [DisDataPdu] it has no request ID and no padding field, so [member DisSimulationManagementPdu.request_id] is not used.
+		A Comment PDU carries datum records meant to be logged or shown to people, typically text added with [method DisDatumPdu.add_text]. Unlike [DisSetDataPdu] and [DisDataPdu] it has no request ID and no padding field, so [member DisSimulationManagementPdu.request_id] and [member DisDatumPdu.padding] are not used and are hidden in the Inspector.
 	</description>
 	<tutorials>
 	</tutorials>

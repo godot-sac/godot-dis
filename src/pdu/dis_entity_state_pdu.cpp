@@ -118,6 +118,10 @@ int DisEntityStatePdu::get_body_length() const {
 PackedByteArray DisEntityStatePdu::encode() const {
 	ERR_FAIL_COND_V_MSG(variable_parameters.size() > 255, PackedByteArray(),
 			vformat("%d variable parameters; the count field allows at most 255", variable_parameters.size()));
+	for (int64_t i = 0; i < variable_parameters.size(); i++) {
+		ERR_FAIL_COND_V_MSG(PackedByteArray(variable_parameters[i]).size() != VARIABLE_PARAMETER_SIZE, PackedByteArray(),
+				vformat("variable parameter %d is not 16 bytes", i));
+	}
 	DIS::EntityStatePdu pdu;
 	write_header(pdu);
 	pdu.setEntityID(to_dis_entity_id(entity_id));
@@ -160,7 +164,6 @@ PackedByteArray DisEntityStatePdu::encode() const {
 	std::vector<DIS::VariableParameter> parameters_list;
 	for (int64_t i = 0; i < variable_parameters.size(); i++) {
 		const PackedByteArray raw = variable_parameters[i];
-		ERR_CONTINUE_MSG(raw.size() != VARIABLE_PARAMETER_SIZE, "variable parameters must be 16 bytes each");
 		DIS::VariableParameter parameter;
 		DIS::DataStream stream = pdu_bytes::to_stream(raw);
 		parameter.unmarshal(stream);

@@ -261,3 +261,43 @@ func test_radio_limit() -> void:
 	assert_eq(monitor.get_radios().size(), 2)
 	assert_eq(monitor.get_dropped_count(), 1)
 	assert_push_warning_count(1)
+
+
+func test_bad_variable_parameter_fails_the_encode() -> void:
+	# A parameter that is not 16 bytes: the encode fails instead of leaving it out (the length would not fit).
+	for pdu: DisPduBase in [_entity_state(2), DisDetonationPdu.new(), DisEntityStateUpdatePdu.new()]:
+		pdu.variable_parameters = [PackedByteArray([1, 2, 3])]
+		assert_eq(pdu.encode(), PackedByteArray(), pdu.get_class())
+		assert_engine_error("not 16 bytes")
+		var good := PackedByteArray()
+		good.resize(16)
+		pdu.variable_parameters = [good]
+		assert_eq(pdu.encode().size(), pdu.get_length(), pdu.get_class() + " with a good parameter")
+
+
+func test_signal_data_length_must_fit_its_field() -> void:
+	var pdu := DisSignalPdu.new()
+	pdu.data_length = 70000
+	assert_eq(pdu.encode(), PackedByteArray(), "more bits than the 16-bit field holds")
+	assert_engine_error("16-bit field")
+	pdu.data_length = 65535
+	assert_eq(pdu.encode().size(), pdu.get_length())
+
+
+func test_last_error_is_cleared_by_the_next_decode() -> void:
+	assert_null(DisPdu.decode(PackedByteArray([7, 1])))
+	assert_ne(DisPdu.get_last_error(), "")
+	assert_null(DisPdu.decode(PackedByteArray([0, 1, 1, 1, 0, 0, 0, 0, 0, 12, 0, 0])), "bad version")
+	assert_string_contains(DisPdu.get_last_error(), "version")
+	assert_not_null(DisPdu.decode(_entity_state(3).encode()))
+	assert_eq(DisPdu.get_last_error(), "")
+
+
+func test_comment_hides_the_fields_it_does_not_have() -> void:
+	var names := DisCommentPdu.new().get_property_list().filter(
+			func(p: Dictionary) -> bool: return p.usage & PROPERTY_USAGE_EDITOR).map(
+			func(p: Dictionary) -> String: return p.name)
+	assert_does_not_have(names, "request_id")
+	assert_does_not_have(names, "padding")
+	var data_names := DisDataPdu.new().get_property_list().map(func(p: Dictionary) -> String: return p.name)
+	assert_has(data_names, "request_id")

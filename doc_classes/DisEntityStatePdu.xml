@@ -70,7 +70,7 @@
 			Entity orientation as Euler angles in radians: [code]x[/code] = psi (yaw), [code]y[/code] = theta (pitch), [code]z[/code] = phi (roll), as defined by IEEE 1278.1 for the world (ECEF) frame (32-bit floats on the wire). Use [DisGeoOrigin] or [DisGeo] to convert to and from heading, pitch and roll or a scene basis.
 		</member>
 		<member name="variable_parameters" type="Array" setter="set_variable_parameters" getter="get_variable_parameters" default="[]">
-			Variable parameter records (for example articulated parts) as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. Entries of any other size are skipped by [method DisPduBase.encode] and an error is printed.
+			Variable parameter records (for example articulated parts) as an [Array] of [PackedByteArray], each exactly 16 bytes, kept raw. At most 255 entries are allowed; [method DisPduBase.encode] returns an empty array for more. If an entry has any other size, [method DisPduBase.encode] prints an error and returns an empty array.
 		</member>
 	</members>
 </class>

@@ -54,6 +54,8 @@ class DisCommentPdu : public DisDatumPdu {
 protected:
 	static void _bind_methods();
 	bool has_request() const override { return false; }
+	// Hides the inherited request_id and padding (a Comment PDU has neither) from the Inspector and saved scenes.
+	void _validate_property(godot::PropertyInfo &p_property) const;
 
 public:
 	static godot::Ref<DisCommentPdu> decode(const godot::PackedByteArray &bytes);

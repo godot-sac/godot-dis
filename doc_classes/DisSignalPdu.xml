@@ -31,7 +31,7 @@
 			The signal data. Only [code]ceil(data_length / 8)[/code] bytes are written, padded with zeros to a multiple of 4 bytes; if [member data] is shorter than that, it is padded with zeros. Setting this property does not update [member data_length]; use [method set_data_bytes] for that.
 		</member>
 		<member name="data_length" type="int" setter="set_data_length" getter="get_data_length" default="0">
-			Length of the data in [i]bits[/i] (16-bit). Decides how many bytes of [member data] are written. See [method set_data_bytes].
+			Length of the data in [i]bits[/i] (16-bit). Decides how many bytes of [member data] are written. See [method set_data_bytes]. A value outside 0-65535 makes [method DisPduBase.encode] print an error and return an empty array.
 		</member>
 		<member name="encoding_scheme" type="int" setter="set_encoding_scheme" getter="get_encoding_scheme" default="0">
 			Encoding scheme (16-bit): bits 14-15 are the encoding class (for example encoded audio), bits 0-13 the encoding type (SISO-REF-010 "Signal-Encoding Class" and "Encoding Type").

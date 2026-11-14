@@ -158,6 +158,12 @@ void DisCommentPdu::_bind_methods() {
 	ClassDB::bind_static_method("DisCommentPdu", D_METHOD("decode", "bytes"), &DisCommentPdu::decode);
 }
 
+void DisCommentPdu::_validate_property(PropertyInfo &p_property) const {
+	if (p_property.name == StringName("request_id") || p_property.name == StringName("padding")) {
+		p_property.usage = PROPERTY_USAGE_NONE;
+	}
+}
+
 Ref<DisCommentPdu> DisCommentPdu::decode(const PackedByteArray &bytes) {
 	Ref<DisCommentPdu> out;
 	out.instantiate();

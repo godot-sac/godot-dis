@@ -227,6 +227,9 @@ int DisSignalPdu::get_body_length() const {
 }
 
 PackedByteArray DisSignalPdu::encode() const {
+	// The data length field is a 16-bit count of bits (at most 8191 whole bytes); never cut it silently.
+	ERR_FAIL_COND_V_MSG(data_length < 0 || data_length > 65535, PackedByteArray(),
+			vformat("data_length %d bits does not fit the 16-bit field (at most 65535 bits, 8191 bytes)", data_length));
 	byte_io::Writer out;
 	write_header(out);
 	write_id(out, radio_reference_id);
