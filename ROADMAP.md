@@ -11,8 +11,6 @@ recording and playback (pcapng, PDU log), enumerations, class reference in the e
 - The macOS libraries on a Mac (CI builds Windows and Linux only) and two computers on a LAN.
 
 ## Next
-- Dead reckoning: the body-axis algorithms DRM 6–9 exactly (they are approximated by their world-axis
-  counterparts 2–5 today).
 - Typed articulated and attached parts (turret, gun, ...) on top of `variable_parameters`.
 - Timestamps: a choice between absolute and relative time for sent PDUs; an option to use received timestamps
   for dead reckoning in time-synchronised exercises.

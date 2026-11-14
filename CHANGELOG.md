@@ -3,6 +3,11 @@
 All notable changes to this project are documented here. Versions follow [semver](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Dead reckoning: the body-axis algorithms DRM 6–9 are now exact (IEEE 1278.1 Annex E): the velocity and the
+  body-axis acceleration turn with the entity (R₁ / R₂ closed forms), so a steady turn is predicted as a circle.
+  Before they were extrapolated like 2–5. `DisEntity` sends DRM 8 / 9 acceleration as the rate of change of the
+  body-axis velocity (without the centripetal part). Checked against numerical integration (docs/entities.md).
 ### Documentation
 - Exported games tested with Godot 4.7.2 release templates on Windows and Linux (docs/compatibility.md).
 

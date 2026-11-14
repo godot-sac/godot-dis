@@ -215,6 +215,11 @@ dis::dr::State DisEntity::current_state(DisGeoOrigin *origin) const {
 	s.acceleration =
 			as_float32(enu_to_ecef * dis::geo::godot_to_enu(dis::geo::vec3_from_vector3(linear_acceleration)));
 	s.angular_velocity = as_float32(godot_axes_to_body(angular_velocity));
+	if (dis::dr::body_axes(dr_algorithm)) {
+		// Body-axis algorithms carry the rate of change of the body-axis velocity (the turn is in the rates).
+		s.acceleration = as_float32(dis::dr::body_acceleration(s.orientation, s.velocity, s.acceleration,
+				s.angular_velocity));
+	}
 	return s;
 }
 
@@ -231,10 +236,7 @@ Ref<DisEntityStatePdu> DisEntity::make_pdu(const dis::dr::State &state, int64_t 
 	pdu->set_orientation(dis::geo::vector3_from_euler(dis::geo::matrix_to_euler(state.orientation)));
 	pdu->set_linear_velocity(dis::geo::vector3_from_vec3(state.velocity));
 	pdu->set_dr_algorithm(dr_algorithm);
-	// Body-axis algorithms send the acceleration in body axes; the state keeps it in ECEF.
-	const dis::geo::Vec3 acceleration =
-			dis::dr::body_axes(dr_algorithm) ? state.orientation.transposed() * state.acceleration : state.acceleration;
-	pdu->set_dr_linear_acceleration(dis::geo::vector3_from_vec3(acceleration));
+	pdu->set_dr_linear_acceleration(dis::geo::vector3_from_vec3(state.acceleration)); // body axes for DRM 6-9
 	pdu->set_dr_angular_velocity(dis::geo::vector3_from_vec3(state.angular_velocity));
 	pdu->set_timestamp(unix_timestamp());
 	return pdu;

@@ -146,6 +146,35 @@ func test_turning_entity_with_rvw_needs_few_updates() -> void:
 	assert_lt(_published.size(), 15, "published %d" % _published.size())
 
 
+
+## Circle of radius 200 m at 20 m/s for 30 s; returns the number of PDUs sent with `algorithm`.
+func _published_in_turn(algorithm: int) -> int:
+	_published.clear()
+	var entity := _entity(algorithm)
+	for i in 1801:
+		var t := i / 60.0
+		var angle := t * 0.1
+		entity.position = Vector3(200 * sin(angle), 0, -200 * cos(angle))
+		entity.basis = Basis(Vector3.UP, -angle)
+		entity.process_entity(t)
+	entity.queue_free()
+	return _published.size()
+
+
+func test_turning_entity_with_body_axis_drm_needs_only_heartbeats() -> void:
+	_origin()
+	# DRM 7 (RPB) turns its velocity with the entity, so a steady turn is predicted exactly: one PDU per 5 s
+	# heartbeat, plus a few while the estimated velocity and rates settle. DRM 3 (RPW) flies straight between
+	# updates and needs many more.
+	var rpb := _published_in_turn(7)
+	var rpw := _published_in_turn(3)
+	assert_lte(rpb, 12, "RPB published %d" % rpb)
+	# DRM 8 (RVB): the centripetal acceleration is in the rates, so the body acceleration sent is about zero.
+	var rvb := _published_in_turn(8)
+	assert_lte(rvb, 12, "RVB published %d" % rvb)
+	assert_gt(rpw, 3 * rpb, "RPW published %d" % rpw)
+
+
 # --- DisEntityManager ------------------------------------------------------------------------------------
 
 func test_manager_creates_and_places_entities() -> void:
@@ -182,6 +211,24 @@ func test_manager_dead_reckons() -> void:
 			Vector3(10, 0, 0)), 3.0)
 	manager.process_entities(5.0)
 	assert_almost_eq(remote.global_position, Vector3.ZERO, Vector3.ONE * 1e-3, "dead reckoning off")
+
+
+
+func test_manager_dead_reckons_a_body_axis_turn() -> void:
+	var origin := _origin()
+	var manager := _manager()
+	manager.smoothing_time = 0.0
+	manager.timeout = 100.0  # one PDU for a whole circle
+	# Heading north at 20 m/s, turning right at 0.1 rad/s (DIS body z is down): a circle of radius 200 m.
+	var pdu := _pdu(origin, Vector3i(1, 2, 9), Vector3.ZERO, Basis.IDENTITY, Vector3(0, 0, -20), 7)
+	pdu.dr_angular_velocity = Vector3(0, 0, 0.1)
+	manager.handle_entity_state(pdu, 0.0)
+	var remote: DisRemoteEntity = manager.get_entity(Vector3i(1, 2, 9))
+	manager.process_entities(PI / 0.1)  # half way round: the far side of the circle, facing south
+	assert_almost_eq(remote.global_position, Vector3(400, 0, 0), Vector3.ONE * 0.05)
+	assert_almost_eq(-remote.global_basis.z, Vector3(0, 0, 1), Vector3.ONE * 1e-3)
+	manager.process_entities(2 * PI / 0.1)
+	assert_almost_eq(remote.global_position, Vector3.ZERO, Vector3.ONE * 0.05, "back at the start")
 
 
 func test_manager_smooths_corrections() -> void:

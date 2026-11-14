@@ -397,3 +397,16 @@ confirmed the cause.
   `install_editor_first_load_guard()` reports that the guard is active.
 - **Keeping it complete**: `tools/check_docs.py` fails when a registered class has no XML or a description is empty;
   CI also regenerates the XML and fails if it differs from the committed files (the API changed, the docs did not).
+
+## Body-axis dead reckoning (v0.2, 2026-11-14)
+- **Closed form with a series fallback** (`body_displacement_r1/_r2` in `src/entity/dead_reckoning.cpp`): terms such
+  as `(x - sin(x)) / w^3` subtract two nearly equal numbers when `x = |w| t` is tiny, and `double` keeps only ~16
+  significant digits, so the result loses almost all of them ("catastrophic cancellation"). Below `x = 1e-3` the
+  code uses the first two Taylor terms instead; a test checks both sides of the switch agree.
+- **Function pointers in a loop** (`tests/cpp/test_dead_reckoning.cpp`):
+  `for (auto f : { &dr::body_displacement_r1, &dr::body_displacement_r2 })` — `&name` is the address of a function,
+  `{ ... }` makes a `std::initializer_list` of them (both have the same signature, so one type), and `f(omega, dt)`
+  calls through the pointer. A small way to run the same check on several functions.
+- **Testing a formula without an oracle:** Open-DIS Python's body-axis functions do not rotate the velocity, so they
+  cannot check ours. The test integrates the motion numerically instead (Simpson's rule over 2000 steps): a
+  different method that must give the same answer, which catches a wrong sign or coefficient.

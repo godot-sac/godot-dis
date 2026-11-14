@@ -345,9 +345,6 @@ void DisEntityManager::apply_entity_state(const Ref<DisEntityStatePdu> &pdu, dou
 	state.velocity = dis::geo::vec3_from_vector3(pdu->get_linear_velocity());
 	state.acceleration = dis::geo::vec3_from_vector3(pdu->get_dr_linear_acceleration());
 	state.orientation = dis::geo::euler_to_matrix(dis::geo::euler_from_vector3(pdu->get_orientation()));
-	if (dis::dr::body_axes(state.algorithm)) {
-		state.acceleration = state.orientation * state.acceleration; // body axes -> ECEF
-	}
 	state.angular_velocity = dis::geo::vec3_from_vector3(pdu->get_dr_angular_velocity());
 
 	const bool is_new = entity == nullptr;

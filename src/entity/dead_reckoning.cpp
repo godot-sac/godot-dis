@@ -45,6 +45,18 @@ Pose extrapolate(const State &state, double dt) {
 	if (algorithm == ALGORITHM_STATIC) {
 		return pose;
 	}
+	if (body_axes(state.algorithm)) {
+		const Vec3 v_body = state.orientation.transposed() * state.velocity;
+		Vec3 d = body_displacement_r1(state.angular_velocity, dt) * v_body;
+		if (accelerates(algorithm)) {
+			d = d + body_displacement_r2(state.angular_velocity, dt) * state.acceleration;
+		}
+		pose.position = state.position + state.orientation * d;
+		if (rotates(algorithm)) {
+			pose.orientation = state.orientation * rotation_from_body_rates(state.angular_velocity, dt);
+		}
+		return pose;
+	}
 	pose.position = state.position + state.velocity * dt;
 	if (accelerates(algorithm)) {
 		pose.position = pose.position + state.acceleration * (0.5 * dt * dt);
@@ -78,6 +90,48 @@ static Mat3 add(const Mat3 &a, const Mat3 &b, double scale_b) {
 		}
 	}
 	return r;
+}
+
+// a I + b K + c K^2 with K = skew(k).
+static Mat3 polynomial(const Vec3 &k, double a, double b, double c) {
+	const Mat3 s = skew(k);
+	return add(add(add(Mat3{}, Mat3{}, a - 1.0), s, b), s * s, c);
+}
+
+// With x = |w| dt, exp([w]x t) = I + sin(|w| t)/|w| K + (1 - cos(|w| t))/|w|^2 K^2 (K = skew(w)); integrating
+// term by term gives the coefficients below. Near x = 0 they lose all digits to cancellation, so the first two terms
+// of their Taylor series are used there (error of the next term below 1e-13 relative for x < 1e-3).
+Mat3 body_displacement_r1(const Vec3 &omega, double dt) {
+	const double w = omega.length();
+	const double x = w * dt;
+	double b, c;
+	if (x < 1e-3) {
+		b = dt * dt * (0.5 - x * x / 24.0);
+		c = dt * dt * dt * (1.0 / 6.0 - x * x / 120.0);
+	} else {
+		b = (1.0 - std::cos(x)) / (w * w);
+		c = (x - std::sin(x)) / (w * w * w);
+	}
+	return polynomial(omega, dt, b, c);
+}
+
+Mat3 body_displacement_r2(const Vec3 &omega, double dt) {
+	const double w = omega.length();
+	const double x = w * dt;
+	double b, c;
+	if (x < 1e-3) {
+		b = dt * dt * dt * (1.0 / 3.0 - x * x / 30.0);
+		c = dt * dt * dt * dt * (0.125 - x * x / 144.0);
+	} else {
+		b = (std::sin(x) - x * std::cos(x)) / (w * w * w);
+		c = (0.5 * x * x - x * std::sin(x) - std::cos(x) + 1.0) / (w * w * w * w);
+	}
+	return polynomial(omega, 0.5 * dt * dt, b, c);
+}
+
+Vec3 body_acceleration(const Mat3 &orientation, const Vec3 &velocity, const Vec3 &acceleration, const Vec3 &omega) {
+	const Mat3 to_body = orientation.transposed();
+	return to_body * acceleration - omega.cross(to_body * velocity);
 }
 
 Mat3 rotation_from_body_rates(const Vec3 &omega, double dt) {

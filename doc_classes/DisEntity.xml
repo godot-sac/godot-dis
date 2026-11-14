@@ -111,7 +111,7 @@
 			Entity capabilities bit field published in the PDU (SISO-REF-010). Changing it sends a PDU at once.
 		</member>
 		<member name="dr_algorithm" type="int" setter="set_dr_algorithm" getter="get_dr_algorithm" default="2">
-			Dead reckoning algorithm announced in the PDU and used for the send decision: 0 Other, 1 Static, 2 FPW, 3 RPW, 4 RVW, 5 FVW, 6 FPB, 7 RPB, 8 RVB, 9 FVB. F/R means fixed/rotating orientation, P/V constant velocity/acceleration, W/B world/body axes. Use 4 (RVW) for aircraft and anything that turns or accelerates. The body-axis variants 6 to 9 are published with the acceleration in body axes but extrapolated like 2 to 5. Changing it sends a PDU at once.
+			Dead reckoning algorithm announced in the PDU and used for the send decision: 0 Other, 1 Static, 2 FPW, 3 RPW, 4 RVW, 5 FVW, 6 FPB, 7 RPB, 8 RVB, 9 FVB. F/R means fixed/rotating orientation, P/V constant velocity/acceleration, W/B world/body axes. Use 4 (RVW) for aircraft and anything that turns or accelerates; 7 (RPB) or 8 (RVB) predict a steady turn exactly, since their velocity turns with the entity (receivers must implement them, as [DisEntityManager] does). For 8 and 9 the acceleration is sent in body axes without the centripetal part. Changing it sends a PDU at once.
 		</member>
 		<member name="entity_id" type="Vector3i" setter="set_entity_id" getter="get_entity_id" default="Vector3i(0, 0, 0)">
 			Entity ID as (site, application, entity number). Fields that are 0 are filled in automatically; see [method get_effective_entity_id]. Changing it sends a PDU at once.

@@ -100,7 +100,7 @@ anything and missing trailing fields count as `*`. The most specific match wins 
 | `1:1:225:1:1` | one platform family of country 225 |
 
 ## Dead reckoning
-Between PDUs every entity is moved with the algorithm it reported. DRM 1–5 are implemented
+Between PDUs every entity is moved with the algorithm it reported. DRM 1–9 are implemented
 (`src/entity/dead_reckoning.cpp`):
 
 | DRM | Name | Position after t | Orientation |
@@ -110,13 +110,27 @@ Between PDUs every entity is moved with the algorithm it reported. DRM 1–5 are
 | 3 | RPW | P₀ + V₀t | rotates |
 | 4 | RVW | P₀ + V₀t + ½A₀t² | rotates |
 | 5 | FVW | P₀ + V₀t + ½A₀t² | fixed |
+| 6 | FPB | P₀ + R₀ R₁ v_b | fixed |
+| 7 | RPB | P₀ + R₀ R₁ v_b | rotates |
+| 8 | RVB | P₀ + R₀ (R₁ v_b + R₂ a_b) | rotates |
+| 9 | FVB | P₀ + R₀ (R₁ v_b + R₂ a_b) | fixed |
 
-Position, velocity and acceleration are in ECEF. "Rotates" means turning at the reported body-axis angular velocity
-ω: R(t) = R₀ · exp([ω]× t), computed with Rodrigues' formula (exact for a constant ω). Body-axis algorithms 6–9 carry
-the dead reckoning acceleration in body axes: `DisEntity` sends it that way and `DisEntityManager` turns it into ECEF
-with the reported orientation; the motion itself is then extrapolated like the world-axis versions 2–5 (velocity
-and acceleration do not turn with the entity between updates yet, see the roadmap). 0 and unknown values are
-static.
+Position and velocity are in ECEF, and so is the acceleration of DRM 4 and 5. "Rotates" means turning at the
+reported body-axis angular velocity ω: R(t) = R₀ · exp([ω]× t), computed with Rodrigues' formula (exact for a
+constant ω). 0 and unknown values are static.
+
+**Body-axis algorithms 6–9** (IEEE 1278.1 Annex E) move the velocity with the entity: the body-axis velocity
+v_b = R₀ᵀ V₀ (and for 8 and 9 the dead reckoning acceleration a_b, which the PDU carries in body axes as the rate of
+change of v_b) is integrated in a frame turning at ω. With K = [ω]×, x = |ω|t:
+
+- R₁ = ∫₀ᵗ exp(Kτ) dτ = t·I + (1 − cos x)/|ω|² K + (x − sin x)/|ω|³ K²
+- R₂ = ∫₀ᵗ τ·exp(Kτ) dτ = ½t²·I + (sin x − x cos x)/|ω|³ K + (½x² − x sin x − cos x + 1)/|ω|⁴ K²
+
+(Taylor series for x < 10⁻³, where the closed forms cancel.) The path curves with ω for all four, also for 6 and 9
+whose reported orientation stays fixed. A vehicle in a steady turn is therefore predicted exactly by DRM 7 (a
+circle) and by DRM 8 with a_b = 0, while DRM 3 and 4 fly straight or along a parabola. `DisEntity` sends
+a_b = R₀ᵀA − ω × v_b for 8 and 9 (the centripetal part is already in ω). Open-DIS Python's body-axis functions do not
+turn the velocity (they use R₀ only), so 6–9 are checked against numerical integration instead (below).
 
 Time is measured from when the PDU arrived (local clock), not from the PDU timestamp, so clocks don't need to be
 synchronised. Network delay shows up as a small lag, corrected by the next update.
@@ -125,9 +139,12 @@ synchronised. Network delay shows up as a small lag, corrected by the next updat
 - `tests/cpp/test_dead_reckoning.cpp`: 100 cases against Open-DIS Python (`opendis.DeadReckoning`), positions within
   1 µm. Open-DIS Python integrates orientation through Euler angle rates to first order, so its orientations agree only
   for small steps (checked within 1e-4); the exact rotation is checked against a Runge–Kutta integration (1e-9).
-  Data: `tests/golden/dr_cases.txt` from `tools/dr_golden.py`.
+  Data: `tests/golden/dr_cases.txt` from `tools/dr_golden.py`. DRM 6–9: 120 random cases against a numerical
+  integration of R(t) v_b(t) (Simpson, 2000 steps; within 10 µm over 5 s), a steady turn that closes its circle, and
+  the no-rotation limit equal to DRM 2 / 5.
 - `tests/unit/test_entities.gd`: thresholds, heartbeat, motion estimation, smoothing, timeout / deactivation, type map,
-  and a publisher → UDP → manager round trip.
+  a publisher → UDP → manager round trip, and a 30 s steady turn: DRM 7 and 8 send about one PDU per heartbeat,
+  DRM 3 several times more.
 - `tools/perf_entities.gd` (debug build, Ryzen 9 7950X): 1000 entities × 5 Hz = 5000 PDU/s over loopback with no loss;
   receive + decode + dead reckoning + node transforms ≈ 0.7 ms per frame. `process_entities` alone ≈ 0.2 ms per frame
   for 1000 entities; one update ≈ 1 µs.
